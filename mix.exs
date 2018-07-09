@@ -15,7 +15,7 @@ defmodule Sparrow.MixProject do
 
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger, :chatterbox]
     ]
   end
 
@@ -23,7 +23,8 @@ defmodule Sparrow.MixProject do
     [
       {:dialyxir, "~> 0.4", runtime: false, only: :dev},
       {:credo, "~> 0.5", runtime: false, only: :dev},
-      {:excoveralls, "~> 0.5", runtime: false, only: :test}
+      {:excoveralls, "~> 0.5", runtime: false, only: :test},
+      {:chatterbox, github: "joedevivo/chatterbox", tag: "7a3c64d"}
     ]
   end
 
