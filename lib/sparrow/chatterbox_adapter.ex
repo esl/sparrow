@@ -1,4 +1,4 @@
-defmodule CatterboxAdapter do
+defmodule ChatterboxAdapter do
   @spec open(String.t(), non_neg_integer(), [any()]) :: {:ok, pid()} | :ignore | {:error, any()}
   def open(uri, port, opts \\ []) do
     try do
