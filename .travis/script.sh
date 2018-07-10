@@ -5,7 +5,7 @@ case $PRESET in
         MIX_ENV=test mix coveralls.travis --include system
         ;;
     dialyzer)
-        mix dialyzer
+        mix dialyzer --halt-exit-status
         ;;
     *)
         echo "Invalid preset: $PRESET"
