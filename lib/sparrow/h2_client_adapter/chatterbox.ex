@@ -1,4 +1,4 @@
-defmodule Sparrow.H2Adapter do
+defmodule Sparrow.H2ClientAdapter.Chatterbox do
   @moduledoc false
 
   @type connection_ref :: pid

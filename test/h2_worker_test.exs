@@ -5,9 +5,11 @@ defmodule H2WorkerTest do
   import ExUnit.CaptureLog
   require Logger
   alias Sparrow.H2Worker.Config, as: Config
-  alias Sparrow.H2Adapter, as: H2Adapter
+  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
   alias Sparrow.H2Worker.State, as: State
+
+  @repeats 10
 
   defp pid(string) when is_binary(string) do
     :erlang.list_to_pid('<#{string}>')
@@ -37,7 +39,7 @@ defmodule H2WorkerTest do
             path: string(min: 3, max: 15, chars: :ascii),
             stream_id: int(min: 1, max: 65535)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ponger = pid("0.456.654")
       ping_interval = 100
@@ -64,7 +66,6 @@ defmodule H2WorkerTest do
 
         spec = child_spec(args: args, name: name)
         {:ok, pid} = start_supervised(spec)
-        :erlang.trace(:all, true, [:receive])
 
         request = OuterRequest.new(headers, body, path, request_timeout)
         assert {:error, :request_timeout} == GenServer.call(pid, {:send_request, request})
@@ -84,7 +85,7 @@ defmodule H2WorkerTest do
             path: string(min: 3, max: 15, chars: :ascii),
             stream_id: int(min: 1, max: 65535)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ponger = pid("0.456.654")
       ping_interval = 100
@@ -135,7 +136,7 @@ defmodule H2WorkerTest do
             path: string(min: 3, max: 15, chars: :ascii),
             stream_id: int(min: 1, max: 65535)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ponger = pid("0.456.654")
       ping_interval = 100
@@ -185,7 +186,7 @@ defmodule H2WorkerTest do
             path: string(min: 3, max: 15, chars: :ascii),
             stream_id: int(min: 1, max: 65535)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ponger = pid("0.456.654")
       ping_interval = 100
@@ -235,7 +236,7 @@ defmodule H2WorkerTest do
             path: string(min: 3, max: 15, chars: :ascii),
             stream_id: int(min: 1, max: 65535)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ponger = pid("0.456.654")
       ping_interval = 100
@@ -281,7 +282,7 @@ defmodule H2WorkerTest do
             tls_options: list(of: atom(), min: 0, max: 3),
             stream_id: int(min: 1, max: 65535)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ping_interval = 200
 
@@ -306,7 +307,7 @@ defmodule H2WorkerTest do
             tls_options: list(of: atom(), min: 0, max: 3),
             random_message: string(min: 10, max: 20, chars: ?a..?z)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ping_interval = 200
 
@@ -336,7 +337,7 @@ defmodule H2WorkerTest do
             path: string(min: 3, max: 15, chars: :ascii),
             stream_id: int(min: 1, max: 65535)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ponger = pid("0.456.654")
       ping_interval = 1_000
@@ -384,7 +385,7 @@ defmodule H2WorkerTest do
             port: int(min: 0, max: 65535),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ponger = pid("0.456.654")
       ping_interval = 100
@@ -427,7 +428,7 @@ defmodule H2WorkerTest do
             stream_id: int(min: 1, max: 65535),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ping_interval = 100
       request_timeout = 1_000
@@ -472,7 +473,7 @@ defmodule H2WorkerTest do
             port: int(min: 0, max: 65535),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       connection_ref = pid("0.45.54")
       ping_interval = 123
 
@@ -499,7 +500,7 @@ defmodule H2WorkerTest do
             reason: atom(min: 2, max: 5),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       ping_interval = 123
 
       with_mock H2Adapter,
@@ -523,7 +524,7 @@ defmodule H2WorkerTest do
             port: int(min: 0, max: 65535),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
-          repeat_for: 1 do
+          repeat_for: @repeats do
       with_mock H2Adapter,
         close: fn _ -> :ok end do
         connection_ref = pid("0.45.54")

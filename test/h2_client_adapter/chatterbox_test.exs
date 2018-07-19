@@ -1,14 +1,16 @@
-defmodule H2AdapterTest do
+defmodule H2ClientAdapter.ChatterboxTest do
   use ExUnit.Case
   use Quixir
   import Mock
-  doctest Sparrow.H2Adapter
+  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
+
+  doctest H2Adapter
 
   @repeats 10
 
   test "open connection" do
     with_mock :h2_client, start_link: fn _, _, _, _ -> {:ok, self()} end do
-      assert {:ok, self()} === Sparrow.H2Adapter.open("my.domain.at.domain", 1234, [])
+      assert {:ok, self()} === H2Adapter.open("my.domain.at.domain", 1234, [])
       assert called :h2_client.start_link(:https, 'my.domain.at.domain', 1234, [])
     end
   end
@@ -21,7 +23,7 @@ defmodule H2AdapterTest do
               options: list(of: atom(), min: 2, max: 10)
             ],
             repeat_for: @repeats do
-        assert {:ok, self()} === Sparrow.H2Adapter.open(domain, port, options)
+        assert {:ok, self()} === H2Adapter.open(domain, port, options)
         assert called :h2_client.start_link(:https, to_charlist(domain), port, options)
       end
     end
@@ -35,7 +37,7 @@ defmodule H2AdapterTest do
               options: list(of: atom(), min: 2, max: 10)
             ],
             repeat_for: @repeats do
-        assert {:error, :ignore} === Sparrow.H2Adapter.open(domain, port, options)
+        assert {:error, :ignore} === H2Adapter.open(domain, port, options)
         assert called :h2_client.start_link(:https, to_charlist(domain), port, options)
       end
     end
@@ -50,7 +52,7 @@ defmodule H2AdapterTest do
           ],
           repeat_for: @repeats do
       with_mock :h2_client, start_link: fn _, _, _, _ -> {:error, reason} end do
-        assert {:error, reason} === Sparrow.H2Adapter.open(domain, port, options)
+        assert {:error, reason} === H2Adapter.open(domain, port, options)
         assert called :h2_client.start_link(:https, to_charlist(domain), port, options)
       end
     end
@@ -58,7 +60,7 @@ defmodule H2AdapterTest do
 
   test "close connection" do
     with_mock :h2_client, stop: fn _ -> :ok end do
-      assert :ok === Sparrow.H2Adapter.close(self())
+      assert :ok === H2Adapter.close(self())
       assert called :h2_client.stop(self())
     end
   end
@@ -75,7 +77,7 @@ defmodule H2AdapterTest do
       with_mock :h2_connection, new_stream: fn _ -> {:error, reason} end do
         conn = self()
 
-        assert {:error, reason} === Sparrow.H2Adapter.post(conn, domain, path, headers, body)
+        assert {:error, reason} === H2Adapter.post(conn, domain, path, headers, body)
 
         assert called :h2_connection.new_stream(conn)
       end
@@ -101,7 +103,7 @@ defmodule H2AdapterTest do
         new_stream: fn _ -> stream_id end,
         send_headers: fn _, _, _ -> :ok end,
         send_body: fn _, _, _ -> :ok end do
-        assert {:ok, stream_id} === Sparrow.H2Adapter.post(conn, domain, path, headers, body)
+        assert {:ok, stream_id} === H2Adapter.post(conn, domain, path, headers, body)
 
         args =
           :meck.history(:h2_connection)
@@ -134,7 +136,7 @@ defmodule H2AdapterTest do
 
       with_mock :h2_connection,
         get_response: fn _, _ -> {:ok, {headers, body}} end do
-        assert {:ok, {headers, body}} == Sparrow.H2Adapter.get_reponse(conn, stream_id)
+        assert {:ok, {headers, body}} == H2Adapter.get_reponse(conn, stream_id)
 
         assert called :h2_connection.get_response(conn, stream_id)
       end
@@ -150,7 +152,7 @@ defmodule H2AdapterTest do
 
       with_mock :h2_connection,
         get_response: fn _, _ -> :not_ready end do
-        assert {:error, :not_ready} == Sparrow.H2Adapter.get_reponse(conn, stream_id)
+        assert {:error, :not_ready} == H2Adapter.get_reponse(conn, stream_id)
 
         assert called :h2_connection.get_response(conn, stream_id)
       end
@@ -162,7 +164,7 @@ defmodule H2AdapterTest do
 
     with_mock :h2_client,
       send_ping: fn _ -> :ok end do
-      assert :ok === Sparrow.H2Adapter.ping(conn)
+      assert :ok === H2Adapter.ping(conn)
       assert called :h2_client.send_ping(conn)
     end
   end

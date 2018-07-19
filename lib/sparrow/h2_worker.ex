@@ -2,7 +2,7 @@ defmodule Sparrow.H2Worker do
   use GenServer
   require Logger
   alias Sparrow.H2Worker.State, as: State
-  alias Sparrow.H2Adapter, as: H2Adapter
+  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.RequestSet, as: RequestSet
   alias Sparrow.H2Worker.RequestState, as: InnerRequest
 
@@ -41,7 +41,7 @@ defmodule Sparrow.H2Worker do
 
   @spec terminate(reason, state) :: :ok
   def terminate(reason, state) do
-    _ = Logger.info("Http2 worker terminanated, reason=#{inspect(reason)}")
+    _ = Logger.info("action=terminate, reason=#{inspect(reason)}")
     H2Adapter.close(state.connection_ref)
   end
 
@@ -167,7 +167,7 @@ defmodule Sparrow.H2Worker do
 
   @doc !"""
        Scheduales message to genserver after time miliseconds.
-       When time is nil scheduling ins ignored.
+       When time is nil scheduling is ignored.
        """
   @spec schedule_message_after(any, nil | non_neg_integer) :: reference
   defp schedule_message_after(_message, nil) do
