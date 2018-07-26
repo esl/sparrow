@@ -7,7 +7,8 @@ defmodule Sparrow.H2Worker.Config do
           domain: String.t(),
           port: non_neg_integer,
           tls_options: tls_options,
-          ping_interval: time_in_miliseconds | nil
+          ping_interval: time_in_miliseconds | nil,
+          reconnect_attempts: pos_integer
         }
 
   @doc !"""
@@ -17,16 +18,18 @@ defmodule Sparrow.H2Worker.Config do
     :domain,
     :port,
     :tls_options,
-    :ping_interval
+    :ping_interval,
+    :reconnect_attempts
   ]
 
-  @spec new(String.t(), port_num, tls_options, time_in_miliseconds) :: t
-  def new(domain, port, tls_options \\ [], timeout \\ 5_000) do
+  @spec new(String.t(), port_num, tls_options, time_in_miliseconds, pos_integer) :: t
+  def new(domain, port, tls_options \\ [], ping_interval \\ 5_000, reconnect_attempts \\ 3) do
     %__MODULE__{
       domain: domain,
       port: port,
       tls_options: tls_options,
-      ping_interval: timeout
+      ping_interval: ping_interval,
+      reconnect_attempts: reconnect_attempts
     }
   end
 end

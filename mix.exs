@@ -15,25 +15,31 @@ defmodule Sparrow.MixProject do
 
   def application do
     [
-      extra_applications: [:logger, :chatterbox]
+      extra_applications: [:lager, :logger, :chatterbox]
     ]
   end
 
   defp deps do
     [
-      {:dialyxir, "~> 0.4", runtime: false, only: :dev},
+      {:dialyxir, "~> 0.4", runtime: false, only: [:dev, :test]},
       {:credo, "~> 0.5", runtime: false, only: :dev},
       {:chatterbox, github: "joedevivo/chatterbox", tag: "7a3c64d"},
       {:excoveralls, "~> 0.5", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},
-      {:mock, "~> 0.3.0", only: :test}
+      {:uuid, "~> 1.1"},
+      {:mock, "~> 0.3.0", only: :test},
+      {:cowboy, "~> 2.4.0", only: :test},
+      {:lager, ">= 3.2.1", override: true},
+      {:logger_lager_backend, "~> 0.1.0"},
+      {:plug, "1.6.1", only: :test}
     ]
   end
 
   defp dialyzer do
     [
       plt_core_path: ".dialyzer/",
-      flags: ["-Wunmatched_returns", "-Werror_handling", "-Wrace_conditions", "-Wunderspecs"]
+      flags: ["-Wunmatched_returns", "-Werror_handling", "-Wrace_conditions", "-Wunderspecs"],
+      plt_add_apps: [:mix]
     ]
   end
 

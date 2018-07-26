@@ -10,7 +10,7 @@ defmodule Sparrow.H2Worker do
   @type config :: Sparrow.H2Worker.Config.t()
   @type on_start :: {:ok, pid} | :ignore | {:error, {:already_started, pid} | term}
   @type init_args :: [any]
-  @type state :: %Sparrow.H2Worker.State{}
+  @type state :: Sparrow.H2Worker.State.t()
   @type stream_id :: non_neg_integer
   @type reason :: any
   @type incomming_message ::
@@ -27,28 +27,30 @@ defmodule Sparrow.H2Worker do
 
   @spec init(config) :: {:ok, state} | {:stop, reason}
   def init(config) do
-    case H2Adapter.open(config.domain, config.port, config.tls_options) do
-      {:ok, connection_ref} ->
-        _ = schedule_message_after(:ping, config.ping_interval)
-
-        {:ok, State.new(connection_ref, config)}
-
-      {:error, reason} ->
-        _ = Logger.error("Http2 worker stoped in init, reason=#{inspect(reason)}")
-        {:stop, reason}
+    case start_conn(config, config.reconnect_attempts) do
+      {:error, reason} -> {:stop, reason}
+      {:ok, state} -> {:ok, state}
     end
   end
 
   @spec terminate(reason, state) :: :ok
   def terminate(reason, state) do
-    _ = Logger.info("action=terminate, reason=#{inspect(reason)}")
     H2Adapter.close(state.connection_ref)
+    _ = Logger.info("action=terminate, reason=#{inspect(reason)}")
   end
 
   @spec handle_info(incomming_message, state) :: {:noreply, state}
   def handle_info(:ping, state) do
-    H2Adapter.ping(state.connection_ref)
-    _ = schedule_message_after(:ping, state.config.ping_interval)
+    case state.connection_ref do
+      nil ->
+        :ok
+
+      _ ->
+        H2Adapter.ping(state.connection_ref)
+        _ = schedule_message_after(:ping, state.config.ping_interval)
+        :ok
+    end
+
     {:noreply, state}
   end
 
@@ -57,7 +59,7 @@ defmodule Sparrow.H2Worker do
     {:noreply, state}
   end
 
-  def handle_info({'END_STREAM', stream_id}, state) do
+  def handle_info({:END_STREAM, stream_id}, state) do
     _ = Logger.debug("action=receive, item=request_response, stream_id=#{inspect(stream_id)}")
 
     case RequestSet.get_request(state.requests, stream_id) do
@@ -92,9 +94,38 @@ defmodule Sparrow.H2Worker do
      State.new(state.connection_ref, RequestSet.remove(state.requests, stream_id), state.config)}
   end
 
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
+    case state.connection_ref == pid do
+      true ->
+        _ = Logger.debug("action=conn_shutdown, pid=#{inspect(pid)}, reason=#{inspect(reason)}")
+        {:noreply, connection_closed_action(state)}
+
+      _ ->
+        _ =
+          Logger.warn(
+            "action=unknown_down_message, pid=#{inspect(pid)}, reason=#{inspect(reason)}"
+          )
+
+        {:noreply, state}
+    end
+  end
+
   def handle_info(unknown, state) do
     _ = Logger.warn("Unknown info #{inspect(unknown)}")
     {:noreply, state}
+  end
+
+  @doc !"""
+       When connection closes, all requests in progress are teriminated with error.
+       """
+  @spec connection_closed_action(state) :: state
+  defp connection_closed_action(state) do
+    Map.to_list(state.requests)
+    |> Enum.each(fn {_, req} -> GenServer.reply(req.from, {:error, :connection_lost}) end)
+
+    state
+    |> State.reset_connection_ref()
+    |> State.reset_requests_collection()
   end
 
   @spec handle_call({:send_request, request}, from, state) :: {:noreply, state}
@@ -106,10 +137,10 @@ defmodule Sparrow.H2Worker do
         }"
       )
 
-    handle({:send_request, request}, from, state)
+    try_handle(request, from, state)
   end
 
-  @spec handle_cast({:send_request, request}, state) :: {:noreply, state}
+  @spec handle_cast({:send_request, request}, state) :: {:stop, reason, state} | {:noreply, state}
   def handle_cast({:send_request, request}, state) do
     _ =
       Logger.debug(
@@ -118,14 +149,43 @@ defmodule Sparrow.H2Worker do
         }"
       )
 
-    handle({:send_request, request}, :noreply, state)
+    try_handle(request, :noreply, state)
+  end
+
+  @spec try_handle(request, from | :noreply, state) :: {:stop, reason, state} | {:noreply, state}
+  defp try_handle(request, from, state = %State{connection_ref: nil}) do
+    _ = Logger.info("action=restarting_conn_on_new_request, request=#{inspect(request)}")
+
+    case start_conn(state.config, state.config.reconnect_attempts) do
+      {:error, reason} ->
+        _ =
+          Logger.error(
+            "action=restarting_conn_on_new_request, result=fail, reason=#{inspect(reason)}, request=#{
+              inspect(request)
+            }"
+          )
+
+        {:stop, reason, state}
+
+      {:ok, state} ->
+        _ =
+          Logger.info(
+            "action=restarting_conn_on_new_request, result=sucess, request=#{inspect(request)}"
+          )
+
+        handle(request, from, state)
+    end
+  end
+
+  defp try_handle(request, from, state) do
+    handle(request, from, state)
   end
 
   @doc !"""
        Tries to send request, schedulates timeout for it and adds it to state.
        """
-  @spec handle({:send_request, request}, from | :noreply, state) :: {:noreply, state}
-  defp handle({:send_request, request}, from, state) do
+  @spec handle(request, from | :noreply, state) :: {:noreply, state}
+  defp handle(request, from, state) do
     post_result =
       H2Adapter.post(
         state.connection_ref,
@@ -242,5 +302,56 @@ defmodule Sparrow.H2Worker do
       )
 
     :ok
+  end
+
+  defp start_conn(config, 0) do
+    case start_conn(config) do
+      {:ok, state} ->
+        {:ok, state}
+
+      {:error, reason} ->
+        _ =
+          Logger.error(
+            "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
+              inspect(config.port)
+            }, tls_options=#{inspect(config.tls_options)}, restarts_left=0"
+          )
+
+        {:error, reason}
+    end
+  end
+
+  defp start_conn(config, restarts_left) when restarts_left > 0 do
+    _ =
+      Logger.info(
+        "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
+          inspect(config.port)
+        }, tls_options=#{inspect(config.tls_options)}, restarts_left=#{inspect(restarts_left)}"
+      )
+
+    case start_conn(config) do
+      {:ok, state} ->
+        {:ok, state}
+
+      {:error, reason} ->
+        _ = Logger.warn("action=restarting_conn, reason=#{inspect(reason)}")
+        start_conn(config, restarts_left - 1)
+    end
+  end
+
+  defp start_conn(config) do
+    case H2Adapter.open(config.domain, config.port, config.tls_options) do
+      {:ok, connection_ref} ->
+        _ = schedule_message_after(:ping, config.ping_interval)
+        _ = Logger.debug("action=open_connection, result=succes")
+        Process.monitor(connection_ref)
+        Process.unlink(connection_ref)
+        _ = Logger.debug("action=starting_monitor")
+        {:ok, State.new(connection_ref, config)}
+
+      {:error, reason} ->
+        _ = Logger.warn("action=open_connection, result=error, reason=#{inspect(reason)}")
+        {:error, reason}
+    end
   end
 end

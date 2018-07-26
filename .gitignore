@@ -25,3 +25,8 @@ sparrow-*.tar
 /.dialyzer/
 /.elixir_ls/
 /.vscode/
+/log/
+*.log
+*.coverdata
+/priv/
+*.pem

@@ -2,10 +2,11 @@ PRESET=$1
 
 case $PRESET in
     test)
+        mix certs.dev
         MIX_ENV=test mix coveralls.travis --include system
         ;;
     dialyzer)
-        mix dialyzer --halt-exit-status
+        MIX_ENV=test mix dialyzer --halt-exit-status
         ;;
     *)
         echo "Invalid preset: $PRESET"
