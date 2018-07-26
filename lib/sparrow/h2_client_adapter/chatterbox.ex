@@ -1,4 +1,5 @@
 defmodule Sparrow.H2ClientAdapter.Chatterbox do
+  require Logger
   @moduledoc false
 
   @type connection_ref :: pid
@@ -13,10 +14,21 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   @spec open(String.t(), non_neg_integer, [any]) ::
           {:ok, connection_ref} | {:error, :ignore} | {:error, any}
   def open(domain, port, opts \\ []) do
+    _ =
+      Logger.debug("action=open_conn, to=#{inspect(domain)}, port=#{port}, opts=#{inspect(opts)}")
+
     case :h2_client.start_link(:https, to_charlist(domain), port, opts) do
-      :ignore -> {:error, :ignore}
-      {:ok, connection_ref} -> {:ok, connection_ref}
-      {:error, reason} -> {:error, reason}
+      :ignore ->
+        _ = Logger.debug("action=open_conn, response=#{:ignore}")
+        {:error, :ignore}
+
+      {:ok, connection_ref} ->
+        _ = Logger.debug("action=open_conn, response=#{inspect({:ok, connection_ref})}")
+        {:ok, connection_ref}
+
+      {:error, reason} ->
+        _ = Logger.debug("action=open_conn, response=#{inspect({:error, reason})}")
+        {:error, reason}
     end
   end
 
