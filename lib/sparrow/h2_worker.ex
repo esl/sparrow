@@ -10,7 +10,7 @@ defmodule Sparrow.H2Worker do
   @type config :: Sparrow.H2Worker.Config.t()
   @type on_start :: {:ok, pid} | :ignore | {:error, {:already_started, pid} | term}
   @type init_args :: [any]
-  @type state :: %Sparrow.H2Worker.State{}
+  @type state :: Sparrow.H2Worker.State.t()
   @type stream_id :: non_neg_integer
   @type reason :: any
   @type incomming_message ::
