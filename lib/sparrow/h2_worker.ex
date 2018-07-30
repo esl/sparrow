@@ -20,6 +20,11 @@ defmodule Sparrow.H2Worker do
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
 
+  @spec send_request(pid, request) :: {:noreply, state}
+  def send_request(worker, request) do
+    GenServer.call(worker, {:send_request, request})
+  end
+
   @spec start_link(gen_server_name, config) :: on_start
   def start_link(name, args) do
     GenServer.start_link(__MODULE__, args, name: name)

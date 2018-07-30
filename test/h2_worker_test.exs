@@ -10,22 +10,6 @@ defmodule H2WorkerTest do
 
   @repeats 2
 
-  defp pid() do
-    spawn(fn -> :timer.sleep(5_000) end)
-  end
-
-  defp child_spec(opts) do
-    args = opts[:args]
-    name = opts[:name]
-
-    id = :rand.uniform(100_000)
-
-    %{
-      :id => id,
-      :start => {Sparrow.H2Worker, :start_link, [name, args]}
-    }
-  end
-
   setup do
     {:ok, connection_ref: pid()}
   end
@@ -67,10 +51,10 @@ defmodule H2WorkerTest do
           )
 
         spec = child_spec(args: args, name: name)
-        {:ok, pid} = start_supervised(spec)
+        {:ok, worker_pid} = start_supervised(spec)
 
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:error, :request_timeout} == GenServer.call(pid, {:send_request, request})
+        assert {:error, :request_timeout} == Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
@@ -115,11 +99,11 @@ defmodule H2WorkerTest do
           )
 
         spec = child_spec(args: config, name: name)
-        {:ok, pid} = start_supervised(spec)
+        {:ok, worker_pid} = start_supervised(spec)
 
-        :erlang.send_after(1_000, pid, {:END_STREAM, stream_id})
+        :erlang.send_after(1_000, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:ok, {headers, body}} == GenServer.call(pid, {:send_request, request})
+        assert {:ok, {headers, body}} == Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
@@ -165,11 +149,11 @@ defmodule H2WorkerTest do
           )
 
         spec = child_spec(args: config, name: name)
-        {:ok, pid} = start_supervised(spec)
+        {:ok, worker_pid} = start_supervised(spec)
 
-        :erlang.send_after(150, pid, {:END_STREAM, stream_id})
+        :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:error, code} == GenServer.call(pid, {:send_request, request})
+        assert {:error, code} == Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
@@ -213,11 +197,11 @@ defmodule H2WorkerTest do
           )
 
         spec = child_spec(args: config)
-        {:ok, pid} = start_supervised(spec)
+        {:ok, worker_pid} = start_supervised(spec)
 
-        :erlang.send_after(150, pid, {:END_STREAM, stream_id})
+        :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:error, :not_ready} == GenServer.call(pid, {:send_request, request})
+        assert {:error, :not_ready} == Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
@@ -361,14 +345,14 @@ defmodule H2WorkerTest do
           )
 
         spec = child_spec(args: args, name: name)
-        {:ok, pid} = start_supervised(spec)
+        {:ok, worker_pid} = start_supervised(spec)
 
-        :erlang.send_after(150, pid, {:END_STREAM, stream_id})
-        :erlang.send_after(300, pid, {:END_STREAM, stream_id})
+        :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
+        :erlang.send_after(300, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:ok, {headers, body}} == GenServer.call(pid, {:send_request, request})
-        assert {:ok, {headers, body}} == GenServer.call(pid, {:send_request, request})
-        assert {:error, :request_timeout} == GenServer.call(pid, {:send_request, request})
+        assert {:ok, {headers, body}} == Sparrow.H2Worker.send_request(worker_pid, request)
+        assert {:ok, {headers, body}} == Sparrow.H2Worker.send_request(worker_pid, request)
+        assert {:error, :request_timeout} == Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
@@ -577,5 +561,21 @@ defmodule H2WorkerTest do
         assert called H2Adapter.close(context[:connection_ref])
       end
     end
+  end
+
+  defp pid() do
+    spawn(fn -> :timer.sleep(5_000) end)
+  end
+
+  defp child_spec(opts) do
+    args = opts[:args]
+    name = opts[:name]
+
+    id = :rand.uniform(100_000)
+
+    %{
+      :id => id,
+      :start => {Sparrow.H2Worker, :start_link, [name, args]}
+    }
   end
 end

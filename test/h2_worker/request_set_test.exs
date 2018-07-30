@@ -7,10 +7,6 @@ defmodule H2Worker.RequestSetTest do
 
   @repeats 10
 
-  defp pid(string) when is_binary(string) do
-    :erlang.list_to_pid('<#{string}>')
-  end
-
   test "collection is correctly initalizing" do
     requests = RequestSet.new()
     assert 0 == Enum.count(requests)
@@ -76,5 +72,9 @@ defmodule H2Worker.RequestSetTest do
       assert 1 == Enum.count(requests_collection_with_request2_removed)
       assert [stream_id2] == Map.keys(requests_collection_with_request2_removed)
     end
+  end
+
+  defp pid(string) when is_binary(string) do
+    :erlang.list_to_pid('<#{string}>')
   end
 end

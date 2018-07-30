@@ -1,5 +1,6 @@
 defmodule H2Integration.Helpers.SetupHelper do
   alias Sparrow.H2Worker.Config, as: Config
+  alias H2Integration.Helpers.SetupHelper, as: Setup
 
   def child_spec(opts) do
     args = opts[:args]
@@ -60,8 +61,11 @@ defmodule H2Integration.Helpers.SetupHelper do
     ] ++ certificate_settings_list()
   end
 
-  def start_cowboy_tls(dispatch_config, cerificate_required \\ :no, port \\ 8080, name \\ :look) do
-    settings_list = settings_list(cerificate_required, port)
+  def start_cowboy_tls(dispatch_config, opts) do
+    cert_required = Keyword.get(opts, :certificate_required, :no)
+    port = Keyword.get(opts, :port, 0)
+    name = Keyword.get(opts, :name, :look)
+    settings_list = settings_list(cert_required, port)
 
     {:ok, pid} =
       :cowboy.start_tls(

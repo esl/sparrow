@@ -84,10 +84,6 @@ defmodule H2ClientAdapter.ChatterboxTest do
     end
   end
 
-  defp pid(string) when is_binary(string) do
-    :erlang.list_to_pid('<#{string}>')
-  end
-
   test "sending post request returning stream_id" do
     ptest [
             headers: list(of: string(), min: 2, max: 20, chars: :ascii),
@@ -167,5 +163,9 @@ defmodule H2ClientAdapter.ChatterboxTest do
       assert :ok === H2Adapter.ping(conn)
       assert called :h2_client.send_ping(conn)
     end
+  end
+
+  defp pid(string) when is_binary(string) do
+    :erlang.list_to_pid('<#{string}>')
   end
 end
