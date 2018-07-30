@@ -6,6 +6,7 @@ defmodule Sparrow.MixProject do
       app: :sparrow,
       version: "0.1.0",
       elixir: "~> 1.6",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: dialyzer(),
@@ -46,4 +47,7 @@ defmodule Sparrow.MixProject do
   defp test_coverage do
     [tool: ExCoveralls]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/h2_integration/helpers"]
+  defp elixirc_paths(_), do: ["lib"]
 end
