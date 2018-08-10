@@ -1,7 +1,7 @@
 defmodule H2Integration.CerificateRequiredTest do
   use ExUnit.Case
 
-  alias H2Integration.Helpers.SetupHelper, as: Setup
+  alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
   setup do
@@ -9,8 +9,8 @@ defmodule H2Integration.CerificateRequiredTest do
       :cowboy_router.compile([
         {":_",
          [
-           {"/EchoClientCerificateHandler",
-            H2Integration.Helpers.CowboyHandlers.EchoClientCerificateHandler, []}
+           {"/EchoClientCerificateHandler", Helpers.CowboyHandlers.EchoClientCerificateHandler,
+            []}
          ]}
       ])
       |> Setup.start_cowboy_tls(certificate_required: :positive_cerificate_verification)
@@ -39,8 +39,7 @@ defmodule H2Integration.CerificateRequiredTest do
 
     {:ok, pem_bin} = File.read(System.cwd() <> "/priv/ssl/client_cert.pem")
 
-    expected_subject =
-      H2Integration.Helpers.CerificateHelper.get_subject_name_form_not_encoded_cert(pem_bin)
+    expected_subject = Helpers.CerificateHelper.get_subject_name_form_not_encoded_cert(pem_bin)
 
     assert_response_header(answer_headers, {":status", "200"})
     assert expected_subject == answer_body

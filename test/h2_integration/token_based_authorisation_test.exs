@@ -1,9 +1,9 @@
 defmodule H2Integration.TokenBasedAuthorisationTest do
   use ExUnit.Case
 
-  alias H2Integration.Helpers.SetupHelper, as: Setup
+  alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
-  alias H2Integration.Helpers.TokenHelper, as: TokenHelper
+  alias H2Integration.Helpers.TokenHelper
 
   @path "/AuthenticateHandler"
 
@@ -12,7 +12,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
       :cowboy_router.compile([
         {":_",
          [
-           {@path, H2Integration.Helpers.CowboyHandlers.AuthenticateHandler, []}
+           {@path, Helpers.CowboyHandlers.AuthenticateHandler, []}
          ]}
       ])
       |> Setup.start_cowboy_tls(certificate_required: :no)
@@ -38,7 +38,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
 
     success_request =
       OuterRequest.new(
-        headers ++ [{"authorization", TokenHelper.get_correct_token()}],
+        [{"authorization", TokenHelper.get_correct_token()} | headers],
         body,
         @path,
         3_000
@@ -74,7 +74,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
 
     fail_request =
       OuterRequest.new(
-        headers ++ [{"authorization", TokenHelper.get_incorrect_token()}],
+        [{"authorization", TokenHelper.get_incorrect_token()} | headers],
         body,
         @path,
         3_000

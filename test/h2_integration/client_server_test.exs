@@ -4,7 +4,7 @@ defmodule H2Integration.ClientServerTest do
   use ExUnit.Case
 
   alias Sparrow.H2Worker.Request, as: OuterRequest
-  alias H2Integration.Helpers.SetupHelper, as: Setup
+  alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
 
   setup do
@@ -12,10 +12,9 @@ defmodule H2Integration.ClientServerTest do
       :cowboy_router.compile([
         {":_",
          [
-           {"/ConnTestHandler", H2Integration.Helpers.CowboyHandlers.ConnectionHandler, []},
-           {"/HeaderToBodyEchoHandler",
-            H2Integration.Helpers.CowboyHandlers.HeaderToBodyEchoHandler, []},
-           {"/TimeoutHandler", H2Integration.Helpers.CowboyHandlers.TimeoutHandler, []}
+           {"/ConnTestHandler", Helpers.CowboyHandlers.ConnectionHandler, []},
+           {"/HeaderToBodyEchoHandler", Helpers.CowboyHandlers.HeaderToBodyEchoHandler, []},
+           {"/TimeoutHandler", Helpers.CowboyHandlers.TimeoutHandler, []}
          ]}
       ])
       |> Setup.start_cowboy_tls(certificate_required: :no)
@@ -33,7 +32,7 @@ defmodule H2Integration.ClientServerTest do
   test "cowboy echos headers in body", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-    headers = Setup.default_headers() ++ [{"my_cool_header", "my_even_cooler_value"}]
+    headers = [{"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()]
 
     body = "test body"
 
@@ -41,10 +40,10 @@ defmodule H2Integration.ClientServerTest do
     {:ok, worker_pid} = start_supervised(worker_spec)
     request = OuterRequest.new(headers, body, "/HeaderToBodyEchoHandler", 2_000)
     {:ok, {answer_headers, answer_body}} = Sparrow.H2Worker.send_request(worker_pid, request)
-    length_header = [{"content-length", Integer.to_string(String.length(body))}]
+    length_header = {"content-length", Integer.to_string(String.length(body))}
 
     assert_response_header(answer_headers, {":status", "200"})
-    assert {Enum.into(headers ++ length_header, %{}), []} == Code.eval_string(answer_body)
+    assert {Enum.into([length_header | headers], %{}), []} == Code.eval_string(answer_body)
   end
 
   test "cowboy replies Hello", context do

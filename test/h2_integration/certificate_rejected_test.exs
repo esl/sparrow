@@ -1,15 +1,14 @@
 defmodule H2Integration.CerificateRejectedTest do
   use ExUnit.Case
 
-  alias H2Integration.Helpers.SetupHelper, as: Setup
+  alias Helpers.SetupHelper, as: Setup
 
   setup_all do
     {:ok, _cowboy_pid, cowboys_name} =
       :cowboy_router.compile([
         {":_",
          [
-           {"/RejectCertificateHandler",
-            H2Integration.Helpers.CowboyHandlers.RejectCertificateHandler, []}
+           {"/RejectCertificateHandler", Helpers.CowboyHandlers.RejectCertificateHandler, []}
          ]}
       ])
       |> Setup.start_cowboy_tls(certificate_required: :negative_cerificate_verification)

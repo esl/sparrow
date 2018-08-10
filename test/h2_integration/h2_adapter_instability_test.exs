@@ -3,7 +3,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
 
   import Mock
 
-  alias H2Integration.Helpers.SetupHelper, as: Setup
+  alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
@@ -12,7 +12,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
       :cowboy_router.compile([
         {":_",
          [
-           {"/LostConnHandler", H2Integration.Helpers.CowboyHandlers.LostConnHandler, []}
+           {"/LostConnHandler", Helpers.CowboyHandlers.LostConnHandler, []}
          ]}
       ])
       |> Setup.start_cowboy_tls(certificate_required: :no)
