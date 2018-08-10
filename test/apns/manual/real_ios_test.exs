@@ -29,8 +29,8 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
 
   defp tls_opts() do
     [
-      {:certfile, "/Users/aleksanderlisiecki/Documents/certificates/Certificates1.pem"},
-      {:keyfile, "/Users/aleksanderlisiecki/Documents/certificates/key"}
+      {:certfile, "test/priv/certs/Certificates1.pem"},
+      {:keyfile, "test/priv/certs/key.pem"}
     ]
   end
 
@@ -38,10 +38,8 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
     args = opts[:args]
     name = opts[:name]
 
-    id = :rand.uniform(100_000)
-
     %{
-      :id => id,
+      :id => 28,
       :start => {Sparrow.H2Worker, :start_link, [name, args]}
     }
   end

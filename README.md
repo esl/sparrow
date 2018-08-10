@@ -31,9 +31,9 @@ be found at [https://hexdocs.pm/sparrow](https://hexdocs.pm/sparrow).
 Pre Requirements:
 * MacOS with Xcode installed
 * Apple mobile device
-* Tutorail (*) requirements
+* Tutorial (*) requirements
 
-First, follow [this](..https://medium.com/flawless-app-stories/ios-remote-push-notifications-in-a-nutshell-d05f5ccac252..) tutorial (*), specifically the "Step 3, get APNS certificate" section.
+First, follow [this](https://medium.com/flawless-app-stories/ios-remote-push-notifications-in-a-nutshell-d05f5ccac252) tutorial (*), specifically the "Step 3, get APNS certificate" section.
 
 When you reach point where you have `exampleName.cer` file, import it to Keychain Access:
 File -> Import Items... -> Chose `exampleName.cer` 
@@ -73,7 +73,7 @@ Sparrow.H2Worker.start_link(:your_apns_workers_name, config)
 
 ## How to obtain device token??
 
-Try [this](..https://developer.apple.com/documentation/usernotifications/registering_your_app_with_apns..).
+Try [this](https://developer.apple.com/documentation/usernotifications/registering_your_app_with_apns).
 
 ## How to obtain apns-topic??
 

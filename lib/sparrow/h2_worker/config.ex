@@ -24,7 +24,9 @@ defmodule Sparrow.H2Worker.Config do
 
   @doc """
   Function new creates h2 worker configuration.
-    ## Arguments
+
+  ## Arguments
+
     * `domain` - service address eg. "www.erlang-solutions.com"
     * `port` - port service works on,
     * `tls_options` - See http://erlang.org/doc/man/ssl.html  ssl_option()

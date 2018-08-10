@@ -6,9 +6,10 @@ defmodule Sparrow.APNS.Notification do
     * https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html#//apple_ref/doc/uid/TP40008194-CH11-SW1
     * https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/PayloadKeyReference.html#//apple_ref/doc/uid/TP40008194-CH17-SW1
 
-    This module contains a bunch of helper functions which allow you to build the notification conveniently.
+  This module contains a bunch of helper functions which allow you to build the notification conveniently.
 
     ## Example
+
     notification = Sparrow.APNS.Notification.new(device_token)
     |> add_title("some example title")
     |> add_body("some example body")

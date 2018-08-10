@@ -59,6 +59,13 @@ defmodule Sparrow.APNSTest do
     assert :ok == Sparrow.APNS.push(context[:worker_pid], notification, is_sync: false)
   end
 
+  test "sending invalid request blocked", context do
+    notification = Notification.new("OkResponseHandler")
+
+    assert {:error, :invalid_notification} ==
+             Sparrow.APNS.push(context[:worker_pid], notification)
+  end
+
   test "sending request to APNS mock returning error, chcecking error parsing", context do
     notification =
       Notification.new("ErrorResponseHandler")
@@ -81,6 +88,7 @@ defmodule Sparrow.APNSTest do
 
     notification =
       Notification.new("EchoBodyHandler")
+      |> Notification.add_title(@title)
       |> Notification.add_sound(sound)
       |> Notification.add_badge(badge)
       |> Notification.add_content_available(content_available)
@@ -108,6 +116,7 @@ defmodule Sparrow.APNSTest do
 
     notification =
       Notification.new("EchoBodyHandler")
+      |> Notification.add_title(@title)
       |> Notification.add_title_loc_key(title_loc_key)
       |> Notification.add_title_loc_args(title_loc_args)
       |> Notification.add_loc_args(loc_args)

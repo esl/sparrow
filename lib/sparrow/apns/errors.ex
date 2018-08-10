@@ -25,9 +25,9 @@ defmodule Sparrow.APNS.Errors do
       Verify that the :path header contains the device token."
 
   def get_error_description(400, "MissingTopic"),
-    do:
-      "The apns-topic header of the request was not specified and was required.
-      The apns-topic header is mandatory when the client is connected using a certificate that supports multiple topics."
+    do: "The apns-topic header of the request was not specified and was required.
+      The apns-topic header is mandatory when the client is connected
+      using a certificate that supports multiple topics."
 
   def get_error_description(400, "PayloadEmpty"), do: "The message payload was empty."
   def get_error_description(400, "TopicDisallowed"), do: "Pushing to this topic is not allowed."
@@ -45,8 +45,8 @@ defmodule Sparrow.APNS.Errors do
     do: "The provider token is not valid or the token signature could not be verified."
 
   def get_error_description(403, "MissingProviderToken"),
-    do:
-      "No provider certificate was used to connect to APNs and Authorization header was missing or no provider token was specified."
+    do: "No provider certificate was used to connect to APNs and Authorization
+      header was missing or no provider token was specified."
 
   def get_error_description(404, "BadPath"), do: "The request contained a bad :path value."
   def get_error_description(405, "MethodNotAllowed"), do: "The specified :method was not POST."
@@ -69,5 +69,5 @@ defmodule Sparrow.APNS.Errors do
   def get_error_description(503, "Shutdown"), do: "The server is shutting down."
 
   def get_error_description(status_code, error_string),
-    do: "Unameched status code  = #{status_code}, error string = #{error_string}"
+    do: "Unmatched status code  = #{status_code}, error string = #{error_string}"
 end

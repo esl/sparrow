@@ -25,7 +25,7 @@ defmodule Sparrow.H2Worker do
   @type process :: GenServer.server()
 
   @doc """
-  Sends the request and if is_sync is true awaits the response.
+  Sends the request and, if `is_sync` is `true`, awaits the response.
   """
   @spec send_request(process, request, boolean(), non_neg_integer) ::
           {:error, :connection_lost}
@@ -91,8 +91,12 @@ defmodule Sparrow.H2Worker do
 
     case RequestSet.get_request(state.requests, stream_id) do
       {:error, :not_found} ->
-        _ = Logger.info(fn -> "Request not found in requests set stream_id=#{inspect(stream_id)},
-        timeouted or you are losing requests" end)
+        _ =
+          Logger.info(fn ->
+            "Request not found in requests set stream_id=#{inspect(stream_id)}," <>
+              " timed out or you are losing requests"
+          end)
+
         :ok
 
       {:ok, request} ->

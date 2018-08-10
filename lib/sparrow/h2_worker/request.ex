@@ -22,7 +22,9 @@ defmodule Sparrow.H2Worker.Request do
 
   @doc """
   Function new creates request that can be passed to h2worker.
-    ## Arguments
+
+  ## Arguments
+
     * `headers` - http request headers
     * `body` - http request body
     * `path` - path to resource on server eg. for address "https://www.erlang-solutions.com/events.html" path is "/events.html"
