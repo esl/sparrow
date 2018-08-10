@@ -1,13 +1,12 @@
 defmodule Sparrow.H2Worker.RequestSet do
-  alias Sparrow.H2Worker.RequestState, as: RequestState
+  @moduledoc """
+  Abstraction over requests collection.
+  """
+  alias Sparrow.H2Worker.RequestState
 
   @type stream_id :: non_neg_integer
   @type from :: {pid, tag :: term}
   @type requests :: %{required(stream_id) => %Sparrow.H2Worker.Request{}}
-
-  @doc !"""
-         Abstraction over request collection.
-       """
 
   @doc """
   Creates new requests collection.
