@@ -28,6 +28,7 @@ defmodule Sparrow.MixProject do
       {:excoveralls, "~> 0.5", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},
       {:uuid, "~> 1.1"},
+      {:jason, "~> 1.1"},
       {:mock, "~> 0.3.0", only: :test},
       {:cowboy, "~> 2.4.0", only: :test},
       {:lager, ">= 3.2.1", override: true},
