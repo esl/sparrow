@@ -1,12 +1,12 @@
-defmodule H2WorkerTest do
+defmodule Sparrow.H2WorkerTest do
   use ExUnit.Case
   use Quixir
   import Mock
   require Logger
-  alias Sparrow.H2Worker.Config, as: Config
+  alias Sparrow.H2Worker.Config
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
-  alias Sparrow.H2Worker.State, as: State
+  alias Sparrow.H2Worker.State
 
   @repeats 2
 
@@ -247,9 +247,10 @@ defmodule H2WorkerTest do
 
         :erlang.send_after(150, pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        GenServer.cast(pid, {:send_request, request})
+        req_result = Sparrow.H2Worker.send_request(pid, request, false)
         state = :sys.get_state(pid)
         inner_request = Map.get(state.requests, stream_id)
+        assert :ok == req_result
         assert headers == inner_request.headers
         assert body == inner_request.body
         assert path == inner_request.path

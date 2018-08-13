@@ -1,6 +1,6 @@
-defmodule H2Integration.Helpers.SetupHelper do
-  alias Sparrow.H2Worker.Config, as: Config
-  alias H2Integration.Helpers.SetupHelper, as: Setup
+defmodule Helpers.SetupHelper do
+  alias Sparrow.H2Worker.Config
+  alias Helpers.SetupHelper, as: Setup
 
   def child_spec(opts) do
     args = opts[:args]
@@ -44,7 +44,8 @@ defmodule H2Integration.Helpers.SetupHelper do
       {:port, port},
       {:verify, :verify_peer},
       {:verify_fun, {fn _, _, _ -> {:valid, :ok} end, :ok}}
-    ] ++ certificate_settings_list()
+      | certificate_settings_list()
+    ]
   end
 
   defp settings_list(:negative_cerificate_verification, port) do
@@ -52,13 +53,15 @@ defmodule H2Integration.Helpers.SetupHelper do
       {:port, port},
       {:verify, :verify_peer},
       {:verify_fun, {fn _, _, _ -> {:fail, :negative_cerificate_verification} end, :ok}}
-    ] ++ certificate_settings_list()
+      | certificate_settings_list()
+    ]
   end
 
   defp settings_list(:no, port) do
     [
       {:port, port}
-    ] ++ certificate_settings_list()
+      | certificate_settings_list()
+    ]
   end
 
   def start_cowboy_tls(dispatch_config, opts) do

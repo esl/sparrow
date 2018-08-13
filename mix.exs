@@ -28,6 +28,7 @@ defmodule Sparrow.MixProject do
       {:excoveralls, "~> 0.5", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},
       {:uuid, "~> 1.1"},
+      {:jason, "~> 1.1"},
       {:mock, "~> 0.3.0", only: :test},
       {:cowboy, "~> 2.4.0", only: :test},
       {:lager, ">= 3.2.1", override: true},
@@ -48,6 +49,8 @@ defmodule Sparrow.MixProject do
     [tool: ExCoveralls]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "test/h2_integration/helpers"]
+  defp elixirc_paths(:test),
+    do: ["lib", "test/helpers"]
+
   defp elixirc_paths(_), do: ["lib"]
 end

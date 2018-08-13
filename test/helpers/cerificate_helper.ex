@@ -1,4 +1,4 @@
-defmodule H2Integration.Helpers.CerificateHelper do
+defmodule Helpers.CerificateHelper do
   require Record
 
   Record.defrecord(

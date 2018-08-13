@@ -1,7 +1,7 @@
 defmodule H2Worker.RequestSetTest do
   use ExUnit.Case
   use Quixir
-  alias Sparrow.H2Worker.RequestSet, as: RequestSet
+  alias Sparrow.H2Worker.RequestSet
   alias Sparrow.H2Worker.RequestState, as: InnerRequest
   doctest Sparrow.H2Worker.RequestSet
 

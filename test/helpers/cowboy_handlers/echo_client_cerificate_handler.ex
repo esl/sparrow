@@ -1,8 +1,8 @@
-defmodule H2Integration.Helpers.CowboyHandlers.EchoClientCerificateHandler do
+defmodule Helpers.CowboyHandlers.EchoClientCerificateHandler do
   def init(req, opts) do
     subject =
       :cowboy_req.cert(req)
-      |> H2Integration.Helpers.CerificateHelper.get_subject_name_form_encoded_cert()
+      |> Helpers.CerificateHelper.get_subject_name_form_encoded_cert()
 
     reply =
       :cowboy_req.reply(

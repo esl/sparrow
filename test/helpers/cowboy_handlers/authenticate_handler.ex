@@ -1,5 +1,5 @@
-defmodule H2Integration.Helpers.CowboyHandlers.AuthenticateHandler do
-  alias H2Integration.Helpers.TokenHelper, as: TokenHelper
+defmodule Helpers.CowboyHandlers.AuthenticateHandler do
+  alias H2Integration.Helpers.TokenHelper
 
   def init(req, opts) do
     {code, answer} = :cowboy_req.header("authorization", req) |> verify_token_and_get_response()

@@ -1,4 +1,5 @@
 defmodule Sparrow.H2Worker.State do
+  @moduledoc false
   @type connection_ref :: pid
   @type stream_id :: non_neg_integer
   @type requests :: %{required(stream_id) => %Sparrow.H2Worker.Request{}}
@@ -10,15 +11,15 @@ defmodule Sparrow.H2Worker.State do
           config: config
         }
 
-  @doc !"""
-         Struct representing worker internal state.
-       """
   defstruct [
     :connection_ref,
     :requests,
     :config
   ]
 
+  @doc """
+  Creates new empty state.
+  """
   @spec new(connection_ref | nil, requests, config) :: t
   def new(connection_ref, requests \\ %{}, config) do
     %__MODULE__{
@@ -28,6 +29,9 @@ defmodule Sparrow.H2Worker.State do
     }
   end
 
+  @doc """
+  Resets requests collection in state.
+  """
   @spec reset_requests_collection(t) :: t
   def reset_requests_collection(state) do
     %__MODULE__{
@@ -37,6 +41,9 @@ defmodule Sparrow.H2Worker.State do
     }
   end
 
+  @doc """
+  Resets connection reference in state.
+  """
   @spec reset_connection_ref(t) :: t
   def reset_connection_ref(state) do
     %__MODULE__{

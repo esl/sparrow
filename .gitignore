@@ -30,3 +30,4 @@ sparrow-*.tar
 *.coverdata
 /priv/
 *.pem
+test/priv/
