@@ -1,10 +1,20 @@
 defmodule Helpers.CowboyHandlers.AuthenticateHandler do
+  @moduledoc false
   alias H2Integration.Helpers.TokenHelper
 
   def init(req, opts) do
-    {code, answer} = :cowboy_req.header("authorization", req) |> verify_token_and_get_response()
+    {code, answer} =
+      "authorization"
+      |> :cowboy_req.header(req)
+      |> verify_token_and_get_response()
 
-    reply = :cowboy_req.reply(code, %{"content-type" => "text/plain; charset=utf-8"}, answer, req)
+    reply =
+      :cowboy_req.reply(
+        code,
+        %{"content-type" => "text/plain; charset=utf-8"},
+        answer,
+        req
+      )
 
     {:ok, reply, opts}
   end

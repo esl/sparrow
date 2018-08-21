@@ -13,7 +13,13 @@ defmodule H2ClientAdapter.ChatterboxTest do
   test "open connection" do
     with_mock :h2_client, start_link: fn _, _, _, _ -> {:ok, self()} end do
       assert {:ok, self()} === H2Adapter.open("my.domain.at.domain", 1234, [])
-      assert called :h2_client.start_link(:https, 'my.domain.at.domain', 1234, [])
+
+      assert called :h2_client.start_link(
+                      :https,
+                      'my.domain.at.domain',
+                      1234,
+                      []
+                    )
     end
   end
 
@@ -21,12 +27,18 @@ defmodule H2ClientAdapter.ChatterboxTest do
     with_mock :h2_client, start_link: fn _, _, _, _ -> {:ok, self()} end do
       ptest [
               domain: string(min: 5, max: 20, chars: ?a..?z),
-              port: int(min: 0, max: 65535),
+              port: int(min: 0, max: 65_535),
               options: list(of: atom(), min: 2, max: 10)
             ],
             repeat_for: @repeats do
         assert {:ok, self()} === H2Adapter.open(domain, port, options)
-        assert called :h2_client.start_link(:https, to_charlist(domain), port, options)
+
+        assert called :h2_client.start_link(
+                        :https,
+                        to_charlist(domain),
+                        port,
+                        options
+                      )
       end
     end
   end
@@ -35,12 +47,18 @@ defmodule H2ClientAdapter.ChatterboxTest do
     with_mock :h2_client, start_link: fn _, _, _, _ -> :ignore end do
       ptest [
               domain: string(min: 5, max: 20, chars: ?a..?z),
-              port: int(min: 0, max: 65535),
+              port: int(min: 0, max: 65_535),
               options: list(of: atom(), min: 2, max: 10)
             ],
             repeat_for: @repeats do
         assert {:error, :ignore} === H2Adapter.open(domain, port, options)
-        assert called :h2_client.start_link(:https, to_charlist(domain), port, options)
+
+        assert called :h2_client.start_link(
+                        :https,
+                        to_charlist(domain),
+                        port,
+                        options
+                      )
       end
     end
   end
@@ -49,13 +67,19 @@ defmodule H2ClientAdapter.ChatterboxTest do
     ptest [
             domain: string(min: 5, max: 20, chars: ?a..?z),
             reason: string(min: 5, max: 20, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             options: list(of: atom(), min: 2, max: 10)
           ],
           repeat_for: @repeats do
       with_mock :h2_client, start_link: fn _, _, _, _ -> {:error, reason} end do
         assert {:error, reason} === H2Adapter.open(domain, port, options)
-        assert called :h2_client.start_link(:https, to_charlist(domain), port, options)
+
+        assert called :h2_client.start_link(
+                        :https,
+                        to_charlist(domain),
+                        port,
+                        options
+                      )
       end
     end
   end
@@ -79,7 +103,8 @@ defmodule H2ClientAdapter.ChatterboxTest do
       with_mock :h2_connection, new_stream: fn _ -> {:error, reason} end do
         conn = self()
 
-        assert {:error, reason} === H2Adapter.post(conn, domain, path, headers, body)
+        assert {:error, reason} ===
+                 H2Adapter.post(conn, domain, path, headers, body)
 
         assert called :h2_connection.new_stream(conn)
       end
@@ -92,7 +117,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
             domain: string(min: 5, max: 20, chars: ?a..?z),
             path: string(min: 3, max: 15, chars: :ascii),
             body: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 0, max: 65535)
+            stream_id: int(min: 0, max: 65_535)
           ],
           repeat_for: @repeats do
       conn = pid("0.2.3")
@@ -101,10 +126,12 @@ defmodule H2ClientAdapter.ChatterboxTest do
         new_stream: fn _ -> stream_id end,
         send_headers: fn _, _, _ -> :ok end,
         send_body: fn _, _, _ -> :ok end do
-        assert {:ok, stream_id} === H2Adapter.post(conn, domain, path, headers, body)
+        assert {:ok, stream_id} ===
+                 H2Adapter.post(conn, domain, path, headers, body)
 
         args =
-          :meck.history(:h2_connection)
+          :h2_connection
+          |> :meck.history()
           |> Enum.find(fn
             {_, {:h2_connection, :send_headers, _}, _} -> true
             _ -> false
@@ -127,7 +154,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
     ptest [
             headers: list(of: string(), min: 2, max: 20, chars: :ascii),
             body: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 0, max: 65535)
+            stream_id: int(min: 0, max: 65_535)
           ],
           repeat_for: @repeats do
       conn = pid("0.2.3")
@@ -143,7 +170,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
 
   test "get_reponse timeouting" do
     ptest [
-            stream_id: int(min: 0, max: 65535)
+            stream_id: int(min: 0, max: 65_535)
           ],
           repeat_for: @repeats do
       conn = pid("0.2.3")

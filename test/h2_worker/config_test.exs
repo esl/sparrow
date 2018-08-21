@@ -20,7 +20,8 @@ defmodule H2Worker.ConfigTest do
         )
 
       assert :certificate_based ==
-               Sparrow.H2Worker.Config.new(domain, port, auth)
+               domain
+               |> Sparrow.H2Worker.Config.new(port, auth)
                |> Sparrow.H2Worker.Config.get_authentication_type()
     end
   end
@@ -31,10 +32,12 @@ defmodule H2Worker.ConfigTest do
             port: string(min: 3, max: 15, chars: :ascii)
           ],
           repeat_for: @repeats do
-      auth = Sparrow.H2Worker.Authentication.TokenBased.new(fn -> "dummyToken" end)
+      auth =
+        Sparrow.H2Worker.Authentication.TokenBased.new(fn -> "dummyToken" end)
 
       assert :token_based ==
-               Sparrow.H2Worker.Config.new(domain, port, auth)
+               domain
+               |> Sparrow.H2Worker.Config.new(port, auth)
                |> Sparrow.H2Worker.Config.get_authentication_type()
     end
   end

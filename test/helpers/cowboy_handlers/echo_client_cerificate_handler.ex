@@ -1,7 +1,9 @@
 defmodule Helpers.CowboyHandlers.EchoClientCerificateHandler do
+  @moduledoc false
   def init(req, opts) do
     subject =
-      :cowboy_req.cert(req)
+      req
+      |> :cowboy_req.cert()
       |> Helpers.CerificateHelper.get_subject_name_form_encoded_cert()
 
     reply =

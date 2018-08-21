@@ -4,28 +4,40 @@ defmodule Sparrow.H2WorkerTest do
 
   import Mock
 
-  alias Sparrow.H2Worker.Config
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
+  alias Sparrow.H2Worker.Config
   alias Sparrow.H2Worker.Request, as: OuterRequest
   alias Sparrow.H2Worker.State
 
   @repeats 2
 
   setup do
-    {:ok, connection_ref: pid()}
+    auth =
+      Sparrow.H2Worker.Authentication.CertificateBased.new(
+        "path/to/exampleName.pem",
+        "path/to/exampleKey.pem"
+      )
+
+    real_auth =
+      Sparrow.H2Worker.Authentication.CertificateBased.new(
+        "test/priv/certs/Certificates1.pem",
+        "test/priv/certs/key.pem"
+      )
+
+    {:ok, connection_ref: pid(), auth: auth, real_auth: real_auth}
   end
 
   test "server timeouts request", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             name: atom(min: 5, max: 20),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
             headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
             body: string(min: 3, max: 7, chars: :ascii),
             path: string(min: 3, max: 7, chars: :ascii),
-            stream_id: int(min: 1, max: 65535)
+            stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
       ponger = pid()
@@ -43,17 +55,11 @@ defmodule Sparrow.H2WorkerTest do
           {:ok, stream_id}
         end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         args =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -62,7 +68,9 @@ defmodule Sparrow.H2WorkerTest do
         {:ok, worker_pid} = start_supervised(spec)
 
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:error, :request_timeout} == Sparrow.H2Worker.send_request(worker_pid, request)
+
+        assert {:error, :request_timeout} ==
+                 Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
@@ -71,13 +79,13 @@ defmodule Sparrow.H2WorkerTest do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             name: atom(min: 5, max: 20),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
             headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
             body: string(min: 3, max: 15, chars: :ascii),
             path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65535)
+            stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
       ponger = pid()
@@ -98,17 +106,11 @@ defmodule Sparrow.H2WorkerTest do
           {:ok, {headers, body}}
         end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         config =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -118,23 +120,26 @@ defmodule Sparrow.H2WorkerTest do
 
         :erlang.send_after(1_000, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:ok, {headers, body}} == Sparrow.H2Worker.send_request(worker_pid, request)
+
+        assert {:ok, {headers, body}} ==
+                 Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
 
-  test "server receives request and returns answer posts gets error and errorcode", context do
+  test "server receives request and returns answer posts gets error and errorcode",
+       context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             name: atom(min: 5, max: 20),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             code: int(min: 0, max: 1000),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
             headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
             body: string(min: 3, max: 15, chars: :ascii),
             path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65535)
+            stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
       ponger = pid()
@@ -155,17 +160,11 @@ defmodule Sparrow.H2WorkerTest do
           {{:ok, {headers, body}}}
         end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         config =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -175,21 +174,24 @@ defmodule Sparrow.H2WorkerTest do
 
         :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:error, code} == Sparrow.H2Worker.send_request(worker_pid, request)
+
+        assert {:error, code} ==
+                 Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
 
-  test "server receives request and expexts answer but get response returns not_ready", context do
+  test "server receives request and expexts answer but get response returns not_ready",
+       context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
             headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
             body: string(min: 3, max: 15, chars: :ascii),
             path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65535)
+            stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
       ponger = pid()
@@ -210,17 +212,11 @@ defmodule Sparrow.H2WorkerTest do
           {:error, :not_ready}
         end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         config =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -230,7 +226,9 @@ defmodule Sparrow.H2WorkerTest do
 
         :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:error, :not_ready} == Sparrow.H2Worker.send_request(worker_pid, request)
+
+        assert {:error, :not_ready} ==
+                 Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
@@ -239,13 +237,13 @@ defmodule Sparrow.H2WorkerTest do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             name: atom(min: 5, max: 20),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
             headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
             body: string(min: 3, max: 15, chars: :ascii),
             path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65535)
+            stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
       ponger = pid()
@@ -263,17 +261,11 @@ defmodule Sparrow.H2WorkerTest do
           {:ok, stream_id}
         end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         config =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -294,65 +286,57 @@ defmodule Sparrow.H2WorkerTest do
     end
   end
 
-  test "END_STREAM received but request but cannot be found it in state", context do
+  test "END_STREAM received but request but cannot be found it in state",
+       context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
-            stream_id: int(min: 1, max: 65535)
+            stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
       ping_interval = 200
-
-      auth =
-        Sparrow.H2Worker.Authentication.CertificateBased.new(
-          "path/to/exampleName.pem",
-          "path/to/exampleKey.pem"
-        )
 
       config =
         Config.new(
           domain,
           port,
-          auth,
+          context[:auth],
           tls_options,
           ping_interval
         )
 
       state = State.new(context[:connection_ref], config)
 
-      assert {:noreply, state} == Sparrow.H2Worker.handle_info({:END_STREAM, stream_id}, state)
+      assert {:noreply, state} ==
+               Sparrow.H2Worker.handle_info({:END_STREAM, stream_id}, state)
     end
   end
 
-  test "unexpected message received but request but cannot be found it in state", context do
+  test "unexpected message received but request but cannot be found it in state",
+       context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             random_message: string(min: 10, max: 20, chars: ?a..?z)
           ],
           repeat_for: @repeats do
       ping_interval = 200
 
-      auth =
-        Sparrow.H2Worker.Authentication.CertificateBased.new(
-          "path/to/exampleName.pem",
-          "path/to/exampleKey.pem"
-        )
-
       config =
         Config.new(
           domain,
           port,
-          auth,
+          context[:auth],
           tls_options,
           ping_interval
         )
 
       state = State.new(context[:connection_ref], config)
 
-      assert {:noreply, state} == Sparrow.H2Worker.handle_info(random_message, state)
+      assert {:noreply, state} ==
+               Sparrow.H2Worker.handle_info(random_message, state)
     end
   end
 
@@ -360,13 +344,13 @@ defmodule Sparrow.H2WorkerTest do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             name: atom(min: 5, max: 20),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
             headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
             body: string(min: 3, max: 15, chars: :ascii),
             path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65535)
+            stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
       ponger = pid()
@@ -387,17 +371,11 @@ defmodule Sparrow.H2WorkerTest do
           {:ok, {headers, body}}
         end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         args =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -408,9 +386,15 @@ defmodule Sparrow.H2WorkerTest do
         :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
         :erlang.send_after(300, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        assert {:ok, {headers, body}} == Sparrow.H2Worker.send_request(worker_pid, request)
-        assert {:ok, {headers, body}} == Sparrow.H2Worker.send_request(worker_pid, request)
-        assert {:error, :request_timeout} == Sparrow.H2Worker.send_request(worker_pid, request)
+
+        assert {:ok, {headers, body}} ==
+                 Sparrow.H2Worker.send_request(worker_pid, request)
+
+        assert {:ok, {headers, body}} ==
+                 Sparrow.H2Worker.send_request(worker_pid, request)
+
+        assert {:error, :request_timeout} ==
+                 Sparrow.H2Worker.send_request(worker_pid, request)
       end
     end
   end
@@ -419,7 +403,7 @@ defmodule Sparrow.H2WorkerTest do
        context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
           repeat_for: @repeats do
@@ -433,17 +417,11 @@ defmodule Sparrow.H2WorkerTest do
           :ok
         end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         args =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -460,10 +438,10 @@ defmodule Sparrow.H2WorkerTest do
     end
   end
 
-  test "server receives down message with not conn pid" do
+  test "server receives down message with not conn pid", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             reason: atom(min: 2, max: 5),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
@@ -478,17 +456,11 @@ defmodule Sparrow.H2WorkerTest do
           :ok
         end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         args =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options
           )
 
@@ -514,9 +486,9 @@ defmodule Sparrow.H2WorkerTest do
             body: string(min: 3, max: 15, chars: :ascii),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
             headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65535),
+            stream_id: int(min: 1, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
           repeat_for: @repeats do
@@ -529,17 +501,11 @@ defmodule Sparrow.H2WorkerTest do
         post: fn _, _, _, _, _ ->
           {:ok, stream_id}
         end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         config =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -567,7 +533,7 @@ defmodule Sparrow.H2WorkerTest do
   test "inits, succesfull connection with certificate", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
           repeat_for: @repeats do
@@ -575,17 +541,11 @@ defmodule Sparrow.H2WorkerTest do
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "test/priv/certs/Certificates1.pem",
-            "test/priv/certs/key.pem"
-          )
-
         config =
           Config.new(
             domain,
             port,
-            auth,
+            context[:real_auth],
             tls_options,
             ping_interval
           )
@@ -594,7 +554,7 @@ defmodule Sparrow.H2WorkerTest do
           Config.new(
             domain,
             port,
-            auth,
+            context[:real_auth],
             [
               {:certfile, "test/priv/certs/Certificates1.pem"},
               {:keyfile, "test/priv/certs/key.pem"} | tls_options
@@ -602,8 +562,11 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        assert {:ok, Sparrow.H2Worker.State.new(context[:connection_ref], expected_config)} ==
-                 Sparrow.H2Worker.init(config)
+        assert {:ok,
+                Sparrow.H2Worker.State.new(
+                  context[:connection_ref],
+                  expected_config
+                )} == Sparrow.H2Worker.init(config)
       end
     end
   end
@@ -612,7 +575,7 @@ defmodule Sparrow.H2WorkerTest do
        context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             workers_name: atom(min: 2, max: 5),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
@@ -621,7 +584,7 @@ defmodule Sparrow.H2WorkerTest do
             path: string(min: 3, max: 7, chars: :ascii)
           ],
           repeat_for: 1 do
-      ping_interval = 12300
+      ping_interval = 12_300
 
       with_mock H2Adapter,
         open: fn _, _, _ ->
@@ -637,13 +600,15 @@ defmodule Sparrow.H2WorkerTest do
         close: fn _ -> :ok end do
         headers = List.zip([headersA, headersB])
 
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "test/priv/certs/Certificates1.pem",
-            "test/priv/certs/key.pem"
+        config =
+          Config.new(
+            domain,
+            port,
+            context[:real_auth],
+            tls_options,
+            ping_interval
           )
 
-        config = Config.new(domain, port, auth, tls_options, ping_interval)
         request = OuterRequest.new(headers, body, path, 1000)
 
         new_state = %Sparrow.H2Worker.State{
@@ -656,7 +621,9 @@ defmodule Sparrow.H2WorkerTest do
         Process.unlink(worker_pid)
         :sys.replace_state(worker_pid, fn _ -> new_state end)
 
-        assert catch_exit(Sparrow.H2Worker.send_request(worker_pid, request, true))
+        assert catch_exit(
+                 Sparrow.H2Worker.send_request(worker_pid, request, true)
+               )
       end
     end
   end
@@ -665,16 +632,16 @@ defmodule Sparrow.H2WorkerTest do
        context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
             headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
             body: string(min: 3, max: 7, chars: :ascii),
             path: string(min: 3, max: 7, chars: :ascii),
-            stream_id: int(min: 1, max: 65535)
+            stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: 1 do
-      ping_interval = 12300
+      ping_interval = 12_300
       headers = List.zip([headersA, headersB])
 
       with_mock H2Adapter,
@@ -684,13 +651,15 @@ defmodule Sparrow.H2WorkerTest do
         get_reponse: fn _, _ -> {:ok, {headers, body}} end,
         post: fn _, _, _, _, _ -> {:ok, stream_id} end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "test/priv/certs/Certificates1.pem",
-            "test/priv/certs/key.pem"
+        config =
+          Config.new(
+            domain,
+            port,
+            context[:real_auth],
+            tls_options,
+            ping_interval
           )
 
-        config = Config.new(domain, port, auth, tls_options, ping_interval)
         request = OuterRequest.new(headers, body, path, 1000)
 
         {:ok, worker_pid} = Sparrow.H2Worker.start_link(:workers_name, config)
@@ -707,7 +676,7 @@ defmodule Sparrow.H2WorkerTest do
   test "inits, succesfull connection with token", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
           repeat_for: @repeats do
@@ -715,7 +684,8 @@ defmodule Sparrow.H2WorkerTest do
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end do
-        auth = Sparrow.H2Worker.Authentication.TokenBased.new(fn -> "dummyToken" end)
+        auth =
+          Sparrow.H2Worker.Authentication.TokenBased.new(fn -> "dummyToken" end)
 
         config =
           Config.new(
@@ -726,16 +696,17 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        assert {:ok, Sparrow.H2Worker.State.new(context[:connection_ref], config)} ==
+        assert {:ok,
+                Sparrow.H2Worker.State.new(context[:connection_ref], config)} ==
                  Sparrow.H2Worker.init(config)
       end
     end
   end
 
-  test "inits, unsuccesfull connection" do
+  test "inits, unsuccesfull connection", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             reason: atom(min: 2, max: 5),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
@@ -744,17 +715,11 @@ defmodule Sparrow.H2WorkerTest do
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:error, reason} end do
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         args =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -767,7 +732,7 @@ defmodule Sparrow.H2WorkerTest do
   test "terminate closes connection", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65535),
+            port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
           repeat_for: @repeats do
@@ -776,17 +741,11 @@ defmodule Sparrow.H2WorkerTest do
         reason = "test reason"
         ping_interval = 123
 
-        auth =
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
-            "path/to/exampleName.pem",
-            "path/to/exampleKey.pem"
-          )
-
         config =
           Config.new(
             domain,
             port,
-            auth,
+            context[:auth],
             tls_options,
             ping_interval
           )
@@ -798,7 +757,7 @@ defmodule Sparrow.H2WorkerTest do
     end
   end
 
-  defp pid() do
+  defp pid do
     spawn(fn -> :timer.sleep(5_000) end)
   end
 

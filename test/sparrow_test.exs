@@ -3,6 +3,6 @@ defmodule SparrowTest do
   doctest Sparrow
 
   test "greets the world" do
-    assert 1 == 1
+    :ok
   end
 end

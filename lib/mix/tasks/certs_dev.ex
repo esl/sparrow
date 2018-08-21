@@ -13,19 +13,23 @@ defmodule Mix.Tasks.Certs.Dev do
 
   # From: https://developer.apple.com/library/content/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html
   @apns_topic_extn_id {1, 2, 840, 113_635, 100, 6, 3, 6}
-  # Here we use the binary extension extracted from real APNS certificate. It's much better for
-  # testing to use the real extension instead of a generated one since, the genertor would be based
-  # on reverse-engineered structure that may not be correct. Also testing decoding on extesion
-  # encoded using the same encoder is kinda pointless.
-  @apns_topic_extn_value <<48, 129, 133, 12, 26, 99, 111, 109, 46, 105, 110, 97, 107, 97, 110,
-                           101, 116, 119, 111, 114, 107, 115, 46, 77, 97, 110, 103, 111, 115, 116,
-                           97, 48, 5, 12, 3, 97, 112, 112, 12, 31, 99, 111, 109, 46, 105, 110, 97,
-                           107, 97, 110, 101, 116, 119, 111, 114, 107, 115, 46, 77, 97, 110, 103,
-                           111, 115, 116, 97, 46, 118, 111, 105, 112, 48, 6, 12, 4, 118, 111, 105,
-                           112, 12, 39, 99, 111, 109, 46, 105, 110, 97, 107, 97, 110, 101, 116,
-                           119, 111, 114, 107, 115, 46, 77, 97, 110, 103, 111, 115, 116, 97, 46,
-                           99, 111, 109, 112, 108, 105, 99, 97, 116, 105, 111, 110, 48, 14, 12,
-                           12, 99, 111, 109, 112, 108, 105, 99, 97, 116, 105, 111, 110>>
+  # Here we use the binary extension extracted from real APNS certificate.
+  # It's much better for testing to use
+  # the real extension instead of a generated one since,
+  # the genertor would be based on reverse-engineered structure that may not be correct.
+  # Also testing decoding on extesion encoded using the same encoder is kinda pointless.
+  @apns_topic_extn_value <<48, 129, 133, 12, 26, 99, 111, 109, 46, 105, 110, 97,
+                           107, 97, 110, 101, 116, 119, 111, 114, 107, 115, 46,
+                           77, 97, 110, 103, 111, 115, 116, 97, 48, 5, 12, 3,
+                           97, 112, 112, 12, 31, 99, 111, 109, 46, 105, 110, 97,
+                           107, 97, 110, 101, 116, 119, 111, 114, 107, 115, 46,
+                           77, 97, 110, 103, 111, 115, 116, 97, 46, 118, 111,
+                           105, 112, 48, 6, 12, 4, 118, 111, 105, 112, 12, 39,
+                           99, 111, 109, 46, 105, 110, 97, 107, 97, 110, 101,
+                           116, 119, 111, 114, 107, 115, 46, 77, 97, 110, 103,
+                           111, 115, 116, 97, 46, 99, 111, 109, 112, 108, 105,
+                           99, 97, 116, 105, 111, 110, 48, 14, 12, 12, 99, 111,
+                           109, 112, 108, 105, 99, 97, 116, 105, 111, 110>>
 
   @spec run(term) :: :ok
   def run(_) do
@@ -37,11 +41,19 @@ defmodule Mix.Tasks.Certs.Dev do
   end
 
   defp maybe_gen_dev_apns do
-    maybe_gen_cert("priv/apns/dev_cert.pem", "priv/apns/dev_key.pem", "mongoose-push-apns-dev")
+    maybe_gen_cert(
+      "priv/apns/dev_cert.pem",
+      "priv/apns/dev_key.pem",
+      "mongoose-push-apns-dev"
+    )
   end
 
   defp maybe_gen_test_client do
-    maybe_gen_cert("priv/ssl/client_cert.pem", "priv/ssl/client_key.pem", "client")
+    maybe_gen_cert(
+      "priv/ssl/client_cert.pem",
+      "priv/ssl/client_key.pem",
+      "client"
+    )
   end
 
   defp maybe_gen_prod_apns do
@@ -58,7 +70,11 @@ defmodule Mix.Tasks.Certs.Dev do
   end
 
   defp maybe_gen_https do
-    maybe_gen_cert("priv/ssl/fake_cert.pem", "priv/ssl/fake_key.pem", "mongoose-push")
+    maybe_gen_cert(
+      "priv/ssl/fake_cert.pem",
+      "priv/ssl/fake_key.pem",
+      "mongoose-push"
+    )
   end
 
   defp maybe_gen_cert(cert_file, key_file, common_name, extensions \\ []) do
@@ -148,7 +164,7 @@ defmodule Mix.Tasks.Certs.Dev do
     |> Enum.join(".")
   end
 
-  defp maybe_gen_apns_token() do
+  defp maybe_gen_apns_token do
     case System.cmd("openssl", [
            "ecparam",
            "-name",
@@ -158,8 +174,11 @@ defmodule Mix.Tasks.Certs.Dev do
            "-out",
            "token.p8"
          ]) do
-      {"", 0} -> :ok
-      reason -> raise "Cannot generate p8 private key!!! Reason: #{inspect(reason)}"
+      {"", 0} ->
+        :ok
+
+      reason ->
+        raise "Cannot generate p8 private key!!! Reason: #{inspect(reason)}"
     end
   end
 end

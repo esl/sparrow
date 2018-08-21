@@ -23,7 +23,7 @@ defmodule Sparrow.MixProject do
   defp deps do
     [
       {:dialyxir, "~> 0.4", runtime: false, only: [:dev, :test]},
-      {:credo, "~> 0.5", runtime: false, only: :dev},
+      {:credo, "~> 0.10", runtime: false, only: :dev},
       {:chatterbox, github: "joedevivo/chatterbox", tag: "7a3c64d"},
       {:excoveralls, "~> 0.5", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},
@@ -42,7 +42,12 @@ defmodule Sparrow.MixProject do
   defp dialyzer do
     [
       plt_core_path: ".dialyzer/",
-      flags: ["-Wunmatched_returns", "-Werror_handling", "-Wrace_conditions", "-Wunderspecs"],
+      flags: [
+        "-Wunmatched_returns",
+        "-Werror_handling",
+        "-Wrace_conditions",
+        "-Wunderspecs"
+      ],
       plt_add_apps: [:mix]
     ]
   end

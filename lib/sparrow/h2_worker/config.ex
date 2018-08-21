@@ -41,7 +41,13 @@ defmodule Sparrow.H2Worker.Config do
 
   WARNING! If you use certificate based authentication do not add certfile and/or keyfile to `tls_options`, put them to `authentication`
   """
-  @spec new(String.t(), port_num, tls_options, time_in_miliseconds, pos_integer) :: t
+  @spec new(
+          String.t(),
+          port_num,
+          tls_options,
+          time_in_miliseconds,
+          pos_integer
+        ) :: t
   def new(
         domain,
         port,
@@ -60,7 +66,8 @@ defmodule Sparrow.H2Worker.Config do
     }
   end
 
-  @spec get_authentication_type(__MODULE__.t()) :: :token_based | :certificate_based
+  @spec get_authentication_type(__MODULE__.t()) ::
+          :token_based | :certificate_based
   def get_authentication_type(config) do
     case config.authentication do
       %Sparrow.H2Worker.Authentication.TokenBased{} -> :token_based

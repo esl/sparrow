@@ -1,4 +1,5 @@
 defmodule Helpers.CowboyHandlers.ErrorResponseHandler do
+  @moduledoc false
   def init(req, opts) do
     {:ok, reason} = %{"reason" => "My error reason"} |> Jason.encode()
 

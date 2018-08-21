@@ -47,7 +47,11 @@ defmodule Sparrow.APNS do
 
     Sparrow.APNS.push(worker_pid, notification)
   """
-  @spec push(Sparrow.H2Worker.process(), Sparrow.APNS.Notification.t(), push_opts) ::
+  @spec push(
+          Sparrow.H2Worker.process(),
+          Sparrow.APNS.Notification.t(),
+          push_opts
+        ) ::
           {:error, :connection_lost}
           | {:ok, {headers, body}}
           | {:error, :request_timeout}
@@ -56,19 +60,27 @@ defmodule Sparrow.APNS do
           | {:error, reason}
           | :ok
   def push(h2_worker, notification, opts \\ []) do
-    unless notification_contains_title_or_body?(notification) do
-      _ = Logger.warn(fn -> "Attempt to send notification without title and body" end)
-      {:error, :invalid_notification}
-    else
+    if notification_contains_title_or_body?(notification) do
       is_sync = Keyword.get(opts, :is_sync, true)
       timeout = Keyword.get(opts, :timeout, 5_000)
       path = @path <> notification.device_token
       headers = notification.headers
       json_body = notification |> make_body() |> Jason.encode!()
       request = Request.new(headers, json_body, path, timeout)
-      _ = Logger.debug(fn -> "action=push_apns_notification, request=#{inspect(request)}" end)
+
+      _ =
+        Logger.debug(fn ->
+          "action=push_apns_notification, request=#{inspect(request)}"
+        end)
 
       Sparrow.H2Worker.send_request(h2_worker, request, is_sync, timeout)
+    else
+      _ =
+        Logger.warn(fn ->
+          "Attempt to send notification without title and body"
+        end)
+
+      {:error, :invalid_notification}
     end
   end
 
@@ -93,11 +105,17 @@ defmodule Sparrow.APNS do
   @spec process_response({:ok, {headers, body}} | {:error, reason}) ::
           :ok
           | {:error,
-             {status :: String.t() | nil, reason :: String.t() | nil} | reason ::
-               :request_timeout | :not_ready | reason}
+             {status ::
+                String.t()
+                | nil, reason :: String.t() | nil}
+             | reason :: :request_timeout | :not_ready | reason}
   def process_response({:ok, {headers, body}}) do
     if {":status", "200"} in headers do
-      _ = Logger.debug(fn -> "action=handle_push_response, result=succes, status=200" end)
+      _ =
+        Logger.debug(fn ->
+          "action=handle_push_response, result=succes, status=200"
+        end)
+
       :ok
     else
       status = get_status_from_headers(headers)
@@ -120,7 +138,8 @@ defmodule Sparrow.APNS do
   defp make_body(notification) do
     alert = notification.alert_opts |> Map.new()
 
-    [{"aps", %{"alert" => alert}} | notification.aps_dictionary_opts] |> Map.new()
+    [{"aps", %{"alert" => alert}} | notification.aps_dictionary_opts]
+    |> Map.new()
   end
 
   @doc """
@@ -140,15 +159,20 @@ defmodule Sparrow.APNS do
     Sparrow.APNS.Errors.get_error_description(status, code)
   end
 
-  @spec notification_contains_title_or_body?(Sparrow.APNS.Notification.t()) :: boolean()
+  @spec notification_contains_title_or_body?(Sparrow.APNS.Notification.t()) ::
+          boolean()
   defp notification_contains_title_or_body?(notification) do
     to_boolean = fn
       false -> false
       _ -> true
     end
 
-    contains_title = Keyword.get(notification.alert_opts, :title, false) |> to_boolean.()
-    contains_body = Keyword.get(notification.alert_opts, :body, false) |> to_boolean.()
+    contains_title =
+      notification.alert_opts |> Keyword.get(:title, false) |> to_boolean.()
+
+    contains_body =
+      notification.alert_opts |> Keyword.get(:body, false) |> to_boolean.()
+
     contains_title or contains_body
   end
 

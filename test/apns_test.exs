@@ -11,19 +11,28 @@ defmodule Sparrow.APNSTest do
 
   setup do
     {:ok, _cowboy_pid, cowboys_name} =
-      :cowboy_router.compile([
+      [
         {":_",
          [
-           {@path <> "OkResponseHandler", Helpers.CowboyHandlers.OkResponseHandler, []},
-           {@path <> "ErrorResponseHandler", Helpers.CowboyHandlers.ErrorResponseHandler, []},
-           {@path <> "EchoBodyHandler", Helpers.CowboyHandlers.EchoBodyHandler, []},
-           {@path <> "HeaderToBodyEchoHandler", Helpers.CowboyHandlers.HeaderToBodyEchoHandler,
-            []}
+           {@path <> "OkResponseHandler",
+            Helpers.CowboyHandlers.OkResponseHandler, []},
+           {@path <> "ErrorResponseHandler",
+            Helpers.CowboyHandlers.ErrorResponseHandler, []},
+           {@path <> "EchoBodyHandler", Helpers.CowboyHandlers.EchoBodyHandler,
+            []},
+           {@path <> "HeaderToBodyEchoHandler",
+            Helpers.CowboyHandlers.HeaderToBodyEchoHandler, []}
          ]}
-      ])
+      ]
+      |> :cowboy_router.compile()
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
-    config = Setup.create_h2_worker_config(@apns_mock_address, :ranch.get_port(cowboys_name))
+    config =
+      Setup.create_h2_worker_config(
+        @apns_mock_address,
+        :ranch.get_port(cowboys_name)
+      )
+
     worker_spec = Setup.child_spec(args: config, name: :name)
     {:ok, worker_pid} = start_supervised(worker_spec)
 
@@ -36,11 +45,14 @@ defmodule Sparrow.APNSTest do
 
   test "sending request to APNS mock returning success", context do
     notification =
-      Notification.new("OkResponseHandler")
+      "OkResponseHandler"
+      |> Notification.new()
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
 
-    {:ok, {headers, body}} = Sparrow.APNS.push(context[:worker_pid], notification)
+    {:ok, {headers, body}} =
+      Sparrow.APNS.push(context[:worker_pid], notification)
+
     result = Sparrow.APNS.process_response({:ok, {headers, body}})
 
     assert {":status", "200"} in headers
@@ -51,11 +63,17 @@ defmodule Sparrow.APNSTest do
 
   test "sending async request to APNS", context do
     notification =
-      Notification.new("OkResponseHandler")
+      "OkResponseHandler"
+      |> Notification.new()
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
 
-    assert :ok == Sparrow.APNS.push(context[:worker_pid], notification, is_sync: false)
+    assert :ok ==
+             Sparrow.APNS.push(
+               context[:worker_pid],
+               notification,
+               is_sync: false
+             )
   end
 
   test "sending invalid request blocked", context do
@@ -65,13 +83,17 @@ defmodule Sparrow.APNSTest do
              Sparrow.APNS.push(context[:worker_pid], notification)
   end
 
-  test "sending request to APNS mock returning error, chcecking error parsing", context do
+  test "sending request to APNS mock returning error, chcecking error parsing",
+       context do
     notification =
-      Notification.new("ErrorResponseHandler")
+      "ErrorResponseHandler"
+      |> Notification.new()
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
 
-    {:ok, {headers, body}} = Sparrow.APNS.push(context[:worker_pid], notification)
+    {:ok, {headers, body}} =
+      Sparrow.APNS.push(context[:worker_pid], notification)
+
     result = Sparrow.APNS.process_response({:ok, {headers, body}})
 
     assert {":status", "321"} in headers
@@ -86,7 +108,8 @@ defmodule Sparrow.APNSTest do
     thread_id = "thread_id_some_value"
 
     notification =
-      Notification.new("EchoBodyHandler")
+      "EchoBodyHandler"
+      |> Notification.new()
       |> Notification.add_title(@title)
       |> Notification.add_sound(sound)
       |> Notification.add_badge(badge)
@@ -94,7 +117,9 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_category(category)
       |> Notification.add_thread_id(thread_id)
 
-    {:ok, {headers, body}} = Sparrow.APNS.push(context[:worker_pid], notification)
+    {:ok, {headers, body}} =
+      Sparrow.APNS.push(context[:worker_pid], notification)
+
     {:ok, response} = Jason.decode(body)
 
     assert {":status", "200"} in headers
@@ -114,7 +139,8 @@ defmodule Sparrow.APNSTest do
     action_loc_key = "my test action loc key"
 
     notification =
-      Notification.new("EchoBodyHandler")
+      "EchoBodyHandler"
+      |> Notification.new()
       |> Notification.add_title(@title)
       |> Notification.add_title_loc_key(title_loc_key)
       |> Notification.add_title_loc_args(title_loc_args)
@@ -123,7 +149,9 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_loc_key(loc_key)
       |> Notification.add_action_loc_key(action_loc_key)
 
-    {:ok, {headers, body}} = Sparrow.APNS.push(context[:worker_pid], notification)
+    {:ok, {headers, body}} =
+      Sparrow.APNS.push(context[:worker_pid], notification)
+
     {:ok, response} = Jason.decode(body)
     alert = Map.get(response, "aps")
     alert_content = Map.get(alert, "alert")
@@ -143,7 +171,8 @@ defmodule Sparrow.APNSTest do
 
   test "notification headers contain added headers", context do
     notification =
-      Notification.new("HeaderToBodyEchoHandler")
+      "HeaderToBodyEchoHandler"
+      |> Notification.new()
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
       |> Notification.add_apns_expiration("apns expiration header value")
@@ -152,7 +181,8 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_apns_topic("apns topic value")
       |> Notification.add_apns_collapse_id("apns collapse id value")
 
-    {:ok, {response_headers, body}} = Sparrow.APNS.push(context[:worker_pid], notification)
+    {:ok, {response_headers, body}} =
+      Sparrow.APNS.push(context[:worker_pid], notification)
 
     {response_headers_map, _} = Code.eval_string(body)
     headers_decoded_from_body = Map.to_list(response_headers_map)
@@ -160,10 +190,13 @@ defmodule Sparrow.APNSTest do
     assert {":status", "200"} in response_headers
     assert {"content-type", "application/json"} in headers_decoded_from_body
     assert {"accept", "application/json"} in headers_decoded_from_body
+
     assert {"apns-expiration", "apns expiration header value"} in headers_decoded_from_body
+
     assert {"apns-id", "apns id value"} in headers_decoded_from_body
     assert {"apns-priority", "apns priority value"} in headers_decoded_from_body
     assert {"apns-topic", "apns topic value"} in headers_decoded_from_body
+
     assert {"apns-collapse-id", "apns collapse id value"} in headers_decoded_from_body
   end
 end

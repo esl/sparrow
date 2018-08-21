@@ -1,20 +1,21 @@
 defmodule H2Integration.TokenBasedAuthorisationTest do
   use ExUnit.Case
 
+  alias H2Integration.Helpers.TokenHelper
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
-  alias H2Integration.Helpers.TokenHelper
 
   @path "/AuthenticateHandler"
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
-      :cowboy_router.compile([
+      [
         {":_",
          [
            {@path, Helpers.CowboyHandlers.AuthenticateHandler, []}
          ]}
-      ])
+      ]
+      |> :cowboy_router.compile()
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
     on_exit(fn ->
@@ -84,12 +85,18 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
       Sparrow.H2Worker.send_request(worker_pid, fail_request)
 
     assert_response_header(fail_answer_headers, {":status", "401"})
-    assert_response_header(fail_answer_headers, {"content-type", "text/plain; charset=utf-8"})
+
+    assert_response_header(
+      fail_answer_headers,
+      {"content-type", "text/plain; charset=utf-8"}
+    )
 
     assert_response_header(
       fail_answer_headers,
       {"content-length",
-       "#{inspect(String.length(TokenHelper.get_incorrect_token_response_body()))}"}
+       "#{
+         inspect(String.length(TokenHelper.get_incorrect_token_response_body()))
+       }"}
     )
 
     assert fail_answer_body == TokenHelper.get_incorrect_token_response_body()

@@ -25,6 +25,15 @@ defmodule Sparrow.APNS.TokenBearerTest do
     {:ok, config: config, token_bearer_pid: pid, state: state}
   end
 
+  test "token gets refresh time correctly" do
+    refresh_time =
+      @key_id
+      |> Sparrow.APNS.Token.new(@team_id, @p8_file_path)
+      |> Map.get(:refresh_token_time)
+
+    assert refresh_time == :timer.minutes(50)
+  end
+
   test "token gets updated", context do
     token_before_update = Sparrow.APNS.TokenBearer.get_token()
     :timer.sleep(150)
@@ -40,7 +49,9 @@ defmodule Sparrow.APNS.TokenBearerTest do
   test "token bearer ignores unknown messages", context do
     before_unexpected_message_state = :sys.get_state(context[:token_bearer_pid])
     send(context[:token_bearer_pid], :unknown)
-    assert before_unexpected_message_state == :sys.get_state(context[:token_bearer_pid])
+
+    assert before_unexpected_message_state ==
+             :sys.get_state(context[:token_bearer_pid])
   end
 
   test "terminate deletes ets table", context do
@@ -50,7 +61,7 @@ defmodule Sparrow.APNS.TokenBearerTest do
     assert :undefined == :ets.info(:sparrow_apns_token_bearer)
   end
 
-  test "inint, terminate deletes ets table", context do
+  test "init, terminate deletes ets table", context do
     Process.unlink(context[:token_bearer_pid])
     Process.exit(context[:token_bearer_pid], :kill)
     wait_for_proccess_to_die(context[:token_bearer_pid])

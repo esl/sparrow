@@ -1,8 +1,8 @@
 defmodule Sparrow.APNS.Manual.RealIosTest do
   use ExUnit.Case
 
-  alias Sparrow.H2Worker.Config
   alias Sparrow.APNS.Notification
+  alias Sparrow.H2Worker.Config
 
   @apns_address_a "api.development.push.apple.com"
   @apns_port 2197
@@ -20,18 +20,26 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
 
   @tag :skip
   test "real notification certificate based authentication test" do
-    auth = Sparrow.H2Worker.Authentication.CertificateBased.new(@path_to_cert, @path_to_key)
+    auth =
+      Sparrow.H2Worker.Authentication.CertificateBased.new(
+        @path_to_cert,
+        @path_to_key
+      )
+
     config = Config.new(@apns_address_a, @apns_port, auth)
     worker_spec = child_spec(args: config, name: :name)
     {:ok, worker_pid} = start_supervised(worker_spec)
 
     notification =
-      Notification.new(@device_token)
+      @device_token
+      |> Notification.new()
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
       |> Notification.add_apns_topic(@apns_topic)
 
-    IO.inspect(Sparrow.APNS.push(worker_pid, notification))
+    # IO.inspect(
+    Sparrow.APNS.push(worker_pid, notification)
+    # )
   end
 
   @tag :skip
@@ -52,12 +60,15 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
     token = Sparrow.APNS.TokenBearer.get_token()
 
     notification =
-      Notification.new(@device_token)
+      @device_token
+      |> Notification.new()
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
       |> Notification.add_apns_topic(@apns_topic)
 
-    IO.inspect(Sparrow.APNS.push(worker_pid, notification))
+    # IO.inspect(
+    Sparrow.APNS.push(worker_pid, notification)
+    # )
   end
 
   def child_spec(opts) do

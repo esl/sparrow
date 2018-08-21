@@ -16,11 +16,12 @@ defmodule Sparrow.APNS.TokenBearer do
   Returns APNS token for token based authentication.
   """
   @spec get_token() :: String.t()
-  def get_token() do
+  def get_token do
     :ets.lookup_element(@tab_name, :apns_token, 2)
   end
 
-  @spec init(Sparrow.APNS.Token.t()) :: {:ok, Sparrow.APNS.TokenBearer.State.t()}
+  @spec init(Sparrow.APNS.Token.t()) ::
+          {:ok, Sparrow.APNS.TokenBearer.State.t()}
   def init(token) do
     state =
       Sparrow.APNS.TokenBearer.State.new(
@@ -32,7 +33,9 @@ defmodule Sparrow.APNS.TokenBearer do
 
     @tab_name = :ets.new(@tab_name, [:set, :protected, :named_table])
     update_token(state)
-    _ = Logger.info(fn -> "worker=token_bearer, action=init, result=success" end)
+
+    _ =
+      Logger.info(fn -> "worker=token_bearer, action=init, result=success" end)
 
     {:ok, state}
   end
@@ -58,7 +61,11 @@ defmodule Sparrow.APNS.TokenBearer do
   end
 
   def handle_info(unknown, state) do
-    _ = Logger.warn(fn -> "worker=token_bearer, Unknown info #{inspect(unknown)}" end)
+    _ =
+      Logger.warn(fn ->
+        "worker=token_bearer, Unknown info #{inspect(unknown)}"
+      end)
+
     {:noreply, state}
   end
 
@@ -72,7 +79,9 @@ defmodule Sparrow.APNS.TokenBearer do
 
   @spec set_new_token(Sparrow.APNS.TokenBearer.State.t()) :: true
   defp set_new_token(state) do
-    {:ok, token, _} = new_jwt_token(state.key_id, state.team_id, state.p8_file_path)
+    {:ok, token, _} =
+      new_jwt_token(state.key_id, state.team_id, state.p8_file_path)
+
     :ets.insert(@tab_name, {:apns_token, token})
   end
 
@@ -104,7 +113,9 @@ defmodule Sparrow.APNS.TokenBearer do
   defp schedule_message_after(time, message) do
     _ =
       Logger.debug(fn ->
-        "worker=token_bearer, action=schedule, message=#{inspect(message)}, after=#{inspect(time)}"
+        "worker=token_bearer, action=schedule, message=#{inspect(message)}, after=#{
+          inspect(time)
+        }"
       end)
 
     :erlang.send_after(time, self(), message)
