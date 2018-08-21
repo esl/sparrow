@@ -29,6 +29,8 @@ defmodule Sparrow.MixProject do
       {:quixir, "~> 0.9", only: :test},
       {:uuid, "~> 1.1"},
       {:jason, "~> 1.1"},
+      {:joken, "~> 2.0-rc0"},
+      {:poison, "~> 3.1"},
       {:mock, "~> 0.3.0", only: :test},
       {:cowboy, "~> 2.4.0", only: :test},
       {:lager, ">= 3.2.1", override: true},

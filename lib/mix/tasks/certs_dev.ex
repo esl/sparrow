@@ -29,6 +29,7 @@ defmodule Mix.Tasks.Certs.Dev do
 
   @spec run(term) :: :ok
   def run(_) do
+    maybe_gen_apns_token()
     maybe_gen_dev_apns()
     maybe_gen_prod_apns()
     maybe_gen_https()
@@ -145,5 +146,20 @@ defmodule Mix.Tasks.Certs.Dev do
     extn_id
     |> Tuple.to_list()
     |> Enum.join(".")
+  end
+
+  defp maybe_gen_apns_token() do
+    case System.cmd("openssl", [
+           "ecparam",
+           "-name",
+           "secp256r1",
+           "-genkey",
+           "-noout",
+           "-out",
+           "token.p8"
+         ]) do
+      {"", 0} -> :ok
+      reason -> raise "Cannot generate p8 private key!!! Reason: #{inspect(reason)}"
+    end
   end
 end

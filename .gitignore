@@ -30,4 +30,6 @@ sparrow-*.tar
 *.coverdata
 /priv/
 *.pem
-test/priv/
+*.p8
+/test/priv
+.DS_Store
