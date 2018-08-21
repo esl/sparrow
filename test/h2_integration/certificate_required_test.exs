@@ -4,6 +4,8 @@ defmodule H2Integration.CerificateRequiredTest do
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
+  @cert_path "priv/ssl/client_cert.pem"
+  @key_path "priv/ssl/client_key.pem"
   setup do
     {:ok, _cowboy_pid, cowboys_name} =
       :cowboy_router.compile([
@@ -23,12 +25,8 @@ defmodule H2Integration.CerificateRequiredTest do
   end
 
   test "cowboy replies with sent cerificate", context do
-    config =
-      Setup.create_h2_worker_config(Setup.server_host(), context[:port], [
-        {:certfile, System.cwd() <> "/priv/ssl/client_cert.pem"},
-        {:keyfile, System.cwd() <> "/priv/ssl/client_key.pem"}
-      ])
-
+    auth = Sparrow.H2Worker.Authentication.CertificateBased.new(@cert_path, @key_path)
+    config = Sparrow.H2Worker.Config.new(Setup.server_host(), context[:port], auth)
     headers = Setup.default_headers()
     body = "body"
     worker_spec = Setup.child_spec(args: config, name: :name)
@@ -37,7 +35,7 @@ defmodule H2Integration.CerificateRequiredTest do
     {:ok, worker_pid} = start_supervised(worker_spec, [])
     {:ok, {answer_headers, answer_body}} = Sparrow.H2Worker.send_request(worker_pid, request)
 
-    {:ok, pem_bin} = File.read(System.cwd() <> "/priv/ssl/client_cert.pem")
+    {:ok, pem_bin} = File.read(@cert_path)
 
     expected_subject = Helpers.CerificateHelper.get_subject_name_form_not_encoded_cert(pem_bin)
 
@@ -46,13 +44,15 @@ defmodule H2Integration.CerificateRequiredTest do
   end
 
   test "worker rejects cowboy cerificate", context do
+    auth = Sparrow.H2Worker.Authentication.CertificateBased.new(@cert_path, @key_path)
+
     config =
       Sparrow.H2Worker.Config.new(
         Setup.server_host(),
         context[:port],
+        auth,
         [
-          {:verify, :verify_peer},
-          {:cacertfile, System.cwd() <> "/priv/ssl/client_cert.pem"}
+          {:verify, :verify_peer}
         ],
         10_000
       )
@@ -60,7 +60,7 @@ defmodule H2Integration.CerificateRequiredTest do
     worker_spec = Setup.child_spec(args: config, name: :worker_name)
     {:error, reason} = start_supervised(worker_spec)
     {actual_reason, _} = reason
-    assert {:tls_alert, 'bad certificate'} == actual_reason
+    assert {:options, {:cacertfile, []}} == actual_reason
   end
 
   defp assert_response_header(headers, expected_header) do

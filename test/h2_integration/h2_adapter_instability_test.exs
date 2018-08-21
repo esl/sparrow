@@ -28,7 +28,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   end
 
   test "chatterbox process die with custom reason after sending request to cowboy", context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port], [], 10_000)
+    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
     worker_spec = Setup.child_spec(args: config, name: :name)
     headers = Setup.default_headers()
@@ -48,7 +48,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   end
 
   test "reconnecting works after connection was lost", context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port], [], 10_000)
+    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
     worker_spec = Setup.child_spec(args: config, name: :name)
     headers = Setup.default_headers()
@@ -76,7 +76,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   test "connecting fails works after connection was lost", context do
     with_mock H2Adapter,
       open: fn _, _, _ -> {:error, :my_custom_reason} end do
-      config = Setup.create_h2_worker_config(Setup.server_host(), context[:port], [], 10_000)
+      config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
       worker_spec = Setup.child_spec(args: config, name: :name)
 

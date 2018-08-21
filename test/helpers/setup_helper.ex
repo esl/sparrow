@@ -2,6 +2,9 @@ defmodule Helpers.SetupHelper do
   alias Sparrow.H2Worker.Config
   alias Helpers.SetupHelper, as: Setup
 
+  @path_to_cert "priv/ssl/client_cert.pem"
+  @path_to_key "priv/ssl/client_key.pem"
+
   def child_spec(opts) do
     args = opts[:args]
     name = opts[:name]
@@ -25,10 +28,23 @@ defmodule Helpers.SetupHelper do
   def create_h2_worker_config(
         address \\ Setup.server_host(),
         port \\ 8080,
-        args \\ [],
-        timeout \\ 10_000
+        authentication \\ :certificate_based
       ) do
-    Config.new(address, port, args, timeout)
+    auth =
+      case authentication do
+        :token_based ->
+          Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+            {"authorization", "bearer dummy_token"}
+          end)
+
+        :certificate_based ->
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            @path_to_cert,
+            @path_to_key
+          )
+      end
+
+    Config.new(address, port, auth)
   end
 
   defp certificate_settings_list() do

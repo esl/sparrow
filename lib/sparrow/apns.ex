@@ -35,11 +35,8 @@ defmodule Sparrow.APNS do
     @apns_topic "MYFAKEEXAMPLEAPNSTOPIC"
 
     #start worker like in ReadMe
-    tls_opts = [
-        {:certfile, "path/to/exampleName.pem"},
-        {:keyfile, "path/to/exampleKey.pem"}
-    ]
-    config = Sparrow.H2Worker.Config.new("api.development.push.apple.com", 443, tls_opts)
+    auth = Sparrow.H2Worker.Authentication.CertificateBased.new("path/to/exampleName.pem","path/to/exampleKey.pem")
+    config = Sparrow.H2Worker.Config.new("api.development.push.apple.com", 443, auth)
     {:ok, worker_pid} = Sparrow.H2Worker.start_link(:your_apns_workers_name, config)
     #create notification
     notification =

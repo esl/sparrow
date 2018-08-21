@@ -8,6 +8,7 @@ defmodule Sparrow.H2Worker do
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.RequestSet
   alias Sparrow.H2Worker.RequestState, as: InnerRequest
+  alias Sparrow.H2Worker.Config
 
   @type gen_server_name :: atom
   @type config :: Sparrow.H2Worker.Config.t()
@@ -26,6 +27,13 @@ defmodule Sparrow.H2Worker do
 
   @doc """
   Sends the request and, if `is_sync` is `true`, awaits the response.
+
+  ## Arguments
+
+    * `worker` - H2Worker you want to send message with
+    * `request` - HTTP2 request, see Sparrow.H2Worker.Request
+    * `is_sync` - if `is_sync` is `true`, awaits the response, otherwize returns `:ok`
+    * `genserver_timeout` -  timeout of genserver call, works only if `is_sync` is `true`
   """
   @spec send_request(process, request, boolean(), non_neg_integer) ::
           {:error, :connection_lost}
@@ -51,6 +59,22 @@ defmodule Sparrow.H2Worker do
 
   @spec init(config) :: {:ok, state} | {:stop, reason}
   def init(config) do
+    config =
+      config
+      |> Config.get_authentication_type()
+      |> case do
+        :certificate_based ->
+          tls_options = [
+            {:certfile, config.authentication.certfile},
+            {:keyfile, config.authentication.keyfile} | config.tls_options
+          ]
+
+          %{config | tls_options: tls_options}
+
+        :token_based ->
+          config
+      end
+
     case start_conn(config, config.reconnect_attempts) do
       {:error, reason} -> {:stop, reason}
       {:ok, state} -> {:ok, state}
@@ -58,23 +82,23 @@ defmodule Sparrow.H2Worker do
   end
 
   @spec terminate(reason, state) :: :ok
+  def terminate(reason, state = %State{connection_ref: nil}) do
+    _ = Logger.info(fn -> "action=terminate, reason=#{inspect(reason)}, connection_ref=nil" end)
+    :ok
+  end
+
   def terminate(reason, state) do
     H2Adapter.close(state.connection_ref)
-    _ = Logger.info(fn -> "action=terminate, reason=#{inspect(reason)}" end)
+    _ = Logger.info(fn -> "action=terminate, reason=#{inspect(reason)}, connection_ref!=nil" end)
   end
 
   @spec handle_info(incomming_message, state) :: {:noreply, state}
+  def handle_info(:ping, state = %State{connection_ref: nil}) do
+    {:noreply, state}
+  end
   def handle_info(:ping, state) do
-    case state.connection_ref do
-      nil ->
-        :ok
-
-      _ ->
         H2Adapter.ping(state.connection_ref)
         _ = schedule_message_after(:ping, state.config.ping_interval)
-        :ok
-    end
-
     {:noreply, state}
   end
 
@@ -223,12 +247,18 @@ defmodule Sparrow.H2Worker do
        """
   @spec handle(request, from | :noreply, state) :: {:noreply, state}
   defp handle(request, from, state) do
+    headers =
+      case Config.get_authentication_type(state.config) do
+        :certificate_based -> request.headers
+        :token_based -> [state.config.authentication.token_getter.() | request.headers]
+      end
+
     post_result =
       H2Adapter.post(
         state.connection_ref,
         state.config.domain,
         request.path,
-        request.headers,
+        headers,
         request.body
       )
 
