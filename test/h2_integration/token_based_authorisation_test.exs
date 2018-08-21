@@ -28,7 +28,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
   end
 
   test "token based authorisation with correct token succeed", context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port], [], 10_000)
+    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
     worker_spec = Setup.child_spec(args: config, name: :name)
     headers = Setup.default_headers()
@@ -64,7 +64,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
   end
 
   test "token based authorisation with incorrect token fails", context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port], [], 10_000)
+    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
     worker_spec = Setup.child_spec(args: config, name: :name)
     headers = Setup.default_headers()

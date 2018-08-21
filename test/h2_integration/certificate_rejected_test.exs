@@ -21,11 +21,7 @@ defmodule H2Integration.CerificateRejectedTest do
   end
 
   test "cowboy does not accept certificate", context do
-    config =
-      Setup.create_h2_worker_config(Setup.server_host(), context[:port], [
-        {:certfile, System.cwd() <> "/priv/ssl/client_cert.pem"},
-        {:keyfile, System.cwd() <> "/priv/ssl/client_key.pem"}
-      ])
+    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
     worker_spec = Setup.child_spec(args: config, name: :name)
 

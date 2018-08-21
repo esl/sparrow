@@ -46,6 +46,43 @@ defmodule H2Integration.ClientServerTest do
     assert {Enum.into([length_header | headers], %{}), []} == Code.eval_string(answer_body)
   end
 
+  test "cowboy echos headers in body, certificate based authentication", context do
+    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+
+    headers = [{"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()]
+
+    body = "test body"
+
+    worker_spec = Setup.child_spec(args: config, name: :name)
+    {:ok, worker_pid} = start_supervised(worker_spec)
+    request = OuterRequest.new(headers, body, "/HeaderToBodyEchoHandler", 2_000)
+    {:ok, {answer_headers, answer_body}} = Sparrow.H2Worker.send_request(worker_pid, request)
+    length_header = {"content-length", Integer.to_string(String.length(body))}
+
+    assert_response_header(answer_headers, {":status", "200"})
+    assert {Enum.into([length_header | headers], %{}), []} == Code.eval_string(answer_body)
+  end
+
+  test "cowboy echos headers in body, token based authentication", context do
+    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port], :token_based)
+
+    headers = [{"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()]
+
+    body = "test body"
+
+    worker_spec = Setup.child_spec(args: config, name: :name)
+    {:ok, worker_pid} = start_supervised(worker_spec)
+    request = OuterRequest.new(headers, body, "/HeaderToBodyEchoHandler", 2_000)
+    {:ok, {answer_headers, answer_body}} = Sparrow.H2Worker.send_request(worker_pid, request)
+    length_header = {"content-length", Integer.to_string(String.length(body))}
+    token_auth_header = {"authorization", "bearer dummy_token"}
+
+    assert_response_header(answer_headers, {":status", "200"})
+
+    assert {Enum.into([token_auth_header, length_header | headers], %{}), []} ==
+             Code.eval_string(answer_body)
+  end
+
   test "cowboy replies Hello", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
     headers = Setup.default_headers()
@@ -62,7 +99,7 @@ defmodule H2Integration.ClientServerTest do
     assert answer_body == "Hello"
   end
 
-  test "first open connection fails, second pases", context do
+  test "first open connection fails, second pases, certificate based authentication", context do
     with_mock H2Adapter,
       open: fn a, b, c ->
         case :erlang.put(:connection_count, 1) do
@@ -71,6 +108,23 @@ defmodule H2Integration.ClientServerTest do
         end
       end do
       config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+
+      worker_spec = Setup.child_spec(args: config, name: :name)
+
+      {:ok, pid} = start_supervised(worker_spec)
+      assert is_pid(pid)
+    end
+  end
+
+  test "first open connection fails, second pases, token based authentication", context do
+    with_mock H2Adapter,
+      open: fn a, b, c ->
+        case :erlang.put(:connection_count, 1) do
+          :undefined -> {:error, :my_custom_reason}
+          1 -> :meck.passthrough([a, b, c])
+        end
+      end do
+      config = Setup.create_h2_worker_config(Setup.server_host(), context[:port], :token_based)
 
       worker_spec = Setup.child_spec(args: config, name: :name)
 

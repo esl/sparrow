@@ -1,8 +1,9 @@
 defmodule Sparrow.H2WorkerTest do
   use ExUnit.Case
   use Quixir
+
   import Mock
-  require Logger
+
   alias Sparrow.H2Worker.Config
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
@@ -42,10 +43,17 @@ defmodule Sparrow.H2WorkerTest do
           {:ok, stream_id}
         end,
         close: fn _ -> :ok end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         args =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -59,7 +67,7 @@ defmodule Sparrow.H2WorkerTest do
     end
   end
 
-  test "server receives request and returns answer", context do
+  test "server receives call request and returns answer", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             name: atom(min: 5, max: 20),
@@ -90,10 +98,17 @@ defmodule Sparrow.H2WorkerTest do
           {:ok, {headers, body}}
         end,
         close: fn _ -> :ok end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         config =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -140,10 +155,17 @@ defmodule Sparrow.H2WorkerTest do
           {{:ok, {headers, body}}}
         end,
         close: fn _ -> :ok end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         config =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -188,10 +210,17 @@ defmodule Sparrow.H2WorkerTest do
           {:error, :not_ready}
         end,
         close: fn _ -> :ok end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         config =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -234,10 +263,17 @@ defmodule Sparrow.H2WorkerTest do
           {:ok, stream_id}
         end,
         close: fn _ -> :ok end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         config =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -268,10 +304,17 @@ defmodule Sparrow.H2WorkerTest do
           repeat_for: @repeats do
       ping_interval = 200
 
+      auth =
+        Sparrow.H2Worker.Authentication.CertificateBased.new(
+          "path/to/exampleName.pem",
+          "path/to/exampleKey.pem"
+        )
+
       config =
         Config.new(
           domain,
           port,
+          auth,
           tls_options,
           ping_interval
         )
@@ -292,10 +335,17 @@ defmodule Sparrow.H2WorkerTest do
           repeat_for: @repeats do
       ping_interval = 200
 
+      auth =
+        Sparrow.H2Worker.Authentication.CertificateBased.new(
+          "path/to/exampleName.pem",
+          "path/to/exampleKey.pem"
+        )
+
       config =
         Config.new(
           domain,
           port,
+          auth,
           tls_options,
           ping_interval
         )
@@ -337,10 +387,17 @@ defmodule Sparrow.H2WorkerTest do
           {:ok, {headers, body}}
         end,
         close: fn _ -> :ok end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         args =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -376,10 +433,17 @@ defmodule Sparrow.H2WorkerTest do
           :ok
         end,
         close: fn _ -> :ok end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         args =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -414,12 +478,18 @@ defmodule Sparrow.H2WorkerTest do
           :ok
         end,
         close: fn _ -> :ok end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         args =
           Config.new(
             domain,
             port,
-            tls_options,
-            100
+            auth,
+            tls_options
           )
 
         message = {:DOWN, make_ref(), :process, not_conn_pid, reason}
@@ -459,10 +529,17 @@ defmodule Sparrow.H2WorkerTest do
         post: fn _, _, _, _, _ ->
           {:ok, stream_id}
         end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         config =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -487,7 +564,7 @@ defmodule Sparrow.H2WorkerTest do
     end
   end
 
-  test "inits, succesfull connection", context do
+  test "inits, succesfull connection with certificate", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             port: int(min: 0, max: 65535),
@@ -498,10 +575,153 @@ defmodule Sparrow.H2WorkerTest do
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "test/priv/certs/Certificates1.pem",
+            "test/priv/certs/key.pem"
+          )
+
         config =
           Config.new(
             domain,
             port,
+            auth,
+            tls_options,
+            ping_interval
+          )
+
+        expected_config =
+          Config.new(
+            domain,
+            port,
+            auth,
+            [
+              {:certfile, "test/priv/certs/Certificates1.pem"},
+              {:keyfile, "test/priv/certs/key.pem"} | tls_options
+            ],
+            ping_interval
+          )
+
+        assert {:ok, Sparrow.H2Worker.State.new(context[:connection_ref], expected_config)} ==
+                 Sparrow.H2Worker.init(config)
+      end
+    end
+  end
+
+  test "inits, succesfull connection with certificate, connection fails on send attempt",
+       context do
+    ptest [
+            domain: string(min: 3, max: 10, chars: ?a..?z),
+            port: int(min: 0, max: 65535),
+            tls_options: list(of: atom(), min: 0, max: 3),
+            workers_name: atom(min: 2, max: 5),
+            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
+            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
+            body: string(min: 3, max: 7, chars: :ascii),
+            path: string(min: 3, max: 7, chars: :ascii)
+          ],
+          repeat_for: 1 do
+      ping_interval = 12300
+
+      with_mock H2Adapter,
+        open: fn _, _, _ ->
+          case :erlang.get(:key) do
+            :undefined ->
+              :erlang.put(:key, 1)
+              {:ok, context[:connection_ref]}
+
+            1 ->
+              {:error, :my_reason}
+          end
+        end,
+        close: fn _ -> :ok end do
+        headers = List.zip([headersA, headersB])
+
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "test/priv/certs/Certificates1.pem",
+            "test/priv/certs/key.pem"
+          )
+
+        config = Config.new(domain, port, auth, tls_options, ping_interval)
+        request = OuterRequest.new(headers, body, path, 1000)
+
+        new_state = %Sparrow.H2Worker.State{
+          connection_ref: nil,
+          requests: [],
+          config: config
+        }
+
+        {:ok, worker_pid} = Sparrow.H2Worker.start_link(workers_name, config)
+        Process.unlink(worker_pid)
+        :sys.replace_state(worker_pid, fn _ -> new_state end)
+
+        assert catch_exit(Sparrow.H2Worker.send_request(worker_pid, request, true))
+      end
+    end
+  end
+
+  test "inits, succesfull connection with certificate, :noreply request is handled correctly",
+       context do
+    ptest [
+            domain: string(min: 3, max: 10, chars: ?a..?z),
+            port: int(min: 0, max: 65535),
+            tls_options: list(of: atom(), min: 0, max: 3),
+            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
+            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
+            body: string(min: 3, max: 7, chars: :ascii),
+            path: string(min: 3, max: 7, chars: :ascii),
+            stream_id: int(min: 1, max: 65535)
+          ],
+          repeat_for: 1 do
+      ping_interval = 12300
+      headers = List.zip([headersA, headersB])
+
+      with_mock H2Adapter,
+        open: fn _, _, _ ->
+          {:ok, context[:connection_ref]}
+        end,
+        get_reponse: fn _, _ -> {:ok, {headers, body}} end,
+        post: fn _, _, _, _, _ -> {:ok, stream_id} end,
+        close: fn _ -> :ok end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "test/priv/certs/Certificates1.pem",
+            "test/priv/certs/key.pem"
+          )
+
+        config = Config.new(domain, port, auth, tls_options, ping_interval)
+        request = OuterRequest.new(headers, body, path, 1000)
+
+        {:ok, worker_pid} = Sparrow.H2Worker.start_link(:workers_name, config)
+        Process.unlink(worker_pid)
+        assert :ok == Sparrow.H2Worker.send_request(worker_pid, request, false)
+        send(worker_pid, {:END_STREAM, stream_id})
+        assert %{} == :sys.get_state(worker_pid).requests
+        assert {:messages, []} == :erlang.process_info(self(), :messages)
+        assert {:messages, []} == :erlang.process_info(worker_pid, :messages)
+      end
+    end
+  end
+
+  test "inits, succesfull connection with token", context do
+    ptest [
+            domain: string(min: 3, max: 10, chars: ?a..?z),
+            port: int(min: 0, max: 65535),
+            tls_options: list(of: atom(), min: 0, max: 3)
+          ],
+          repeat_for: @repeats do
+      ping_interval = 123
+
+      with_mock H2Adapter,
+        open: fn _, _, _ -> {:ok, context[:connection_ref]} end do
+        auth = Sparrow.H2Worker.Authentication.TokenBased.new(fn -> "dummyToken" end)
+
+        config =
+          Config.new(
+            domain,
+            port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -524,10 +744,17 @@ defmodule Sparrow.H2WorkerTest do
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:error, reason} end do
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         args =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
@@ -549,10 +776,17 @@ defmodule Sparrow.H2WorkerTest do
         reason = "test reason"
         ping_interval = 123
 
+        auth =
+          Sparrow.H2Worker.Authentication.CertificateBased.new(
+            "path/to/exampleName.pem",
+            "path/to/exampleKey.pem"
+          )
+
         config =
           Config.new(
             domain,
             port,
+            auth,
             tls_options,
             ping_interval
           )
