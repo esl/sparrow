@@ -169,15 +169,6 @@ defmodule Sparrow.APNS.Notification do
   end
 
   @doc """
-  Sets the `provider token used for authorization against APNs.
-  """
-  @spec add_authorization(__MODULE__.t(), String.t()) :: __MODULE__.t()
-  def add_authorization(notification, provider_token) do
-    # TODO encode the token with JWT
-    add_header(notification, "authorization", "bearer #{provider_token}")
-  end
-
-  @doc """
   Sets the `apns-id` header.
   """
   @spec add_apns_id(__MODULE__.t(), String.t()) :: __MODULE__.t()

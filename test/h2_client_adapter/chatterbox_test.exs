@@ -1,7 +1,9 @@
 defmodule H2ClientAdapter.ChatterboxTest do
   use ExUnit.Case
   use Quixir
+
   import Mock
+
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
 
   doctest H2Adapter

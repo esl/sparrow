@@ -6,7 +6,6 @@ defmodule Sparrow.APNSTest do
 
   @apns_mock_address "localhost"
   @path "/3/device/"
-  @provider_token "test_provider_token"
   @title "test title"
   @body "test body"
 
@@ -152,7 +151,6 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_apns_priority("apns priority value")
       |> Notification.add_apns_topic("apns topic value")
       |> Notification.add_apns_collapse_id("apns collapse id value")
-      |> Notification.add_authorization(@provider_token)
 
     {:ok, {response_headers, body}} = Sparrow.APNS.push(context[:worker_pid], notification)
 
@@ -164,7 +162,6 @@ defmodule Sparrow.APNSTest do
     assert {"accept", "application/json"} in headers_decoded_from_body
     assert {"apns-expiration", "apns expiration header value"} in headers_decoded_from_body
     assert {"apns-id", "apns id value"} in headers_decoded_from_body
-    assert {"authorization", "bearer " <> @provider_token} in headers_decoded_from_body
     assert {"apns-priority", "apns priority value"} in headers_decoded_from_body
     assert {"apns-topic", "apns topic value"} in headers_decoded_from_body
     assert {"apns-collapse-id", "apns collapse id value"} in headers_decoded_from_body
