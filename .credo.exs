@@ -3,8 +3,8 @@
       %{
         name: "default",
         files: %{
-          included: ["lib/", "test/"],
-          excluded: [~r"/_build/", ~r"/deps/"]
+          included: ["lib/"],
+          excluded: [~r"/_build/", ~r"/deps/", "test/"]
         },
         requires: [],
         strict: true,
