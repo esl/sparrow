@@ -3,8 +3,8 @@
       %{
         name: "default",
         files: %{
-          included: ["lib/", "test/"],
-          excluded: [~r"/_build/", ~r"/deps/"]
+          included: ["lib/"],
+          excluded: [~r"/_build/", ~r"/deps/", "test/"]
         },
         requires: [],
         strict: true,
@@ -29,7 +29,7 @@
           {Credo.Check.Readability.TrailingBlankLine},
           {Credo.Check.Readability.TrailingWhiteSpace},
           {Credo.Check.Readability.VariableNames},
-  
+
           {Credo.Check.Refactor.ABCSize},
           {Credo.Check.Refactor.CondStatements},
           {Credo.Check.Refactor.FunctionArity},
@@ -40,7 +40,7 @@
           {Credo.Check.Refactor.NegatedConditionsWithElse},
           {Credo.Check.Refactor.Nesting},
           {Credo.Check.Refactor.UnlessWithElse},
-  
+
           {Credo.Check.Warning.IExPry},
           {Credo.Check.Warning.IoInspect},
           {Credo.Check.Warning.NameRedeclarationByAssignment},
@@ -55,8 +55,9 @@
           {Credo.Check.Warning.UnusedStringOperation},
           {Credo.Check.Warning.UnusedTupleOperation},
           {Credo.Check.Warning.OperationWithConstantResult},
+
+          {Credo.Check.Design.DuplicatedCode, excluded_macros: [:setup, :test]},
         ]
       }
     ]
   }
-  

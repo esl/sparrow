@@ -1,4 +1,5 @@
 defmodule Helpers.CowboyHandlers.HeaderToBodyEchoHandler do
+  @moduledoc false
   def init(req0, opts) do
     method = :cowboy_req.method(req0)
     req = maybe_echo(method, req0)

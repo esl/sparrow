@@ -1,19 +1,29 @@
 defmodule Helpers.CerificateHelper do
+  @moduledoc false
   require Record
 
   Record.defrecord(
     :otp_cert,
-    Record.extract(:OTPCertificate, from_lib: "public_key/include/public_key.hrl")
+    Record.extract(
+      :OTPCertificate,
+      from_lib: "public_key/include/public_key.hrl"
+    )
   )
 
   Record.defrecord(
     :tbs_cert,
-    Record.extract(:OTPTBSCertificate, from_lib: "public_key/include/public_key.hrl")
+    Record.extract(
+      :OTPTBSCertificate,
+      from_lib: "public_key/include/public_key.hrl"
+    )
   )
 
   Record.defrecord(
     :cert_attr,
-    Record.extract(:AttributeTypeAndValue, from_lib: "public_key/include/public_key.hrl")
+    Record.extract(
+      :AttributeTypeAndValue,
+      from_lib: "public_key/include/public_key.hrl"
+    )
   )
 
   def get_subject_name_form_encoded_cert(cert) do
@@ -25,8 +35,11 @@ defmodule Helpers.CerificateHelper do
   end
 
   def get_subject_name_form_not_encoded_cert(pem_bin) do
-    [{:Certificate, binary_cert, :not_encrypted}] = :public_key.pem_decode(pem_bin)
-    {:OTPCertificate, cert, _, _} = :public_key.pkix_decode_cert(binary_cert, :otp)
+    [{:Certificate, binary_cert, :not_encrypted}] =
+      :public_key.pem_decode(pem_bin)
+
+    {:OTPCertificate, cert, _, _} =
+      :public_key.pkix_decode_cert(binary_cert, :otp)
 
     cert
     |> tbs_cert(:subject)
@@ -43,6 +56,8 @@ defmodule Helpers.CerificateHelper do
     |> Enum.join("/")
   end
 
-  defp normalize_rdn_string({_string_type, name}), do: normalize_rdn_string(name)
+  defp normalize_rdn_string({_string_type, name}),
+    do: normalize_rdn_string(name)
+
   defp normalize_rdn_string(name), do: ~s"#{name}"
 end

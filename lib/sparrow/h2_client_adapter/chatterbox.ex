@@ -16,7 +16,9 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   def open(domain, port, opts \\ []) do
     _ =
       Logger.debug(fn ->
-        "action=open_conn, to=#{inspect(domain)}, port=#{port}, opts=#{inspect(opts)}"
+        "action=open_conn, to=#{inspect(domain)}, port=#{port}, opts=#{
+          inspect(opts)
+        }"
       end)
 
     case :h2_client.start_link(:https, to_charlist(domain), port, opts) do
@@ -25,11 +27,19 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
         {:error, :ignore}
 
       {:ok, connection_ref} ->
-        _ = Logger.debug(fn -> "action=open_conn, response=#{inspect({:ok, connection_ref})}" end)
+        _ =
+          Logger.debug(fn ->
+            "action=open_conn, response=#{inspect({:ok, connection_ref})}"
+          end)
+
         {:ok, connection_ref}
 
       {:error, reason} ->
-        _ = Logger.debug(fn -> "action=open_conn, response=#{inspect({:error, reason})}" end)
+        _ =
+          Logger.debug(fn ->
+            "action=open_conn, response=#{inspect({:error, reason})}"
+          end)
+
         {:error, reason}
     end
   end
@@ -55,7 +65,8 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   @doc """
     Allows to read answer to notification.
   """
-  @spec get_reponse(connection_ref, stream_id) :: {:ok, {headers, body}} | {:error, :not_ready}
+  @spec get_reponse(connection_ref, stream_id) ::
+          {:ok, {headers, body}} | {:error, :not_ready}
   def get_reponse(conn, stream_id) do
     case :h2_connection.get_response(conn, stream_id) do
       {:ok, {headers, body}} ->

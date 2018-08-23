@@ -8,7 +8,8 @@ defmodule Sparrow.ErrorTest do
     expected_description =
       "Unmatched status code  = #{status_code}, error string = #{error_string}"
 
-    actual_description = Sparrow.APNS.get_error_description(status_code, error_string)
+    actual_description =
+      Sparrow.APNS.get_error_description(status_code, error_string)
 
     assert expected_description == actual_description
   end
@@ -20,7 +21,8 @@ defmodule Sparrow.ErrorTest do
     expected_description =
       "Unmatched status code  = #{status_code}, error string = #{error_string}"
 
-    actual_description = Sparrow.APNS.get_error_description(status_code, error_string)
+    actual_description =
+      Sparrow.APNS.get_error_description(status_code, error_string)
 
     assert expected_description == actual_description
   end
@@ -32,7 +34,8 @@ defmodule Sparrow.ErrorTest do
     expected_description =
       "Unmatched status code  = #{status_code}, error string = #{error_string}"
 
-    actual_description = Sparrow.APNS.get_error_description(status_code, error_string)
+    actual_description =
+      Sparrow.APNS.get_error_description(status_code, error_string)
 
     assert expected_description == actual_description
   end

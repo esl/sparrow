@@ -30,7 +30,8 @@ defmodule Sparrow.APNS.Notification do
           | :body
   @type alert_opts :: [{alert_opt_key, String.t()}]
   @type aps_dictionary_opts :: [aps_dictionary_opt]
-  @type aps_dictionary_key :: :badge | :sound | :"content-available" | :category | :"thread-id"
+  @type aps_dictionary_key ::
+          :badge | :sound | :"content-available" | :category | :"thread-id"
   @type aps_dictionary_opt ::
           {:badge, integer}
           | {:sound, String.t()}
@@ -58,7 +59,10 @@ defmodule Sparrow.APNS.Notification do
   def new(device_token) do
     %__MODULE__{
       device_token: device_token,
-      headers: [{"content-type", "application/json"}, {"accept", "application/json"}],
+      headers: [
+        {"content-type", "application/json"},
+        {"accept", "application/json"}
+      ],
       alert_opts: [],
       aps_dictionary_opts: []
     }
@@ -172,7 +176,8 @@ defmodule Sparrow.APNS.Notification do
   Sets the `apns-id` header.
   """
   @spec add_apns_id(__MODULE__.t(), String.t()) :: __MODULE__.t()
-  def add_apns_id(notification, value), do: add_header(notification, "apns-id", value)
+  def add_apns_id(notification, value),
+    do: add_header(notification, "apns-id", value)
 
   @doc """
   Sets the `apns-expiration` header.
@@ -206,13 +211,23 @@ defmodule Sparrow.APNS.Notification do
   defp add_header(notification, key, value),
     do: %{notification | headers: [{key, value} | notification.headers]}
 
-  @spec add_alert_opt(__MODULE__.t(), alert_opt_key, String.t() | [String.t()] | nil) ::
-          __MODULE__.t()
+  @spec add_alert_opt(
+          __MODULE__.t(),
+          alert_opt_key,
+          String.t() | [String.t()] | nil
+        ) :: __MODULE__.t()
   defp add_alert_opt(notification, key, value),
     do: %{notification | alert_opts: [{key, value} | notification.alert_opts]}
 
-  @spec add_aps_dictionary_opt(__MODULE__.t(), aps_dictionary_key, String.t() | integer) ::
-          __MODULE__.t()
-  defp add_aps_dictionary_opt(notification, key, value),
-    do: %{notification | aps_dictionary_opts: [{key, value} | notification.aps_dictionary_opts]}
+  @spec add_aps_dictionary_opt(
+          __MODULE__.t(),
+          aps_dictionary_key,
+          String.t() | integer
+        ) :: __MODULE__.t()
+  defp add_aps_dictionary_opt(notification, key, value) do
+    %{
+      notification
+      | aps_dictionary_opts: [{key, value} | notification.aps_dictionary_opts]
+    }
+  end
 end

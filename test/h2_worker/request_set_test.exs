@@ -10,7 +10,7 @@ defmodule H2Worker.RequestSetTest do
 
   test "collection is correctly initalizing" do
     requests = RequestSet.new()
-    assert 0 == Enum.count(requests)
+    assert Enum.empty?(requests)
   end
 
   test "collection add, remove, get_addressee behavious correctly" do
@@ -39,13 +39,17 @@ defmodule H2Worker.RequestSetTest do
       outer_request1 = Sparrow.H2Worker.Request.new(headers1, body1, path1)
       outer_request2 = Sparrow.H2Worker.Request.new(headers2, body2, path2)
 
-      request1 = InnerRequest.new(outer_request1, {from_pid1, from_tag1}, make_ref())
-      request2 = InnerRequest.new(outer_request2, {from_pid2, from_tag2}, make_ref())
+      request1 =
+        InnerRequest.new(outer_request1, {from_pid1, from_tag1}, make_ref())
+
+      request2 =
+        InnerRequest.new(outer_request2, {from_pid2, from_tag2}, make_ref())
 
       requests_collection = RequestSet.new()
-      assert 0 == Enum.count(requests_collection)
+      assert Enum.empty?(requests_collection)
 
-      updated_requests_collection = RequestSet.add(requests_collection, stream_id1, request1)
+      updated_requests_collection =
+        RequestSet.add(requests_collection, stream_id1, request1)
 
       assert 1 == Enum.count(updated_requests_collection)
 
@@ -59,7 +63,8 @@ defmodule H2Worker.RequestSetTest do
 
       assert 2 == Enum.count(rereupdated_requests_collection)
 
-      assert {:ok, request1} == RequestSet.get_request(reupdated_requests_collection, stream_id1)
+      assert {:ok, request1} ==
+               RequestSet.get_request(reupdated_requests_collection, stream_id1)
 
       assert {:error, :not_found} ==
                RequestSet.get_request(

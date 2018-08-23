@@ -5,13 +5,17 @@ defmodule H2Integration.CerificateRejectedTest do
 
   setup_all do
     {:ok, _cowboy_pid, cowboys_name} =
-      :cowboy_router.compile([
+      [
         {":_",
          [
-           {"/RejectCertificateHandler", Helpers.CowboyHandlers.RejectCertificateHandler, []}
+           {"/RejectCertificateHandler",
+            Helpers.CowboyHandlers.RejectCertificateHandler, []}
          ]}
-      ])
-      |> Setup.start_cowboy_tls(certificate_required: :negative_cerificate_verification)
+      ]
+      |> :cowboy_router.compile()
+      |> Setup.start_cowboy_tls(
+        certificate_required: :negative_cerificate_verification
+      )
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)

@@ -5,6 +5,9 @@ case $PRESET in
         mix certs.dev
         MIX_ENV=test mix coveralls.travis --include system
         ;;
+    credo)
+        mix credo --strict
+        ;;
     dialyzer)
         MIX_ENV=test mix dialyzer --halt-exit-status
         ;;

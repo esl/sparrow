@@ -1,6 +1,7 @@
 defmodule Helpers.SetupHelper do
+  @moduledoc false
+
   alias Sparrow.H2Worker.Config
-  alias Helpers.SetupHelper, as: Setup
 
   @path_to_cert "priv/ssl/client_cert.pem"
   @path_to_key "priv/ssl/client_key.pem"
@@ -17,16 +18,16 @@ defmodule Helpers.SetupHelper do
     }
   end
 
-  def cowboys_name() do
+  def cowboys_name do
     :look
   end
 
-  defp current_dir() do
+  defp current_dir do
     System.cwd()
   end
 
   def create_h2_worker_config(
-        address \\ Setup.server_host(),
+        address \\ server_host(),
         port \\ 8080,
         authentication \\ :certificate_based
       ) do
@@ -47,7 +48,7 @@ defmodule Helpers.SetupHelper do
     Config.new(address, port, auth)
   end
 
-  defp certificate_settings_list() do
+  defp certificate_settings_list do
     [
       {:cacertfile, current_dir() <> "/priv/ssl/fake_cert.pem"},
       {:certfile, current_dir() <> "/priv/ssl/fake_cert.pem"},
@@ -68,7 +69,8 @@ defmodule Helpers.SetupHelper do
     [
       {:port, port},
       {:verify, :verify_peer},
-      {:verify_fun, {fn _, _, _ -> {:fail, :negative_cerificate_verification} end, :ok}}
+      {:verify_fun,
+       {fn _, _, _ -> {:fail, :negative_cerificate_verification} end, :ok}}
       | certificate_settings_list()
     ]
   end
@@ -96,11 +98,11 @@ defmodule Helpers.SetupHelper do
     {:ok, pid, name}
   end
 
-  def server_host() do
+  def server_host do
     "localhost"
   end
 
-  def default_headers() do
+  def default_headers do
     [
       {"accept", "*/*"},
       {"accept-encoding", "gzip, deflate"},

@@ -7,13 +7,18 @@ install:
     - mix local.rebar --force
     - mix local.hex --force
     - mix deps.get
+    - mix deps.compile
     - MIX_ENV=test mix compile
 
 script:
-    .travis/script.sh $PRESET
+    - .travis/script.sh $PRESET
 
 env:
     - PRESET=test
+
+branches:
+    only:
+        - master
 
 elixir:
     - 1.6
@@ -24,9 +29,14 @@ otp_release:
 
 matrix:
     include:
-        - otp_release: 20.3.6
+        - name: "Dialyzer"
+          otp_release: 20.3.6
           elixir: 1.6.6
           env: PRESET=dialyzer
+        - name: "Credo"
+          otp_release: 20.3.6
+          elixir: 1.6.6
+          env: PRESET=credo
     allow_failures:
         - otp_release: 21.0
 

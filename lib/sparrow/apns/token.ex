@@ -10,7 +10,7 @@ defmodule Sparrow.APNS.Token do
           refresh_token_time: non_neg_integer
         }
 
-  @default_refresh_token_time 50
+  @default_refresh_token_time :timer.minutes(50)
 
   defstruct [
     :key_id,
@@ -43,7 +43,12 @@ defmodule Sparrow.APNS.Token do
   Section: Refresh Your Token Regularly
   """
   @spec new(String.t(), String.t(), String.t(), non_neg_integer) :: t
-  def new(key_id, team_id, p8_file_path, refresh_token_time \\ @default_refresh_token_time) do
+  def new(
+        key_id,
+        team_id,
+        p8_file_path,
+        refresh_token_time \\ @default_refresh_token_time
+      ) do
     %__MODULE__{
       key_id: key_id,
       team_id: team_id,
