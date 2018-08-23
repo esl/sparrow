@@ -5,7 +5,7 @@ defmodule Sparrow.APNS.Notification do
   For details on the APNS notification payload structure see the following links:
     * https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html#//apple_ref/doc/uid/TP40008194-CH11-SW1
     * https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/PayloadKeyReference.html#//apple_ref/doc/uid/TP40008194-CH17-SW1
-
+    * https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/generating_a_remote_notification
   This module contains a bunch of helper functions which allow you to build the notification conveniently.
 
     ## Example
@@ -19,6 +19,7 @@ defmodule Sparrow.APNS.Notification do
   """
   alias Sparrow.H2Worker.Request
 
+  @type json_array :: [any]
   @type alert_opt_key ::
           :"title-loc-key"
           | :"title-loc-args"
@@ -27,8 +28,14 @@ defmodule Sparrow.APNS.Notification do
           | :"loc-args"
           | :"launch-image"
           | :title
+          | :subtitle
+          | :"subtitle-loc-key"
+          | :"subtitle-loc-args"
           | :body
-  @type alert_opts :: [{alert_opt_key, String.t()}]
+
+  @type alert_opts :: [
+          {alert_opt_key, String.t()} | {alert_opt_key, json_array}
+        ]
   @type aps_dictionary_opts :: [aps_dictionary_opt]
   @type aps_dictionary_key ::
           :badge | :sound | :"content-available" | :category | :"thread-id"
@@ -49,7 +56,8 @@ defmodule Sparrow.APNS.Notification do
     :device_token,
     :headers,
     :alert_opts,
-    :aps_dictionary_opts
+    :aps_dictionary_opts,
+    :custom_data
   ]
 
   @doc """
@@ -64,7 +72,8 @@ defmodule Sparrow.APNS.Notification do
         {"accept", "application/json"}
       ],
       alert_opts: [],
-      aps_dictionary_opts: []
+      aps_dictionary_opts: [],
+      custom_data: []
     }
   end
 
@@ -106,6 +115,31 @@ defmodule Sparrow.APNS.Notification do
   @spec add_thread_id(__MODULE__.t(), String.t()) :: __MODULE__.t()
   def add_thread_id(notification, value) do
     add_aps_dictionary_opt(notification, :"thread-id", value)
+  end
+
+  @doc """
+  Sets the `subtitle` option of the alert dictionary.
+  """
+  @spec add_subtitle(__MODULE__.t(), String.t()) :: __MODULE__.t()
+  def add_subtitle(notification, subtitle) do
+    add_alert_opt(notification, :subtitle, subtitle)
+  end
+
+  @doc """
+  Sets the `subtitle-loc-key` option of the alert dictionary.
+  """
+  @spec add_subtitle_loc_key(__MODULE__.t(), String.t()) :: __MODULE__.t()
+  def add_subtitle_loc_key(notification, value) do
+    add_alert_opt(notification, :"subtitle-loc-key", value)
+  end
+
+  @doc """
+  Sets the `subtitle-loc-args` option of the alert dictionary.
+  """
+  @spec add_subtitle_loc_args(__MODULE__.t(), String.t() | json_array) ::
+          __MODULE__.t()
+  def add_subtitle_loc_args(notification, value) do
+    add_alert_opt(notification, :"subtitle-loc-args", value)
   end
 
   @doc """
@@ -206,6 +240,13 @@ defmodule Sparrow.APNS.Notification do
   @spec add_apns_collapse_id(__MODULE__.t(), String.t()) :: __MODULE__.t()
   def add_apns_collapse_id(notification, value),
     do: add_header(notification, "apns-collapse-id", value)
+
+  @doc """
+  Add your custom data to the aps dictionary.
+  """
+  @spec add_custom_data(__MODULE__.t(), String.t(), any) :: __MODULE__.t()
+  def add_custom_data(notification, key, value),
+    do: %{notification | custom_data: [{key, value} | notification.custom_data]}
 
   @spec add_header(__MODULE__.t(), String.t(), String.t()) :: __MODULE__.t()
   defp add_header(notification, key, value),

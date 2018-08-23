@@ -6,6 +6,12 @@
 
 **TODO: Add publishing package to hex** 
 
+**TODO: Check API diffs between these articles:** 
+
+[link](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/generating_a_remote_notification)
+and
+[link](https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/PayloadKeyReference.html#//apple_ref/doc/uid/TP40008194-CH17-SW1)
+
 ## Installation
 
 [![Build Status](https://travis-ci.com/aleklisi/sparrow.svg?branch=master)](https://travis-ci.com/aleklisi/sparrow)
