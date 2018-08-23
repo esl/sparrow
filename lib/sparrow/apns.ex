@@ -168,8 +168,7 @@ defmodule Sparrow.APNS do
     end
 
     contains_title =
-      # notification.alert_opts |>
-       Keyword.get(notification.alert_opts, :title, false) |> to_boolean.()
+      notification.alert_opts |> Keyword.get(:title, false) |> to_boolean.()
 
     contains_body =
       notification.alert_opts |> Keyword.get(:body, false) |> to_boolean.()
