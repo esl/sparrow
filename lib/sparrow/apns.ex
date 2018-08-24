@@ -134,14 +134,6 @@ defmodule Sparrow.APNS do
 
   def process_response({:error, reason}), do: {:error, reason}
 
-  @spec make_body(Sparrow.APNS.Notification.t()) :: map
-  defp make_body(notification) do
-    alert = notification.alert_opts |> Map.new()
-
-    [{"aps", %{"alert" => alert}} | notification.aps_dictionary_opts]
-    |> Map.new()
-  end
-
   @doc """
   Function provides APNS errors description.
 
@@ -157,6 +149,22 @@ defmodule Sparrow.APNS do
   @spec get_error_description(non_neg_integer, String.t()) :: String.t()
   def get_error_description(status, code) do
     Sparrow.APNS.Errors.get_error_description(status, code)
+  end
+
+  @spec make_body(Sparrow.APNS.Notification.t()) :: map
+  defp make_body(notification) do
+    alert =
+      notification.alert_opts
+      |> Map.new()
+
+    aps_opts =
+      notification.aps_dictionary_opts
+      |> Map.new()
+      |> Map.put("alert", alert)
+
+    notification.custom_data
+      |> Map.new()
+      |> Map.put("aps", aps_opts)
   end
 
   @spec notification_contains_title_or_body?(Sparrow.APNS.Notification.t()) ::

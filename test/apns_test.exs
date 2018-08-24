@@ -7,6 +7,7 @@ defmodule Sparrow.APNSTest do
   @apns_mock_address "localhost"
   @path "/3/device/"
   @title "test title"
+  @subtitle "test subtitle"
   @body "test body"
 
   setup do
@@ -121,18 +122,21 @@ defmodule Sparrow.APNSTest do
       Sparrow.APNS.push(context[:worker_pid], notification)
 
     {:ok, response} = Jason.decode(body)
+    aps_opts = Map.get(response, "aps")
 
     assert {":status", "200"} in headers
-    assert sound == Map.get(response, "sound")
-    assert badge == Map.get(response, "badge")
-    assert content_available == Map.get(response, "content-available")
-    assert category == Map.get(response, "category")
-    assert thread_id == Map.get(response, "thread-id")
+    assert sound == Map.get(aps_opts, "sound")
+    assert badge == Map.get(aps_opts, "badge")
+    assert content_available == Map.get(aps_opts, "content-available")
+    assert category == Map.get(aps_opts, "category")
+    assert thread_id == Map.get(aps_opts, "thread-id")
   end
 
   test "notification json contains options alert", context do
     title_loc_key = "title_loc_key of some kind"
     title_loc_args = "args loc titile"
+    subtitle_loc_key = "subtitle_loc_key of some kind"
+    subtitle_loc_args = "subargs loc titile"
     loc_args = " arg1 arg2"
     launch_image = "image lanch"
     loc_key = "loc_key value"
@@ -142,8 +146,12 @@ defmodule Sparrow.APNSTest do
       "EchoBodyHandler"
       |> Notification.new()
       |> Notification.add_title(@title)
+      |> Notification.add_subtitle(@subtitle)
+      |> Notification.add_body(@body)
       |> Notification.add_title_loc_key(title_loc_key)
       |> Notification.add_title_loc_args(title_loc_args)
+      |> Notification.add_subtitle_loc_key(subtitle_loc_key)
+      |> Notification.add_subtitle_loc_args(subtitle_loc_args)
       |> Notification.add_loc_args(loc_args)
       |> Notification.add_launch_image(launch_image)
       |> Notification.add_loc_key(loc_key)
@@ -160,9 +168,14 @@ defmodule Sparrow.APNSTest do
 
     assert is_map(alert)
     assert is_map(alert_content)
+    assert @title == Map.get(alert_content, "title")
+    assert @subtitle == Map.get(alert_content, "subtitle")
+    assert @body == Map.get(alert_content, "body")
     assert loc_key == Map.get(alert_content, "loc-key")
     assert title_loc_key == Map.get(alert_content, "title-loc-key")
     assert title_loc_args == Map.get(alert_content, "title-loc-args")
+    assert subtitle_loc_key == Map.get(alert_content, "subtitle-loc-key")
+    assert subtitle_loc_args == Map.get(alert_content, "subtitle-loc-args")
     assert loc_args == Map.get(alert_content, "loc-args")
     assert launch_image == Map.get(alert_content, "launch-image")
     assert loc_key == Map.get(alert_content, "loc-key")
@@ -198,5 +211,50 @@ defmodule Sparrow.APNSTest do
     assert {"apns-topic", "apns topic value"} in headers_decoded_from_body
 
     assert {"apns-collapse-id", "apns collapse id value"} in headers_decoded_from_body
+  end
+
+  test "notification custom data", context do
+    notification =
+      "EchoBodyHandler"
+      |> Notification.new()
+      |> Notification.add_title("Game Request")
+      |> Notification.add_custom_data("gameID", "12345678")
+
+    {:ok, {headers, body}} =
+      Sparrow.APNS.push(context[:worker_pid], notification)
+
+    {:ok, response} = Jason.decode(body)
+    assert "12345678" == Map.get(response, "gameID")
+  end
+
+  test "notification apns example based all levels test", context do
+    notification =
+      "EchoBodyHandler"
+      |> Notification.new()
+      |> Notification.add_title("Game Request")
+      |> Notification.add_subtitle("Five Card Draw")
+      |> Notification.add_body("Bob wants to play poker")
+      |> Notification.add_category("GAME_INVITATION")
+      |> Notification.add_custom_data("gameID", "12345678")
+
+    {:ok, {headers, body}} =
+      Sparrow.APNS.push(context[:worker_pid], notification)
+
+    {:ok, response} = Jason.decode(body)
+
+    expected_response =
+      "{\"aps\":
+        {\"alert\":
+          { \"title\":\"Game Request\",
+            \"subtitle\":\"Five Card Draw\",
+            \"body\":\"Bob wants to play poker\"
+          },
+          \"category\":\"GAME_INVITATION\"
+        },
+        \"gameID\" : \"12345678\"
+      }"
+      |> Jason.decode!()
+
+    assert expected_response == response
   end
 end
