@@ -71,9 +71,7 @@ defmodule Sparrow.FCMV1 do
   end
 
   defp maybe_add_webpush_config(body, webpush_config) do
-    # Map.put(body, :webpush, to_map(webpush_config))
-    # TODO add implementation
-    body
+    Map.put(body, :webpush, Sparrow.FCM.V1.WebpushConfig.to_map(webpush_config))
   end
 
   @spec maybe_add_apns_config(map, apns_config) :: map

@@ -1,4 +1,4 @@
-defmodule Sparrow.FCM.V1.Test do
+defmodule Sparrow.FCM.V1.AndroidConfigTest do
   use ExUnit.Case
 
   alias Sparrow.FCM.V1.AndroidConfig
@@ -70,5 +70,13 @@ defmodule Sparrow.FCM.V1.Test do
       AndroidConfig.new()
       |> AndroidConfig.add_priority(:LOW)
     end
+  end
+
+  test "android config, sets HIGH prioirty" do
+    config =
+      AndroidConfig.new()
+      |> AndroidConfig.add_priority(:HIGH)
+
+    assert {:priority, :HIGH} in config.fields
   end
 end
