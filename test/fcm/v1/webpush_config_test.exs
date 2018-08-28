@@ -25,9 +25,8 @@ defmodule Sparrow.FCM.V1.WebpushConfigTest do
     vibrate = "test vibrate"
 
     webpush_config =
-      WebpushConfig.new(@link, @data)
+      WebpushConfig.new(@link, @web_push_data)
       |> WebpushConfig.add_header(@header_key, @header_value)
-      |> WebpushConfig.add_web_push_data(@web_push_data)
       |> WebpushConfig.add_web_notification_data(@web_notification_data)
       |> WebpushConfig.add_permission(:granted)
       |> WebpushConfig.add_actions(actions)

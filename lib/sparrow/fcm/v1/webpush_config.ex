@@ -45,11 +45,6 @@ defmodule Sparrow.FCM.V1.WebpushConfig do
     %{webpush_config | headers: [{key, value} | webpush_config.headers]}
   end
 
-  @spec add_web_push_data(t, map) :: t
-  def add_web_push_data(webpush_config, data) do
-    %{webpush_config | data: data}
-  end
-
   @spec add_permission(t, Sparrow.FCM.V1.WebNotification.value()) :: t
   def add_permission(webpush_config, value) do
     add_to_web_notofication(webpush_config, :permission, value)

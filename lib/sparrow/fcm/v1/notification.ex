@@ -25,7 +25,7 @@ defmodule Sparrow.FCM.V1.Notification do
           target: {target_type, String.t()}
         }
 
-  @headers [{"Content-Type", "application/json"}]
+  @headers [{"content-type", "application/json"}]
 
   defstruct [
     :project_id,

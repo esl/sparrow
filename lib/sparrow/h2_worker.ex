@@ -300,7 +300,16 @@ defmodule Sparrow.H2Worker do
           request.headers
 
         :token_based ->
-          [state.config.authentication.token_getter.() | request.headers]
+          token_header = state.config.authentication.token_getter.()
+
+          _ =
+            Logger.debug(fn ->
+              "action=add_token_header_to_headers, result=sucess, token_header = #{
+                inspect(token_header)
+              }"
+            end)
+
+          [token_header | request.headers]
       end
 
     post_result =
