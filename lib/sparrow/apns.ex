@@ -151,8 +151,11 @@ defmodule Sparrow.APNS do
     Sparrow.APNS.Errors.get_error_description(status, code)
   end
 
+  @doc """
+  Function to make APNS notifiaction payload.
+  """
   @spec make_body(Sparrow.APNS.Notification.t()) :: map
-  defp make_body(notification) do
+  def make_body(notification) do
     alert =
       notification.alert_opts
       |> Map.new()

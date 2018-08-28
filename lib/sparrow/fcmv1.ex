@@ -80,9 +80,7 @@ defmodule Sparrow.FCMV1 do
   end
 
   defp maybe_add_apns_config(body, apns_config) do
-    # Map.put(body, :apns, to_map(apns_config))
-    # TODO add implementation
-    body
+    Map.put(body, :apns, Sparrow.FCM.V1.APNSConfig.to_map(apns_config))
   end
 
   @spec path(String.t()) :: String.t()

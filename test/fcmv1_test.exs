@@ -5,6 +5,7 @@ defmodule Sparrow.FCMV1Test do
   alias Sparrow.FCM.V1.Notification
   alias Sparrow.FCM.V1.AndroidConfig
   alias Sparrow.FCM.V1.WebpushConfig
+  alias Sparrow.FCM.V1.APNSConfig
 
   @fcm_mock_address "localhost"
 
@@ -13,6 +14,13 @@ defmodule Sparrow.FCMV1Test do
   @notification_target_type :token
   @notification_target "target"
   @notification_data %{"notification" => "some_value", "key" => "other_value"}
+
+  @apns_title "test apns title"
+  @apns_body "test apns body"
+  @apns_custom_data_key "apns test custom data key"
+  @apns_custom_data_value "apns test custom data value"
+  @apns_sound "tum tu rum tum"
+  @apns_badge "apns test badge"
 
   @webpush_link "webpush test link"
   @webpush_data %{"webpush" => "data", "test" => "value"}
@@ -97,7 +105,7 @@ defmodule Sparrow.FCMV1Test do
   test "notification with android config is build and sent", context do
     notification =
       test_notification("EchoBodyHandler")
-      |> Notification.add_android_config(test_android_config)
+      |> Notification.add_android_config(test_android_config())
 
     {:ok, {_headers, body}} =
       Sparrow.FCMV1.push(context[:worker_pid], notification)
@@ -123,7 +131,7 @@ defmodule Sparrow.FCMV1Test do
   test "notification with webpush config is build and sent", context do
     notification =
       test_notification("EchoBodyHandler")
-      |> Notification.add_webpush_config(test_webpush_config)
+      |> Notification.add_webpush_config(test_webpush_config())
 
     {:ok, {_headers, body}} =
       Sparrow.FCMV1.push(context[:worker_pid], notification)
@@ -136,14 +144,37 @@ defmodule Sparrow.FCMV1Test do
 
     assert actual_decoded_webpush_config != nil
     assert @webpush_data == Map.get(actual_decoded_webpush_config, "data")
-
-    assert @webpush_collapse_key ==
-             Map.get(actual_decoded_webpush_config, "collapse_key")
-
     assert @webpush_body == Map.get(actual_decoded_webpush_notification, "body")
 
     assert @webpush_title ==
              Map.get(actual_decoded_webpush_notification, "title")
+  end
+
+  test "notification with apns config is build and sent", context do
+    notification =
+      test_notification("EchoBodyHandler")
+      |> Notification.add_apns_config(test_apns_config())
+
+    {:ok, {_headers, body}} =
+      Sparrow.FCMV1.push(context[:worker_pid], notification)
+
+    actual_decoded_apns_config = body |> Jason.decode!() |> Map.get("apns")
+
+    actual_decoded_apns_payload = Map.get(actual_decoded_apns_config, "payload")
+
+    aps_dictionary = Map.get(actual_decoded_apns_payload, "aps")
+    alert_dictionary = Map.get(aps_dictionary, "alert")
+
+    assert actual_decoded_apns_payload != nil
+
+    assert @apns_custom_data_value ==
+             Map.get(actual_decoded_apns_payload, @apns_custom_data_key)
+
+    assert @apns_badge == Map.get(aps_dictionary, "badge")
+    assert @apns_sound == Map.get(aps_dictionary, "sound")
+
+    assert @apns_title == Map.get(alert_dictionary, "title")
+    assert @apns_body == Map.get(alert_dictionary, "body")
   end
 
   defp test_notification(project_id) do
@@ -191,12 +222,30 @@ defmodule Sparrow.FCMV1Test do
     |> WebpushConfig.add_lang(@webpush_lang)
     |> WebpushConfig.add_permission(@webpush_permission)
     |> WebpushConfig.add_renotify(@webpush_renotify)
-    |> WebpushConfig.add_requireInteraction(@webpush_renotify)
+    |> WebpushConfig.add_requireInteraction(@webpush_requireInteraction)
     |> WebpushConfig.add_silent(@webpush_silent)
     |> WebpushConfig.add_tag(@webpush_tag)
     |> WebpushConfig.add_timestamp(@webpush_timestamp)
     |> WebpushConfig.add_title(@webpush_title)
     |> WebpushConfig.add_vibrate(@webpush_vibrate)
     |> WebpushConfig.add_web_notification_data(@webpush_web_notification_data)
+  end
+
+  defp test_apns_config do
+    apns_notiifcation =
+      "dummy_device_token"
+      |> Sparrow.APNS.Notification.new()
+      |> Sparrow.APNS.Notification.add_title(@apns_title)
+      |> Sparrow.APNS.Notification.add_body(@apns_body)
+      |> Sparrow.APNS.Notification.add_custom_data(
+        @apns_custom_data_key,
+        @apns_custom_data_value
+      )
+      |> Sparrow.APNS.Notification.add_sound(@apns_sound)
+      |> Sparrow.APNS.Notification.add_badge(@apns_badge)
+
+    APNSConfig.new(apns_notiifcation, fn ->
+      {"authorization", "dummy apns token"}
+    end)
   end
 end
