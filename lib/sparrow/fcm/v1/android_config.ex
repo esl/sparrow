@@ -27,7 +27,10 @@ defmodule Sparrow.FCM.V1.AndroidConfig do
     :notification
   ]
 
-  @spec new() :: t
+  @doc """
+  Create new empty AndroidConfig.
+  """
+  @spec new :: t
   def new do
     %__MODULE__{
       fields: [],

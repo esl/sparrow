@@ -13,6 +13,22 @@ defmodule Sparrow.FCMV1 do
   @type android_config :: Sparrow.FCM.V1.Notification.android_config()
   @type webpush_config :: Sparrow.FCM.V1.Notification.webpush_config()
   @type apns_config :: Sparrow.FCM.V1.Notification.apns_config()
+
+  @doc """
+    Sends the push notification to FCMv1.
+
+  ## Options
+
+  * `:is_sync` - Determines whether the worker should wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
+      * `{:ok, {headers, body}}` when the response is received. `headers` are the response headers and `body` is the response body.
+      * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
+      * `{:error, :connection_lost}` when the connection to APNS is lost before the response arrives.
+      * `{:error, :not_ready}` when stream response is not yet ready, but it h2worker tries to get it.
+      * `{:error, :invalid_notification}` when notification does not contain neither title nor body.
+      * `{:error, :reason}` when error with other reason occures.
+    * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
+
+  """
   @spec push(
           Sparrow.H2Worker.process(),
           Sparrow.FCM.V1.Notification.t(),

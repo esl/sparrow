@@ -1,8 +1,5 @@
 defmodule Sparrow.FCM.V1.WebNotification do
-  @moduledoc """
-  For details see:
-  https://developer.mozilla.org/en-US/docs/Web/API/Notification
-  """
+  @moduledoc false
   @type permission :: :denied | :granted | :default
   @type field ::
           {:permission, permission}

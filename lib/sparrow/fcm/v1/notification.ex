@@ -78,16 +78,25 @@ defmodule Sparrow.FCM.V1.Notification do
     }
   end
 
+  @doc """
+  Add AndroidConfig to Notification.
+  """
   @spec add_android_config(t, android_config) :: t
   def add_android_config(notification, config) do
     %{notification | android_config: config}
   end
 
+  @doc """
+  Add WebpushConfig to Notification.
+  """
   @spec add_webpush_config(t, webpush_config) :: t
   def add_webpush_config(notification, config) do
     %{notification | webpush_config: config}
   end
 
+  @doc """
+  Add APNSConfig to Notification.
+  """
   @spec add_apns_config(t, apns_config) :: t
   def add_apns_config(notification, config) do
     %{notification | apns_config: config}
