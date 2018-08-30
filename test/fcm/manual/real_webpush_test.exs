@@ -1,4 +1,4 @@
-defmodule Sparrow.FCM.Manual.RealTest do
+defmodule Sparrow.FCM.Manual.RealWebpushTest do
   use ExUnit.Case
 
   alias Sparrow.FCM.V1.Notification
@@ -8,17 +8,16 @@ defmodule Sparrow.FCM.Manual.RealTest do
   # documentation says to use 5228, but 443 works fine
   @fcm_port 443
   @project_id "sparrow-2b961"
-  @target_type :topic
-  @target "news"
 
-  @notification_title "Commander Cody"
-  @notification_body "the time has come. Execute order 66."
+  @webpush_title "Its Friday"
+  @webpush_body "Oh no its actually Monday"
 
-  @android_title "Real life"
-  @android_body "never heard of that server"
+  #get token from browser
+  @webpush_target_type :token
+  @webpush_target "dummy"
 
   @tag :skip
-  test "real android notification send" do
+  test "real webpush notification send" do
     auth =
       Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
         {:ok, token_map} =
@@ -34,20 +33,21 @@ defmodule Sparrow.FCM.Manual.RealTest do
     worker_spec = child_spec(args: config, name: :name)
     {:ok, worker_pid} = start_supervised(worker_spec)
 
-    android_config =
-      Sparrow.FCM.V1.AndroidConfig.new()
-      |> Sparrow.FCM.V1.AndroidConfig.add_title(@android_title)
-      |> Sparrow.FCM.V1.AndroidConfig.add_body(@android_body)
+    webpush_config =
+      Sparrow.FCM.V1.WebpushConfig.new("www.google.com")
+      |> Sparrow.FCM.V1.WebpushConfig.add_title(@webpush_title)
+      |> Sparrow.FCM.V1.WebpushConfig.add_body(@webpush_body)
+
 
     notification =
       @notification_title
       |> Notification.new(
         @notification_body,
-        @target_type,
-        @target,
+        @webpush_target_type,
+        @webpush_target,
         @project_id
       )
-      |> Notification.add_android_config(android_config)
+      |> Notification.add_webpush_config(webpush_config)
 
     {:ok, {headers, body}} = Sparrow.FCMV1.push(worker_pid, notification)
 
