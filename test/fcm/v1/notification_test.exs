@@ -1,7 +1,9 @@
 defmodule Sparrow.FCM.V1.NotificationTest do
   use ExUnit.Case
 
+  alias Sparrow.APNS.Notification, as: APNSNotification
   alias Sparrow.FCM.V1.AndroidConfig
+  alias Sparrow.FCM.V1.APNSConfig
   alias Sparrow.FCM.V1.WebpushConfig
   alias Sparrow.FCM.V1.Notification
 
@@ -80,6 +82,36 @@ defmodule Sparrow.FCM.V1.NotificationTest do
     assert fcm_notification.android_config == nil
     assert fcm_notification.webpush_config == webpush_config
     assert fcm_notification.apns_config == nil
+    assert fcm_notification.data == @data
+  end
+
+  test "notification with apns config" do
+    apns_notification =
+      APNSNotification.new("dummy device token")
+      |> APNSNotification.add_title("apns title")
+      |> APNSNotification.add_body("apns body")
+
+    apns_config =
+      APNSConfig.new("link", fn -> {"Authorization", "Bearer dummy token"} end)
+
+    fcm_notification =
+      Sparrow.FCM.V1.Notification.new(
+        @title,
+        @body,
+        :token,
+        @target,
+        @project_id,
+        @data
+      )
+      |> Notification.add_apns_config(apns_config)
+
+    assert fcm_notification.project_id == @project_id
+    assert fcm_notification.title == @title
+    assert fcm_notification.body == @body
+    assert fcm_notification.target == @target
+    assert fcm_notification.android_config == nil
+    assert fcm_notification.webpush_config == nil
+    assert fcm_notification.apns_config == apns_config
     assert fcm_notification.data == @data
   end
 end

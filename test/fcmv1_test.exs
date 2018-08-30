@@ -97,7 +97,10 @@ defmodule Sparrow.FCMV1Test do
     {:ok, {_headers, body}} =
       Sparrow.FCMV1.push(context[:worker_pid], notification)
 
-    actual_decoded_notification = body |> Jason.decode!()
+    actual_decoded_notification =
+      body
+      |> Jason.decode!()
+      |> Map.get("message")
 
     assert @notification_data == Map.get(actual_decoded_notification, "data")
   end
@@ -111,7 +114,10 @@ defmodule Sparrow.FCMV1Test do
       Sparrow.FCMV1.push(context[:worker_pid], notification)
 
     actual_decoded_android_config =
-      body |> Jason.decode!() |> Map.get("android")
+      body
+      |> Jason.decode!()
+      |> Map.get("message")
+      |> Map.get("android")
 
     actual_decoded_android_notification =
       Map.get(actual_decoded_android_config, "notification")
@@ -137,7 +143,10 @@ defmodule Sparrow.FCMV1Test do
       Sparrow.FCMV1.push(context[:worker_pid], notification)
 
     actual_decoded_webpush_config =
-      body |> Jason.decode!() |> Map.get("webpush")
+      body
+      |> Jason.decode!()
+      |> Map.get("message")
+      |> Map.get("webpush")
 
     actual_decoded_webpush_notification =
       Map.get(actual_decoded_webpush_config, "notification")
@@ -158,7 +167,11 @@ defmodule Sparrow.FCMV1Test do
     {:ok, {_headers, body}} =
       Sparrow.FCMV1.push(context[:worker_pid], notification)
 
-    actual_decoded_apns_config = body |> Jason.decode!() |> Map.get("apns")
+    actual_decoded_apns_config =
+      body
+      |> Jason.decode!()
+      |> Map.get("message")
+      |> Map.get("apns")
 
     actual_decoded_apns_payload = Map.get(actual_decoded_apns_config, "payload")
 

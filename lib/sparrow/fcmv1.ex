@@ -70,6 +70,7 @@ defmodule Sparrow.FCMV1 do
     |> maybe_add_android_config(notification.android_config)
     |> maybe_add_webpush_config(notification.webpush_config)
     |> maybe_add_apns_config(notification.apns_config)
+    |> (fn m -> %{:message => m} end).()
   end
 
   @spec maybe_add_android_config(map, android_config) :: map

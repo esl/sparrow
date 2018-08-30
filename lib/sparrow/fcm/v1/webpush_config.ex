@@ -169,7 +169,7 @@ defmodule Sparrow.FCM.V1.WebpushConfig do
   Function to set webpush requireInteraction
   See https://developer.mozilla.org/en-US/docs/Web/API/Notification
   """
-  @spec add_requireInteraction(t, bool) :: t
+  @spec add_requireInteraction(t, boolean) :: t
   def add_requireInteraction(webpush_config, value) do
     add_to_web_notofication(webpush_config, :requireInteraction, value)
   end
