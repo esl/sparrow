@@ -1,4 +1,4 @@
-defmodule Sparrow.FCM.V1.WebNotification do
+defmodule Sparrow.FCM.V1.Webpush.Notification do
   @moduledoc false
   @type permission :: :denied | :granted | :default
   @type field ::

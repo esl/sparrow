@@ -8,11 +8,9 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
   # documentation says to use 5228, but 443 works fine
   @fcm_port 443
   @project_id "sparrow-2b961"
-
   @webpush_title "Its Friday"
   @webpush_body "Oh no its actually Monday"
-
-  #get token from browser
+  # get token from browser
   @webpush_target_type :token
   @webpush_target "dummy"
 
@@ -33,26 +31,23 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
     worker_spec = child_spec(args: config, name: :name)
     {:ok, worker_pid} = start_supervised(worker_spec)
 
-    webpush_config =
-      Sparrow.FCM.V1.WebpushConfig.new("www.google.com")
-      |> Sparrow.FCM.V1.WebpushConfig.add_title(@webpush_title)
-      |> Sparrow.FCM.V1.WebpushConfig.add_body(@webpush_body)
-
+    webpush =
+      Sparrow.FCM.V1.Webpush.new("www.google.com")
+      |> Sparrow.FCM.V1.Webpush.add_title(@webpush_title)
+      |> Sparrow.FCM.V1.Webpush.add_body(@webpush_body)
 
     notification =
-      @notification_title
+      @webpush_target_type
       |> Notification.new(
-        @notification_body,
-        @webpush_target_type,
         @webpush_target,
         @project_id
       )
-      |> Notification.add_webpush_config(webpush_config)
+      |> Notification.add_webpush(webpush)
 
-    {:ok, {headers, body}} = Sparrow.FCMV1.push(worker_pid, notification)
+    {:ok, {headers, body}} = Sparrow.FCM.V1.push(worker_pid, notification)
 
     IO.puts("headers:")
-    headers |> IO.inspect()
+    IO.inspect(headers)
     IO.puts("body:")
     body |> Jason.decode!() |> IO.inspect()
   end

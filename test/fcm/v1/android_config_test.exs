@@ -1,11 +1,11 @@
-defmodule Sparrow.FCM.V1.AndroidConfigTest do
+defmodule Sparrow.FCM.V1.AndroidTest do
   use ExUnit.Case
 
-  alias Sparrow.FCM.V1.AndroidConfig
+  alias Sparrow.FCM.V1.Android
 
   @collapse_key "colllapse key"
   @priority :NORMAL
-  @ttl "some ttl"
+  @ttl 1234
   @restricted "restricted package name"
   @data %{:keyA => :valueA, :keyB => :valueB}
 
@@ -23,16 +23,16 @@ defmodule Sparrow.FCM.V1.AndroidConfigTest do
 
   test "android config field are added" do
     config =
-      AndroidConfig.new()
-      |> AndroidConfig.add_collapse_key(@collapse_key)
-      |> AndroidConfig.add_priority(@priority)
-      |> AndroidConfig.add_ttl(@ttl)
-      |> AndroidConfig.add_restricted_package_name(@restricted)
-      |> AndroidConfig.add_data(@data)
+      Android.new()
+      |> Android.add_collapse_key(@collapse_key)
+      |> Android.add_priority(@priority)
+      |> Android.add_ttl(@ttl)
+      |> Android.add_restricted_package_name(@restricted)
+      |> Android.add_data(@data)
 
     assert {:collapse_key, @collapse_key} in config.fields
     assert {:priority, @priority} in config.fields
-    assert {:ttl, @ttl} in config.fields
+    assert {:ttl, Integer.to_string(@ttl) <> "s"} in config.fields
     assert {:restricted_package_name, @restricted} in config.fields
     assert {:data, @data} in config.fields
     assert Enum.empty?(config.notification.fields)
@@ -40,18 +40,18 @@ defmodule Sparrow.FCM.V1.AndroidConfigTest do
 
   test "android notification field are added" do
     config =
-      AndroidConfig.new()
-      |> AndroidConfig.add_title(@title)
-      |> AndroidConfig.add_body(@body)
-      |> AndroidConfig.add_icon(@icon)
-      |> AndroidConfig.add_color(@color)
-      |> AndroidConfig.add_sound(@sound)
-      |> AndroidConfig.add_tag(@tag_field)
-      |> AndroidConfig.add_click_action(@click_action)
-      |> AndroidConfig.add_body_loc_key(@body_loc_key)
-      |> AndroidConfig.add_body_loc_args(@body_loc_args)
-      |> AndroidConfig.add_title_loc_key(@title_loc_key)
-      |> AndroidConfig.add_title_loc_args(@title_loc_args)
+      Android.new()
+      |> Android.add_title(@title)
+      |> Android.add_body(@body)
+      |> Android.add_icon(@icon)
+      |> Android.add_color(@color)
+      |> Android.add_sound(@sound)
+      |> Android.add_tag(@tag_field)
+      |> Android.add_click_action(@click_action)
+      |> Android.add_body_loc_key(@body_loc_key)
+      |> Android.add_body_loc_args(@body_loc_args)
+      |> Android.add_title_loc_key(@title_loc_key)
+      |> Android.add_title_loc_args(@title_loc_args)
 
     assert {:title, @title} in config.notification.fields
     assert {:body, @body} in config.notification.fields
@@ -69,15 +69,15 @@ defmodule Sparrow.FCM.V1.AndroidConfigTest do
 
   test "android config, unknown prioirty" do
     assert_raise FunctionClauseError, fn ->
-      AndroidConfig.new()
-      |> AndroidConfig.add_priority(:LOW)
+      Android.new()
+      |> Android.add_priority(:LOW)
     end
   end
 
   test "android config, sets HIGH prioirty" do
     config =
-      AndroidConfig.new()
-      |> AndroidConfig.add_priority(:HIGH)
+      Android.new()
+      |> Android.add_priority(:HIGH)
 
     assert {:priority, :HIGH} in config.fields
     assert 1 == Enum.count(config.fields)

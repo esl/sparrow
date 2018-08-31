@@ -34,25 +34,25 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
     worker_spec = child_spec(args: config, name: :name)
     {:ok, worker_pid} = start_supervised(worker_spec)
 
-    android_config =
-      Sparrow.FCM.V1.AndroidConfig.new()
-      |> Sparrow.FCM.V1.AndroidConfig.add_title(@android_title)
-      |> Sparrow.FCM.V1.AndroidConfig.add_body(@android_body)
+    android =
+      Sparrow.FCM.V1.Android.new()
+      |> Sparrow.FCM.V1.Android.add_title(@android_title)
+      |> Sparrow.FCM.V1.Android.add_body(@android_body)
 
     notification =
-      @notification_title
+      @target_type
       |> Notification.new(
-        @notification_body,
-        @target_type,
         @target,
-        @project_id
+        @project_id,
+        @notification_title,
+        @notification_body
       )
-      |> Notification.add_android_config(android_config)
+      |> Notification.add_android(android)
 
-    {:ok, {headers, body}} = Sparrow.FCMV1.push(worker_pid, notification)
+    {:ok, {headers, body}} = Sparrow.FCM.V1.push(worker_pid, notification)
 
     IO.puts("headers:")
-    headers |> IO.inspect()
+    IO.inspect(headers)
     IO.puts("body:")
     body |> Jason.decode!() |> IO.inspect()
   end

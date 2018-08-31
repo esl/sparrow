@@ -40,7 +40,7 @@ defmodule Sparrow.H2Worker.RequestSet do
   end
 
   @doc """
-  Gets request from requests collection by stream_id as search key.
+  Gets request from requests collection by `stream_id` as search key.
   """
   @spec get_request(requests, stream_id) ::
           {:ok, %RequestState{}} | {:error, :not_found}

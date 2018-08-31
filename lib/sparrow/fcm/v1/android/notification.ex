@@ -1,4 +1,4 @@
-defmodule Sparrow.FCM.V1.AndroidNotification do
+defmodule Sparrow.FCM.V1.Android.Notification do
   @moduledoc false
   @type key ::
           :title

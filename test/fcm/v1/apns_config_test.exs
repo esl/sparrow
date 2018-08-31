@@ -1,10 +1,10 @@
-defmodule Sparrow.FCM.V1.APNSConfigTest do
+defmodule Sparrow.FCM.V1.APNSTest do
   use ExUnit.Case
 
   alias Sparrow.APNS.Notification
-  alias Sparrow.FCM.V1.APNSConfig
+  alias Sparrow.FCM.V1.APNS
 
-  test "apns config is build correcly" do
+  test "apns config is built correcly" do
     token_getter = fn -> {"Authorization", "Bearer dummy token"} end
 
     apns_notification =
@@ -12,9 +12,9 @@ defmodule Sparrow.FCM.V1.APNSConfigTest do
       |> Notification.add_title("apns title")
       |> Notification.add_body("apns body")
 
-    apns_config = APNSConfig.new(apns_notification, token_getter)
+    apns = APNS.new(apns_notification, token_getter)
 
-    assert token_getter == apns_config.token_getter
-    assert apns_notification == apns_config.notification
+    assert token_getter == apns.token_getter
+    assert apns_notification == apns.notification
   end
 end

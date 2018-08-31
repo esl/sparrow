@@ -304,7 +304,7 @@ defmodule Sparrow.H2Worker do
 
           _ =
             Logger.debug(fn ->
-              "action=add_token_header_to_headers, result=sucess, token_header = #{
+              "action=add_token_header_to_headers, result=sucess, token_header=#{
                 inspect(token_header)
               }"
             end)

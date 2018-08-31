@@ -21,7 +21,7 @@ defmodule Sparrow.H2Worker.Request do
   ]
 
   @doc """
-  Function new creates request that can be passed to h2worker.
+  Function new creates request that can be passed to `Sparrow.H2Worker`.
 
   ## Arguments
 

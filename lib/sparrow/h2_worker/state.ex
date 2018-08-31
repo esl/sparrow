@@ -18,7 +18,7 @@ defmodule Sparrow.H2Worker.State do
   ]
 
   @doc """
-  Creates new empty state.
+  Creates new empty `Sparrow.H2Worker.State`.
   """
   @spec new(connection_ref | nil, requests, config) :: t
   def new(connection_ref, requests \\ %{}, config) do
@@ -30,7 +30,7 @@ defmodule Sparrow.H2Worker.State do
   end
 
   @doc """
-  Resets requests collection in state.
+  Resets requests collection in `Sparrow.H2Worker.State`.
   """
   @spec reset_requests_collection(t) :: t
   def reset_requests_collection(state) do
@@ -42,7 +42,7 @@ defmodule Sparrow.H2Worker.State do
   end
 
   @doc """
-  Resets connection reference in state.
+  Resets connection reference in `Sparrow.H2Worker.State`.
   """
   @spec reset_connection_ref(t) :: t
   def reset_connection_ref(state) do
