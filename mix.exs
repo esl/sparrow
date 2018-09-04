@@ -35,7 +35,8 @@ defmodule Sparrow.MixProject do
       {:cowboy, "~> 2.4.0", only: :test},
       {:lager, ">= 3.2.1", override: true},
       {:logger_lager_backend, "~> 0.1.0"},
-      {:plug, "1.6.1", only: :test}
+      {:plug, "1.6.1", only: :test},
+      {:goth, "~> 0.8.0"}
     ]
   end
 

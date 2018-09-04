@@ -34,7 +34,7 @@ defmodule Sparrow.APNS.TokenBearerTest do
     assert refresh_time == :timer.minutes(50)
   end
 
-  test "token gets updated", context do
+  test "token gets updated" do
     token_before_update = Sparrow.APNS.TokenBearer.get_token()
     :timer.sleep(150)
     token_after_update = Sparrow.APNS.TokenBearer.get_token()

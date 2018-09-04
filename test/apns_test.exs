@@ -220,7 +220,7 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_title("Game Request")
       |> Notification.add_custom_data("gameID", "12345678")
 
-    {:ok, {headers, body}} =
+    {:ok, {_headers, body}} =
       Sparrow.APNS.push(context[:worker_pid], notification)
 
     {:ok, response} = Jason.decode(body)
@@ -237,7 +237,7 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_category("GAME_INVITATION")
       |> Notification.add_custom_data("gameID", "12345678")
 
-    {:ok, {headers, body}} =
+    {:ok, {_headers, body}} =
       Sparrow.APNS.push(context[:worker_pid], notification)
 
     {:ok, response} = Jason.decode(body)

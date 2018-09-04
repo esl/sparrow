@@ -1,6 +1,6 @@
 defmodule Sparrow.H2Worker.Config do
   @moduledoc """
-  Structure for H2Worker config.
+  Structure for `Sparrow.H2Worker` config.
   """
   @type time_in_miliseconds :: non_neg_integer
   @type port_num :: non_neg_integer

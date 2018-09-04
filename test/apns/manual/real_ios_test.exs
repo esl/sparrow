@@ -57,7 +57,6 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
     config = Config.new(@apns_address_a, @apns_port, auth)
     worker_spec = child_spec(args: config, name: :name)
     {:ok, worker_pid} = start_supervised(worker_spec)
-    token = Sparrow.APNS.TokenBearer.get_token()
 
     notification =
       @device_token

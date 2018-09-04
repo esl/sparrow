@@ -50,7 +50,8 @@ defmodule Sparrow.APNS.Notification do
           device_token: String.t(),
           headers: headers,
           alert_opts: alert_opts,
-          aps_dictionary_opts: aps_dictionary_opts
+          aps_dictionary_opts: aps_dictionary_opts,
+          custom_data: [{String.t(), any}]
         }
   defstruct [
     :device_token,
@@ -61,7 +62,7 @@ defmodule Sparrow.APNS.Notification do
   ]
 
   @doc """
-  Creates new notification.
+  Creates new `Sparrow.APNS.Notification`.
   """
   @spec new(String.t()) :: __MODULE__.t()
   def new(device_token) do
