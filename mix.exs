@@ -16,7 +16,7 @@ defmodule Sparrow.MixProject do
 
   def application do
     [
-      extra_applications: [:lager, :logger, :chatterbox]
+      extra_applications: [:lager, :logger, :chatterbox, :httpoison]
     ]
   end
 
@@ -36,7 +36,8 @@ defmodule Sparrow.MixProject do
       {:lager, ">= 3.2.1", override: true},
       {:logger_lager_backend, "~> 0.1.0"},
       {:plug, "1.6.1", only: :test},
-      {:goth, "~> 0.8.0"}
+      {:goth, "~> 0.8.0", runtime: false},
+      {:httpoison, "~> 0.11 or ~> 1.0"}
     ]
   end
 
