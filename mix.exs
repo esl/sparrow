@@ -50,7 +50,7 @@ defmodule Sparrow.MixProject do
         "-Wrace_conditions",
         "-Wunderspecs"
       ],
-      plt_add_apps: [:mix]
+      plt_add_apps: [:mix, :goth]
     ]
   end
 
