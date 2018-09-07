@@ -30,7 +30,7 @@ defmodule H2Integration.CerificateRejectedTest do
     worker_spec = Setup.child_spec(args: config, name: :name)
 
     {:error, reason} = start_supervised(worker_spec, [])
-    {actual_reason, _} = reason
+    {{_, {_, _, {_, {_, _, actual_reason}}}}, _} = reason
     assert {:tls_alert, 'bad certificate'} == actual_reason
   end
 end

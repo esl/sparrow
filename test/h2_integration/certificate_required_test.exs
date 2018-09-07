@@ -27,6 +27,7 @@ defmodule H2Integration.CerificateRequiredTest do
     {:ok, port: :ranch.get_port(cowboys_name)}
   end
 
+  @pool_name :pool
   test "cowboy replies with sent cerificate", context do
     auth =
       Sparrow.H2Worker.Authentication.CertificateBased.new(
@@ -39,15 +40,14 @@ defmodule H2Integration.CerificateRequiredTest do
 
     headers = Setup.default_headers()
     body = "body"
-    worker_spec = Setup.child_spec(args: config, name: :name)
 
     request =
       OuterRequest.new(headers, body, "/EchoClientCerificateHandler", 2_000)
 
-    {:ok, worker_pid} = start_supervised(worker_spec, [])
+    Sparrow.H2Worker.start_link(@pool_name, config)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.send_request(worker_pid, request)
+      Sparrow.H2Worker.send_request(@pool_name, request)
 
     {:ok, pem_bin} = File.read(@cert_path)
 
@@ -77,8 +77,10 @@ defmodule H2Integration.CerificateRequiredTest do
       )
 
     worker_spec = Setup.child_spec(args: config, name: :worker_name)
-    {:error, reason} = start_supervised(worker_spec)
-    {actual_reason, _} = reason
+
+    {:error, {{_, {_, _, {_, {_, _, actual_reason}}}}, _}} =
+      start_supervised(worker_spec)
+
     assert {:options, {:cacertfile, []}} == actual_reason
   end
 

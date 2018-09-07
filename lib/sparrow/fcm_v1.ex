@@ -30,7 +30,7 @@ defmodule Sparrow.FCM.V1 do
 
   """
   @spec push(
-          Sparrow.H2Worker.process(),
+          atom,
           Sparrow.FCM.V1.Notification.t(),
           push_opts
         ) ::
@@ -41,7 +41,7 @@ defmodule Sparrow.FCM.V1 do
           | {:error, :invalid_notification}
           | {:error, reason}
           | :ok
-  def push(h2_worker, notification, opts \\ []) do
+  def push(h2_worker_pool, notification, opts \\ []) do
     is_sync = Keyword.get(opts, :is_sync, true)
     timeout = Keyword.get(opts, :timeout, 5_000)
     headers = notification.headers
@@ -54,7 +54,7 @@ defmodule Sparrow.FCM.V1 do
         "action=push_fcm_notification, request=#{inspect(request)}"
       end)
 
-    Sparrow.H2Worker.send_request(h2_worker, request, is_sync, timeout)
+    Sparrow.H2Worker.send_request(h2_worker_pool, request, is_sync, timeout)
   end
 
   @spec make_body(Sparrow.FCM.V1.Notification.t()) :: map

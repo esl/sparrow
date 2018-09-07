@@ -48,7 +48,7 @@ defmodule Sparrow.APNS do
     Sparrow.APNS.push(worker_pid, notification)
   """
   @spec push(
-          Sparrow.H2Worker.process(),
+          atom,
           Sparrow.APNS.Notification.t(),
           push_opts
         ) ::
@@ -59,7 +59,7 @@ defmodule Sparrow.APNS do
           | {:error, :invalid_notification}
           | {:error, reason}
           | :ok
-  def push(h2_worker, notification, opts \\ []) do
+  def push(h2_worker_pool, notification, opts \\ []) do
     if notification_contains_title_or_body?(notification) do
       is_sync = Keyword.get(opts, :is_sync, true)
       timeout = Keyword.get(opts, :timeout, 5_000)
@@ -73,7 +73,7 @@ defmodule Sparrow.APNS do
           "action=push_apns_notification, request=#{inspect(request)}"
         end)
 
-      Sparrow.H2Worker.send_request(h2_worker, request, is_sync, timeout)
+      Sparrow.H2Worker.send_request(h2_worker_pool, request, is_sync, timeout)
     else
       _ =
         Logger.warn(fn ->

@@ -28,19 +28,24 @@ defmodule Sparrow.H2Worker do
   @type from :: {pid, tag :: term}
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
-  @type process :: GenServer.server()
+  @type strategy ::
+          :best_worker
+          | :random_worker
+          | :next_worker
+          | :available_worker
+          | :next_available_worker
 
   @doc """
   Sends the request and, if `is_sync` is `true`, awaits the response.
 
   ## Arguments
 
-    * `worker` - H2Worker you want to send message with
+    * `worker_pool` - H2Workers pool name you want to send message with
     * `request` - HTTP2 request, see Sparrow.H2Worker.Request
     * `is_sync` - if `is_sync` is `true`, awaits the response, otherwize returns `:ok`
     * `genserver_timeout` -  timeout of genserver call, works only if `is_sync` is `true`
   """
-  @spec send_request(process, request, boolean(), non_neg_integer) ::
+  @spec send_request(atom, request, boolean(), non_neg_integer, strategy) ::
           {:error, :connection_lost}
           | {:ok, {headers, body}}
           | {:error, :request_timeout}
@@ -51,20 +56,41 @@ defmodule Sparrow.H2Worker do
         worker,
         request,
         is_sync \\ true,
-        genserver_timeout \\ 60_000
+        genserver_timeout \\ 60_000,
+        worker_choice_strategy \\ :random_worker
       )
 
-  def send_request(worker, request, false, _) do
-    GenServer.cast(worker, {:send_request, request})
+  def send_request(worker_pool, request, false, _, strategy) do
+    :wpool.cast(worker_pool, {:send_request, request}, strategy)
   end
 
-  def send_request(worker, request, true, genserver_timeout) do
-    GenServer.call(worker, {:send_request, request}, genserver_timeout)
+  def send_request(worker_pool, request, true, genserver_timeout, strategy) do
+    :wpool.call(
+      worker_pool,
+      {:send_request, request},
+      strategy,
+      genserver_timeout
+    )
   end
 
-  @spec start_link(gen_server_name, config) :: on_start
-  def start_link(name, args) do
-    GenServer.start_link(__MODULE__, args, name: name)
+  @spec start_link(wpool_name :: atom, config, non_neg_integer, [{atom, any}]) ::
+          {:error, any} | {:ok, pid}
+  def start_link(
+        wpool_name,
+        workers_config,
+        workers_number \\ 3,
+        wpool_config \\ []
+      ) do
+    _ = :wpool.start()
+
+    :wpool.start_pool(
+      wpool_name,
+      [
+        {:workers, workers_number},
+        {:worker, {__MODULE__, workers_config}}
+        | wpool_config
+      ]
+    )
   end
 
   @spec init(config) :: {:ok, state} | {:stop, reason}
@@ -148,7 +174,7 @@ defmodule Sparrow.H2Worker do
 
       {:ok, request} ->
         _ = cancel_timer(request)
-        response = H2Adapter.get_reponse(state.connection_ref, stream_id)
+        response = H2Adapter.get_response(state.connection_ref, stream_id)
         send_response(request.from, response)
     end
 

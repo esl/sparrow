@@ -37,7 +37,8 @@ defmodule Sparrow.MixProject do
       {:logger_lager_backend, "~> 0.1.0"},
       {:plug, "1.6.1", only: :test},
       {:goth, "~> 0.8.0", runtime: false},
-      {:httpoison, "~> 0.11 or ~> 1.0"}
+      {:httpoison, "~> 0.11 or ~> 1.0"},
+      {:worker_pool, "== 3.1.1"}
     ]
   end
 

@@ -32,11 +32,10 @@ defmodule H2Integration.H2AdapterInstabilityTest do
        context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-    worker_spec = Setup.child_spec(args: config, name: :name)
     headers = Setup.default_headers()
     body = "sound of silence, test body"
 
-    {:ok, worker_pid} = start_supervised(worker_spec)
+    {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
     conn_ref = :sys.get_state(worker_pid).connection_ref
 
     request = OuterRequest.new(headers, body, "/LostConnHandler", 3_000)
@@ -47,17 +46,16 @@ defmodule H2Integration.H2AdapterInstabilityTest do
     end)
 
     assert {:error, :connection_lost} ==
-             Sparrow.H2Worker.send_request(worker_pid, request)
+             GenServer.call(worker_pid, {:send_request, request})
   end
 
   test "reconnecting works after connection was lost", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-    worker_spec = Setup.child_spec(args: config, name: :name)
     headers = Setup.default_headers()
     body = "message, test body"
 
-    {:ok, worker_pid} = start_supervised(worker_spec)
+    {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
     conn_ref = :sys.get_state(worker_pid).connection_ref
 
     request = OuterRequest.new(headers, body, "/LostConnHandler", 3_000)
@@ -68,10 +66,10 @@ defmodule H2Integration.H2AdapterInstabilityTest do
     end)
 
     assert {:error, :connection_lost} ==
-             Sparrow.H2Worker.send_request(worker_pid, request)
+             GenServer.call(worker_pid, {:send_request, request})
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.send_request(worker_pid, request)
+      GenServer.call(worker_pid, {:send_request, request})
 
     assert_response_header(answer_headers, {":status", "200"})
 
@@ -90,9 +88,8 @@ defmodule H2Integration.H2AdapterInstabilityTest do
       config =
         Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-      worker_spec = Setup.child_spec(args: config, name: :name)
-
-      {error, {reason, _}} = start_supervised(worker_spec)
+      Process.flag(:trap_exit, true)
+      {error, reason} = GenServer.start_link(Sparrow.H2Worker, config)
       assert :error == error
       assert :my_custom_reason == reason
     end

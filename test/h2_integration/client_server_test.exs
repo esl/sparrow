@@ -7,6 +7,8 @@ defmodule H2Integration.ClientServerTest do
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
+  @body "test body"
+  @pool_name :name
   setup do
     {:ok, cowboy_pid, cowboys_name} =
       [
@@ -38,16 +40,15 @@ defmodule H2Integration.ClientServerTest do
       {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
     ]
 
-    body = "test body"
+    Sparrow.H2Worker.start_link(@pool_name, config)
 
-    worker_spec = Setup.child_spec(args: config, name: :name)
-    {:ok, worker_pid} = start_supervised(worker_spec)
-    request = OuterRequest.new(headers, body, "/HeaderToBodyEchoHandler", 2_000)
+    request =
+      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.send_request(worker_pid, request)
+      Sparrow.H2Worker.send_request(@pool_name, request)
 
-    length_header = {"content-length", Integer.to_string(String.length(body))}
+    length_header = {"content-length", Integer.to_string(String.length(@body))}
 
     assert_response_header(answer_headers, {":status", "200"})
 
@@ -63,16 +64,15 @@ defmodule H2Integration.ClientServerTest do
       {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
     ]
 
-    body = "test body"
+    Sparrow.H2Worker.start_link(@pool_name, config)
 
-    worker_spec = Setup.child_spec(args: config, name: :name)
-    {:ok, worker_pid} = start_supervised(worker_spec)
-    request = OuterRequest.new(headers, body, "/HeaderToBodyEchoHandler", 2_000)
+    request =
+      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.send_request(worker_pid, request)
+      Sparrow.H2Worker.send_request(@pool_name, request)
 
-    length_header = {"content-length", Integer.to_string(String.length(body))}
+    length_header = {"content-length", Integer.to_string(String.length(@body))}
 
     assert_response_header(answer_headers, {":status", "200"})
 
@@ -92,16 +92,15 @@ defmodule H2Integration.ClientServerTest do
       {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
     ]
 
-    body = "test body"
+    Sparrow.H2Worker.start_link(@pool_name, config)
 
-    worker_spec = Setup.child_spec(args: config, name: :name)
-    {:ok, worker_pid} = start_supervised(worker_spec)
-    request = OuterRequest.new(headers, body, "/HeaderToBodyEchoHandler", 2_000)
+    request =
+      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.send_request(worker_pid, request)
+      Sparrow.H2Worker.send_request(@pool_name, request)
 
-    length_header = {"content-length", Integer.to_string(String.length(body))}
+    length_header = {"content-length", Integer.to_string(String.length(@body))}
     token_auth_header = {"authorization", "bearer dummy_token"}
 
     assert_response_header(answer_headers, {":status", "200"})
@@ -113,14 +112,12 @@ defmodule H2Integration.ClientServerTest do
   test "cowboy replies Hello", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
     headers = Setup.default_headers()
-    body = "another test body"
 
-    worker_spec = Setup.child_spec(args: config, name: :worker_name)
-    {:ok, worker_pid} = start_supervised(worker_spec)
-    request = OuterRequest.new(headers, body, "/ConnTestHandler", 2_000)
+    Sparrow.H2Worker.start_link(@pool_name, config)
+    request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.send_request(worker_pid, request)
+      Sparrow.H2Worker.send_request(@pool_name, request)
 
     assert_response_header(answer_headers, {":status", "200"})
 
@@ -145,7 +142,7 @@ defmodule H2Integration.ClientServerTest do
       config =
         Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-      worker_spec = Setup.child_spec(args: config, name: :name)
+      worker_spec = Setup.child_spec(args: config, name: :worker_name)
 
       {:ok, pid} = start_supervised(worker_spec)
       assert is_pid(pid)
@@ -168,7 +165,7 @@ defmodule H2Integration.ClientServerTest do
           :token_based
         )
 
-      worker_spec = Setup.child_spec(args: config, name: :name)
+      worker_spec = Setup.child_spec(args: config, name: :worker_name)
 
       {:ok, pid} = start_supervised(worker_spec)
       assert is_pid(pid)
