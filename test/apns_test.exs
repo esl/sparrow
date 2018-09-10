@@ -35,7 +35,8 @@ defmodule Sparrow.APNSTest do
         :ranch.get_port(cowboys_name)
       )
 
-    Sparrow.H2Worker.WorkersPool.start_link(@pool_name, config)
+    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    |> Sparrow.H2Worker.Pool.start_link()
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)
@@ -249,5 +250,53 @@ defmodule Sparrow.APNSTest do
       |> Jason.decode!()
 
     assert expected_response == response
+  end
+
+  @key_id "KEYID"
+  @team_id "TEAMID"
+  @p8_file_path "token.p8"
+
+  test "APNS token based config is biuld correctly" do
+    opts = Sparrow.APNS.Token.new(@key_id, @team_id, @p8_file_path, 2000)
+    {:ok, _pid} = Sparrow.APNS.TokenBearer.init(opts)
+    auth = Sparrow.APNS.get_token_based_authentication()
+
+    config =
+      auth
+      |> Sparrow.APNS.get_h2worker_config()
+
+    {header_key, header_value} = auth.token_getter.()
+    assert header_key == "authorization"
+    assert header_value =~ "bearer"
+    assert config.domain == "api.development.push.apple.com"
+    assert config.port == 443
+    assert config.tls_options == []
+    assert config.ping_interval == 5000
+    assert config.reconnect_attempts == 3
+    assert config.authentication == auth
+  end
+
+  test "APNS certificate based config is biuld correctly" do
+    path_to_cert = "path/to/cert"
+    path_to_key = "path/to/key"
+
+    auth =
+      Sparrow.APNS.get_certificate_based_authentication(
+        path_to_cert,
+        path_to_key
+      )
+
+    config =
+      auth
+      |> Sparrow.APNS.get_h2worker_config()
+
+    assert config.domain == "api.development.push.apple.com"
+    assert config.port == 443
+    assert config.tls_options == []
+    assert config.ping_interval == 5000
+    assert config.reconnect_attempts == 3
+    assert config.authentication == auth
+    assert auth.certfile == path_to_cert
+    assert auth.keyfile == path_to_key
   end
 end

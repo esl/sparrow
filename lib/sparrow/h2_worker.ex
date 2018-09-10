@@ -28,12 +28,6 @@ defmodule Sparrow.H2Worker do
   @type from :: {pid, tag :: term}
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
-  @type strategy ::
-          :best_worker
-          | :random_worker
-          | :next_worker
-          | :available_worker
-          | :next_available_worker
 
   @spec init(config) :: {:ok, state} | {:stop, reason}
   def init(config) do

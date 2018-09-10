@@ -33,7 +33,8 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
     headers = Setup.default_headers()
     body = "message, test body"
 
-    Sparrow.H2Worker.WorkersPool.start_link(@pool_name, config, 4, [])
+    Sparrow.H2Worker.Pool.Config.new(@pool_name, config, 4, [])
+    |> Sparrow.H2Worker.Pool.start_link()
 
     success_request =
       OuterRequest.new(
@@ -44,7 +45,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
       )
 
     {:ok, {success_answer_headers, success_answer_body}} =
-      Sparrow.H2Worker.WorkersPool.send_request(
+      Sparrow.H2Worker.Pool.send_request(
         @pool_name,
         success_request,
         true
@@ -71,7 +72,9 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
 
     headers = Setup.default_headers()
     body = "message, test body"
-    Sparrow.H2Worker.WorkersPool.start_link(@pool_name, config, 4, [])
+
+    Sparrow.H2Worker.Pool.Config.new(@pool_name, config, 4, [])
+    |> Sparrow.H2Worker.Pool.start_link()
 
     fail_request =
       OuterRequest.new(
@@ -82,7 +85,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
       )
 
     {:ok, {fail_answer_headers, fail_answer_body}} =
-      Sparrow.H2Worker.WorkersPool.send_request(@pool_name, fail_request)
+      Sparrow.H2Worker.Pool.send_request(@pool_name, fail_request)
 
     assert_response_header(fail_answer_headers, {":status", "401"})
 

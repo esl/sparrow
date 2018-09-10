@@ -82,7 +82,8 @@ defmodule Sparrow.FCM.V1Test do
         :token_based
       )
 
-    Sparrow.H2Worker.WorkersPool.start_link(@pool_name, config)
+    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    |> Sparrow.H2Worker.Pool.start_link()
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)
@@ -187,6 +188,23 @@ defmodule Sparrow.FCM.V1Test do
 
     assert @apns_title == Map.get(alert_dictionary, "title")
     assert @apns_body == Map.get(alert_dictionary, "body")
+  end
+
+  test "FCm token based config is biuld correctly" do
+    {:ok, _pid} = Sparrow.FCM.V1.TokenBearer.start_link("./sparrow_token.json")
+
+    auth = Sparrow.FCM.V1.get_token_based_authentication()
+
+    config =
+      auth
+      |> Sparrow.FCM.V1.get_h2worker_config()
+
+    assert config.domain == "fcm.googleapis.com"
+    assert config.port == 443
+    assert config.tls_options == []
+    assert config.ping_interval == 5000
+    assert config.reconnect_attempts == 3
+    assert config.authentication == auth
   end
 
   defp test_notification(project_id) do

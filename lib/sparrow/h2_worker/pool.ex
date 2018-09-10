@@ -1,4 +1,4 @@
-defmodule Sparrow.H2Worker.WorkersPool do
+defmodule Sparrow.H2Worker.Pool do
   @moduledoc """
   Module providing functions to work on (`Sparrow.H2Worker`) worker pools and not single workers.
   """
@@ -12,7 +12,7 @@ defmodule Sparrow.H2Worker.WorkersPool do
   @type body :: String.t()
   @type headers :: [{String.t(), String.t()}]
   @type reason :: any
-  @type config :: Sparrow.H2Worker.Config.t()
+  @type worker_config :: Sparrow.H2Worker.Config.t()
 
   @doc """
   Sends the request and, if `is_sync` is `true`, awaits the response.
@@ -23,6 +23,7 @@ defmodule Sparrow.H2Worker.WorkersPool do
     * `request` - HTTP2 request, see Sparrow.H2Worker.Request
     * `is_sync` - if `is_sync` is `true`, awaits the response, otherwize returns `:ok`
     * `genserver_timeout` -  timeout of genserver call, works only if `is_sync` is `true`
+    * `worker_choice_strategy` - worker selection strategy. See https://github.com/inaka/worker_pool section: "Choosing a Strategy"
   """
   @spec send_request(atom, request, boolean(), non_neg_integer, strategy) ::
           {:error, :connection_lost}
@@ -52,22 +53,24 @@ defmodule Sparrow.H2Worker.WorkersPool do
     )
   end
 
-  @spec start_link(wpool_name :: atom, config, non_neg_integer, [{atom, any}]) ::
-          {:error, any} | {:ok, pid}
-  def start_link(
-        wpool_name,
-        workers_config,
-        workers_number \\ 3,
-        wpool_config \\ []
-      ) do
-    _ = :wpool.start()
+  @doc """
+  Starting wpool.
 
+  ## Arguments
+    * `wpool_name` - `Sparrow.H2Worker`s pool name
+    * `workers_config` - config of a single worker for APNS see `Sparrow.APNS.get_h2worker_config/1,2,3,4,5,6` and for FCM see `Sparrow.FCM.V1.get_h2worker_config/1,2,3,4,5,6`
+    * `worker_num` - number of worksers in a pool
+    * `raw_opts` - extra config options to pass to wpool. For details see https://github.com/inaka/worker_pool
+  """
+  @spec start_link(Sparrow.H2Worker.Pool.Config.t()) ::
+          {:error, any} | {:ok, pid}
+  def start_link(config) do
     :wpool.start_pool(
-      wpool_name,
+      config.wpool_name,
       [
-        {:workers, workers_number},
-        {:worker, {Sparrow.H2Worker, workers_config}}
-        | wpool_config
+        {:workers, config.worker_num},
+        {:worker, {Sparrow.H2Worker, config.workers_config}}
+        | config.raw_opts
       ]
     )
   end

@@ -44,10 +44,11 @@ defmodule H2Integration.CerificateRequiredTest do
     request =
       OuterRequest.new(headers, body, "/EchoClientCerificateHandler", 2_000)
 
-    Sparrow.H2Worker.WorkersPool.start_link(@pool_name, config)
+    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    |> Sparrow.H2Worker.Pool.start_link()
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.WorkersPool.send_request(@pool_name, request)
+      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
 
     {:ok, pem_bin} = File.read(@cert_path)
 

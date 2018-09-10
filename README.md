@@ -69,9 +69,11 @@ openssl rsa -in `exampleName.pem` -out `exampleKey.pem`
 When starting  h2 worker pass key and cerificate to workers tls options:
 
 ```elixir
-auth = Sparrow.H2Worker.Authentication.CertificateBased.new("path/to/exampleName.pem","path/to/exampleKey.pem")
-config = Sparrow.H2Worker.Config.new("api.development.push.apple.com", 443, auth)
-Sparrow.H2Worker.WorkersPool.start_link(:your_apns_workers_name, config)
+config = 
+    "path/to/exampleName.pem"
+    |> Sparrow.APNS.get_certificate_based_authentication("path/to/exampleKey.pem")
+    |> Sparrow.APNS.get_h2worker_config()
+Sparrow.H2Worker.Pool.start_link(:your_apns_workers_name, config)
 ```
 
 ## How to obtain device token??

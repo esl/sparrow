@@ -13,6 +13,9 @@ defmodule Sparrow.FCM.V1 do
   @type android :: Sparrow.FCM.V1.Notification.android()
   @type webpush :: Sparrow.FCM.V1.Notification.webpush()
   @type apns :: Sparrow.FCM.V1.Notification.apns()
+  @type authentication :: Sparrow.H2Worker.Config.authentication()
+  @type tls_options :: Sparrow.H2Worker.Config.tls_options()
+  @type time_in_miliseconds :: Sparrow.H2Worker.Config.time_in_miliseconds()
 
   @doc """
     Sends the push notification to FCM v1.
@@ -44,6 +47,7 @@ defmodule Sparrow.FCM.V1 do
   def push(h2_worker_pool, notification, opts \\ []) do
     is_sync = Keyword.get(opts, :is_sync, true)
     timeout = Keyword.get(opts, :timeout, 5_000)
+    strategy = Keyword.get(opts, :strategy, :random_worker)
     headers = notification.headers
     json_body = notification |> make_body() |> Jason.encode!()
     path = path(notification.project_id)
@@ -54,7 +58,65 @@ defmodule Sparrow.FCM.V1 do
         "action=push_fcm_notification, request=#{inspect(request)}"
       end)
 
-    Sparrow.H2Worker.send_request(h2_worker_pool, request, is_sync, timeout)
+    Sparrow.H2Worker.Pool.send_request(
+      h2_worker_pool,
+      request,
+      is_sync,
+      timeout,
+      strategy
+    )
+  end
+
+  @doc """
+  Function providing `Sparrow.H2Worker.Authentication.TokenBased` for FCM pools.
+  Requres `Sparrow.FCM.TokenBearer` to be started.
+  """
+  @spec get_token_based_authentication() ::
+          Sparrow.H2Worker.Authentication.TokenBased.t()
+  def get_token_based_authentication do
+    getter = fn ->
+      {"Authorization",
+       "Bearer #{inspect(Sparrow.FCM.V1.TokenBearer.get_token())}"}
+    end
+
+    Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+  end
+
+  @doc """
+  Function providing `Sparrow.H2Worker.Config` for FCM pools.
+
+  ## Example
+
+  # Token based authentication:
+    config =
+      Sparrow.FCM.V1.get_token_based_authentication()
+      |> Sparrow.FCM.V1.get_h2worker_config()
+
+  """
+  @spec get_h2worker_config(
+          authentication,
+          String.t(),
+          pos_integer,
+          tls_options,
+          time_in_miliseconds,
+          pos_integer
+        ) :: Sparrow.H2Worker.Config.t()
+  def get_h2worker_config(
+        authentication,
+        uri \\ "fcm.googleapis.com",
+        port \\ 443,
+        tls_opts \\ [],
+        ping_interval \\ 5000,
+        reconnect_attempts \\ 3
+      ) do
+    Sparrow.H2Worker.Config.new(
+      uri,
+      port,
+      authentication,
+      tls_opts,
+      ping_interval,
+      reconnect_attempts
+    )
   end
 
   @spec make_body(Sparrow.FCM.V1.Notification.t()) :: map
