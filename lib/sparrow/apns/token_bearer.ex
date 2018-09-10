@@ -35,7 +35,9 @@ defmodule Sparrow.APNS.TokenBearer do
     update_token(state)
 
     _ =
-      Logger.info(fn -> "worker=token_bearer, action=init, result=success" end)
+      Logger.info(fn ->
+        "worker=apns_token_bearer, action=init, result=success"
+      end)
 
     {:ok, state}
   end
@@ -46,7 +48,7 @@ defmodule Sparrow.APNS.TokenBearer do
 
     _ =
       Logger.info(fn ->
-        "worker=token_bearer, action=terminate, reason=#{inspect(reason)}, ets_delate_result=#{
+        "worker=apns_token_bearer, action=terminate, reason=#{inspect(reason)}, ets_delate_result=#{
           inspect(ets_del)
         }"
       end)
@@ -56,14 +58,14 @@ defmodule Sparrow.APNS.TokenBearer do
           {:noreply, Sparrow.APNS.TokenBearer.State.t()}
   def handle_info(:update_token, state) do
     update_token(state)
-    _ = Logger.debug(fn -> "worker=token_bearer, action=token_update" end)
+    _ = Logger.debug(fn -> "worker=apns_token_bearer, action=token_update" end)
     {:noreply, state}
   end
 
   def handle_info(unknown, state) do
     _ =
       Logger.warn(fn ->
-        "worker=token_bearer, Unknown info #{inspect(unknown)}"
+        "worker=apns_token_bearer, Unknown info #{inspect(unknown)}"
       end)
 
     {:noreply, state}
@@ -113,7 +115,7 @@ defmodule Sparrow.APNS.TokenBearer do
   defp schedule_message_after(time, message) do
     _ =
       Logger.debug(fn ->
-        "worker=token_bearer, action=schedule, message=#{inspect(message)}, after=#{
+        "worker=apns_token_bearer, action=schedule, message=#{inspect(message)}, after=#{
           inspect(time)
         }"
       end)

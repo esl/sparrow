@@ -16,17 +16,15 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
 
   @android_title "Real life"
   @android_body "never heard of that server"
+  @json_path "./priv/fcm/token/sparrow_token.json"
 
   @tag :skip
   test "real android notification send" do
+     Sparrow.FCM.V1.TokenBearer.start_link(@json_path)
+
     auth =
       Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
-        {:ok, token_map} =
-          Goth.Token.for_scope(
-            "https://www.googleapis.com/auth/firebase.messaging"
-          )
-
-        token = Map.get(token_map, :token)
+        token = Sparrow.FCM.V1.TokenBearer.get_token()
         {"Authorization", "Bearer #{inspect(token)}"}
       end)
 
