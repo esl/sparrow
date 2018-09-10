@@ -124,9 +124,7 @@ defmodule Sparrow.H2Worker.WpoolTest do
       end
     end
 
-    {time, _} = :timer.tc(sending_with_response)
-    # number of seconds for sending 1000 messages
-    IO.inspect(time / 1_000_000)
+    {_time, _} = :timer.tc(sending_with_response)
     assert get_inner_counter() == @messages_for_pool
   end
 

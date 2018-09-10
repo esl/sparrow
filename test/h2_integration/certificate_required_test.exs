@@ -44,10 +44,10 @@ defmodule H2Integration.CerificateRequiredTest do
     request =
       OuterRequest.new(headers, body, "/EchoClientCerificateHandler", 2_000)
 
-    Sparrow.H2Worker.start_link(@pool_name, config)
+    Sparrow.H2Worker.WorkersPool.start_link(@pool_name, config)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.send_request(@pool_name, request)
+      Sparrow.H2Worker.WorkersPool.send_request(@pool_name, request)
 
     {:ok, pem_bin} = File.read(@cert_path)
 
@@ -76,10 +76,7 @@ defmodule H2Integration.CerificateRequiredTest do
         10_000
       )
 
-    worker_spec = Setup.child_spec(args: config, name: :worker_name)
-
-    {:error, {{_, {_, _, {_, {_, _, actual_reason}}}}, _}} =
-      start_supervised(worker_spec)
+    {:error, actual_reason} = GenServer.start(Sparrow.H2Worker, config)
 
     assert {:options, {:cacertfile, []}} == actual_reason
   end

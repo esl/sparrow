@@ -82,7 +82,7 @@ defmodule Sparrow.FCM.V1Test do
         :token_based
       )
 
-    Sparrow.H2Worker.start_link(@pool_name, config)
+    Sparrow.H2Worker.WorkersPool.start_link(@pool_name, config)
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)
