@@ -2,29 +2,20 @@ defmodule Sparrow.APNS.TokenBearer.State do
   @moduledoc false
 
   @type t :: %__MODULE__{
-          key_id: String.t(),
-          team_id: String.t(),
-          p8_file_path: String.t(),
-          refresh_token_time: non_neg_integer
+          tokens: %{required(atom) => Sparrow.APNS.Token.t()},
+          update_token_after: pos_integer
         }
 
   defstruct [
-    :key_id,
-    :team_id,
-    :p8_file_path,
-    :refresh_token_time
+    :tokens,
+    :update_token_after
   ]
 
-  @doc """
-  Creates new token bearer state.
-  """
-  @spec new(String.t(), String.t(), String.t(), non_neg_integer) :: t
-  def new(key_id, team_id, p8_file_path, refresh_token_time) do
+  @spec new(%{required(atom) => Sparrow.APNS.Token.t()}, pos_integer) :: t
+  def new(tokens, update_token_after) do
     %__MODULE__{
-      key_id: key_id,
-      team_id: team_id,
-      p8_file_path: p8_file_path,
-      refresh_token_time: refresh_token_time
+      tokens: tokens,
+      update_token_after: update_token_after
     }
   end
 end

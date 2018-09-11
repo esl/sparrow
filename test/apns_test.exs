@@ -257,9 +257,11 @@ defmodule Sparrow.APNSTest do
   @p8_file_path "token.p8"
 
   test "APNS token based config is biuld correctly" do
-    opts = Sparrow.APNS.Token.new(@key_id, @team_id, @p8_file_path, 2000)
-    {:ok, _pid} = Sparrow.APNS.TokenBearer.init(opts)
-    auth = Sparrow.APNS.get_token_based_authentication()
+    {:ok, _pid} =
+      %{:token_id => Sparrow.APNS.Token.new(@key_id, @team_id, @p8_file_path)}
+      |> Sparrow.APNS.TokenBearer.init()
+
+    auth = Sparrow.APNS.get_token_based_authentication(:token_id)
 
     config =
       auth

@@ -39,7 +39,8 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
         @project_id
       )
       |> Notification.add_webpush(webpush)
-    for i <- 1 ..10 do
+
+    for i <- 1..10 do
       {:ok, {headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
 
       IO.puts("headers:")

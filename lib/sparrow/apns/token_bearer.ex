@@ -1,6 +1,6 @@
 defmodule Sparrow.APNS.TokenBearer do
   @moduledoc """
-  Module providing APNS token. Token is regenerated every `refresh_token_time` miliseconds.
+  Module providing APNS token.
   """
 
   use GenServer
@@ -9,34 +9,46 @@ defmodule Sparrow.APNS.TokenBearer do
   @type bearer_token :: Joken.bearer_token()
   @type claims :: Joken.claims()
 
-  @tab_name :sparrow_apns_token_bearer
+  @tab_name :sparrow_apns_tokens_bearer
   @apns_jwt_alg "ES256"
+  @refresh_token_time :timer.minutes(50)
 
   @doc """
   Returns APNS token for token based authentication.
   """
-  @spec get_token() :: String.t()
-  def get_token do
-    :ets.lookup_element(@tab_name, :apns_token, 2)
+  @spec get_token(atom) :: String.t() | nil
+  def get_token(token_id) do
+    @tab_name
+    |> :ets.lookup_element(:apns_tokens, 2)
+    |> Map.get(token_id)
   end
 
-  @spec init(Sparrow.APNS.Token.t()) ::
-          {:ok, Sparrow.APNS.TokenBearer.State.t()}
-  def init(token) do
-    state =
-      Sparrow.APNS.TokenBearer.State.new(
-        token.key_id,
-        token.team_id,
-        token.p8_file_path,
-        token.refresh_token_time
-      )
+  @spec init(
+          %{required(atom) => Sparrow.APNS.Token.t()}
+          | {%{required(atom) => Sparrow.APNS.Token.t()}, pos_integer}
+        ) :: {:ok, Sparrow.APNS.TokenBearer.State.t()}
 
+  def init({tokens, refresh_token_time}) do
+    state = Sparrow.APNS.TokenBearer.State.new(tokens, refresh_token_time)
     @tab_name = :ets.new(@tab_name, [:set, :protected, :named_table])
-    update_token(state)
+    update_tokens(state)
 
     _ =
       Logger.info(fn ->
-        "worker=apns_token_bearer, action=init, result=success"
+        "worker=apns_tokens_bearer, action=init, result=success"
+      end)
+
+    {:ok, state}
+  end
+
+  def init(tokens) do
+    state = Sparrow.APNS.TokenBearer.State.new(tokens, @refresh_token_time)
+    @tab_name = :ets.new(@tab_name, [:set, :protected, :named_table])
+    update_tokens(state)
+
+    _ =
+      Logger.info(fn ->
+        "worker=apns_tokens_bearer, action=init, result=success"
       end)
 
     {:ok, state}
@@ -48,43 +60,55 @@ defmodule Sparrow.APNS.TokenBearer do
 
     _ =
       Logger.info(fn ->
-        "worker=apns_token_bearer, action=terminate, reason=#{inspect(reason)}, ets_delate_result=#{
+        "worker=apns_tokens_bearer, action=terminate, reason=#{inspect(reason)}, ets_delate_result=#{
           inspect(ets_del)
         }"
       end)
   end
 
-  @spec handle_info(:update_token | any, Sparrow.APNS.TokenBearer.State.t()) ::
+  @spec handle_info(:update_tokens | any, Sparrow.APNS.TokenBearer.State.t()) ::
           {:noreply, Sparrow.APNS.TokenBearer.State.t()}
-  def handle_info(:update_token, state) do
-    update_token(state)
-    _ = Logger.debug(fn -> "worker=apns_token_bearer, action=token_update" end)
+  def handle_info(:update_tokens, state) do
+    update_tokens(state)
+    _ = Logger.debug(fn -> "worker=apns_tokens_bearer, action=token_update" end)
     {:noreply, state}
   end
 
   def handle_info(unknown, state) do
     _ =
       Logger.warn(fn ->
-        "worker=apns_token_bearer, Unknown info #{inspect(unknown)}"
+        "worker=apns_tokens_bearer, Unknown info #{inspect(unknown)}"
       end)
 
     {:noreply, state}
   end
 
-  @spec update_token(Sparrow.APNS.TokenBearer.State.t()) :: true
-  defp update_token(state) do
-    state.refresh_token_time
-    |> schedule_message_after(:update_token)
-
-    set_new_token(state)
+  @spec update_tokens(Sparrow.APNS.TokenBearer.State.t()) :: true
+  defp update_tokens(state) do
+    schedule_message_after(state.update_token_after, :update_tokens)
+    set_new_tokens(state)
   end
 
-  @spec set_new_token(Sparrow.APNS.TokenBearer.State.t()) :: true
-  defp set_new_token(state) do
-    {:ok, token, _} =
-      new_jwt_token(state.key_id, state.team_id, state.p8_file_path)
+  @spec set_new_tokens(Sparrow.APNS.TokenBearer.State.t()) :: true
+  defp set_new_tokens(state) do
+    keys = Map.keys(state.tokens)
 
-    :ets.insert(@tab_name, {:apns_token, token})
+    tokens =
+      for key <- keys do
+        token_struct = Map.get(state.tokens, key)
+
+        {:ok, token, _} =
+          new_jwt_token(
+            token_struct.key_id,
+            token_struct.team_id,
+            token_struct.p8_file_path
+          )
+
+        {key, token}
+      end
+      |> Map.new()
+
+    :ets.insert(@tab_name, {:apns_tokens, tokens})
   end
 
   @spec new_jwt_token(String.t(), String.t(), String.t()) ::
@@ -111,11 +135,11 @@ defmodule Sparrow.APNS.TokenBearer do
     }
   end
 
-  @spec schedule_message_after(non_neg_integer, :update_token) :: reference
+  @spec schedule_message_after(pos_integer, :update_tokens) :: reference
   defp schedule_message_after(time, message) do
     _ =
       Logger.debug(fn ->
-        "worker=apns_token_bearer, action=schedule, message=#{inspect(message)}, after=#{
+        "worker=apns_tokens_bearer, action=schedule, message=#{inspect(message)}, after=#{
           inspect(time)
         }"
       end)

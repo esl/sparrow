@@ -193,11 +193,12 @@ defmodule Sparrow.APNS do
   Function providing `Sparrow.H2Worker.Authentication.TokenBased` for APNS workers.
   Requres `Sparrow.APNS.TokenBearer` to be started.
   """
-  @spec get_token_based_authentication() ::
+  @spec get_token_based_authentication(atom) ::
           Sparrow.H2Worker.Authentication.TokenBased.t()
-  def get_token_based_authentication do
+  def get_token_based_authentication(token_id) do
     getter = fn ->
-      {"authorization", "bearer #{Sparrow.APNS.TokenBearer.get_token()}"}
+      {"authorization",
+       "bearer #{Sparrow.APNS.TokenBearer.get_token(token_id)}"}
     end
 
     Sparrow.H2Worker.Authentication.TokenBased.new(getter)

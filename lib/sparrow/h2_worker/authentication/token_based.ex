@@ -7,8 +7,8 @@ defmodule Sparrow.H2Worker.Authentication.TokenBased do
   ## Example 1
 
   import Sparrow.APNS.TokenBearer
-  # For APNS token can be obtanin from `Sparrow.APNS.TokenBearer.get_token()`
-  token_getter = fn -> {"authorization", "bearer \#{get_token()}"} end
+  # For APNS token can be obtanin from `Sparrow.APNS.TokenBearer.get_token(token_id)`
+  token_getter = fn -> {"authorization", "bearer \#{get_token(token_id)}"} end
 
   ## Example 2
 
