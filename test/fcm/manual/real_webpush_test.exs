@@ -8,28 +8,24 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
   # documentation says to use 5228, but 443 works fine
   @fcm_port 443
   @project_id "sparrow-2b961"
-  @webpush_title "Its Friday"
-  @webpush_body "Oh no its actually Monday"
+  @webpush_title "TORA"
+  @webpush_body "TORA TORA"
   # get token from browser
   @webpush_target_type :token
   @webpush_target "dummy"
-
+  @pool_name :my_pool_name
+  @path_to_json "priv/fcm/token/sparrow_token.json"
   @tag :skip
   test "real webpush notification send" do
-    auth =
-      Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
-        {:ok, token_map} =
-          Goth.Token.for_scope(
-            "https://www.googleapis.com/auth/firebase.messaging"
-          )
+    Sparrow.FCM.V1.TokenBearer.start_link(@path_to_json)
 
-        token = Map.get(token_map, :token)
-        {"Authorization", "Bearer #{inspect(token)}"}
-      end)
+    worker_config =
+      Sparrow.FCM.V1.get_token_based_authentication()
+      |> Sparrow.FCM.V1.get_h2worker_config()
 
-    config = Config.new(@fcm_address, @fcm_port, auth)
-    worker_spec = child_spec(args: config, name: :name)
-    {:ok, worker_pid} = start_supervised(worker_spec)
+    {:ok, pid} =
+      Sparrow.H2Worker.Pool.Config.new(@pool_name, worker_config)
+      |> Sparrow.H2Worker.Pool.start_link()
 
     webpush =
       Sparrow.FCM.V1.Webpush.new("www.google.com")
@@ -43,13 +39,14 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
         @project_id
       )
       |> Notification.add_webpush(webpush)
+    for i <- 1 ..10 do
+      {:ok, {headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
 
-    {:ok, {headers, body}} = Sparrow.FCM.V1.push(worker_pid, notification)
-
-    IO.puts("headers:")
-    IO.inspect(headers)
-    IO.puts("body:")
-    body |> Jason.decode!() |> IO.inspect()
+      IO.puts("headers:")
+      IO.inspect(headers)
+      IO.puts("body:")
+      body |> Jason.decode!() |> IO.inspect()
+    end
   end
 
   def child_spec(opts) do

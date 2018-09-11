@@ -20,7 +20,7 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
 
   @tag :skip
   test "real android notification send" do
-     Sparrow.FCM.V1.TokenBearer.start_link(@json_path)
+    Sparrow.FCM.V1.TokenBearer.start_link(@json_path)
 
     auth =
       Sparrow.H2Worker.Authentication.TokenBased.new(fn ->

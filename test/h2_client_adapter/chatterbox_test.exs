@@ -150,7 +150,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
     end
   end
 
-  test " succesfully getting response from get_reponse" do
+  test " succesfully getting response from get_response" do
     ptest [
             headers: list(of: string(), min: 2, max: 20, chars: :ascii),
             body: string(min: 3, max: 15, chars: :ascii),
@@ -161,14 +161,14 @@ defmodule H2ClientAdapter.ChatterboxTest do
 
       with_mock :h2_connection,
         get_response: fn _, _ -> {:ok, {headers, body}} end do
-        assert {:ok, {headers, body}} == H2Adapter.get_reponse(conn, stream_id)
+        assert {:ok, {headers, body}} == H2Adapter.get_response(conn, stream_id)
 
         assert called :h2_connection.get_response(conn, stream_id)
       end
     end
   end
 
-  test "get_reponse timeouting" do
+  test "get_response timeouting" do
     ptest [
             stream_id: int(min: 0, max: 65_535)
           ],
@@ -177,7 +177,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
 
       with_mock :h2_connection,
         get_response: fn _, _ -> :not_ready end do
-        assert {:error, :not_ready} == H2Adapter.get_reponse(conn, stream_id)
+        assert {:error, :not_ready} == H2Adapter.get_response(conn, stream_id)
 
         assert called :h2_connection.get_response(conn, stream_id)
       end

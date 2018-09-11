@@ -28,44 +28,6 @@ defmodule Sparrow.H2Worker do
   @type from :: {pid, tag :: term}
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
-  @type process :: GenServer.server()
-
-  @doc """
-  Sends the request and, if `is_sync` is `true`, awaits the response.
-
-  ## Arguments
-
-    * `worker` - H2Worker you want to send message with
-    * `request` - HTTP2 request, see Sparrow.H2Worker.Request
-    * `is_sync` - if `is_sync` is `true`, awaits the response, otherwize returns `:ok`
-    * `genserver_timeout` -  timeout of genserver call, works only if `is_sync` is `true`
-  """
-  @spec send_request(process, request, boolean(), non_neg_integer) ::
-          {:error, :connection_lost}
-          | {:ok, {headers, body}}
-          | {:error, :request_timeout}
-          | {:error, :not_ready}
-          | {:error, reason}
-          | :ok
-  def send_request(
-        worker,
-        request,
-        is_sync \\ true,
-        genserver_timeout \\ 60_000
-      )
-
-  def send_request(worker, request, false, _) do
-    GenServer.cast(worker, {:send_request, request})
-  end
-
-  def send_request(worker, request, true, genserver_timeout) do
-    GenServer.call(worker, {:send_request, request}, genserver_timeout)
-  end
-
-  @spec start_link(gen_server_name, config) :: on_start
-  def start_link(name, args) do
-    GenServer.start_link(__MODULE__, args, name: name)
-  end
 
   @spec init(config) :: {:ok, state} | {:stop, reason}
   def init(config) do
@@ -148,7 +110,7 @@ defmodule Sparrow.H2Worker do
 
       {:ok, request} ->
         _ = cancel_timer(request)
-        response = H2Adapter.get_reponse(state.connection_ref, stream_id)
+        response = H2Adapter.get_response(state.connection_ref, stream_id)
         send_response(request.from, response)
     end
 

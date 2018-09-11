@@ -65,9 +65,9 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   @doc """
     Allows to read answer to notification.
   """
-  @spec get_reponse(connection_ref, stream_id) ::
+  @spec get_response(connection_ref, stream_id) ::
           {:ok, {headers, body}} | {:error, :not_ready}
-  def get_reponse(conn, stream_id) do
+  def get_response(conn, stream_id) do
     case :h2_connection.get_response(conn, stream_id) do
       {:ok, {headers, body}} ->
         {:ok, {headers, IO.iodata_to_binary(body)}}

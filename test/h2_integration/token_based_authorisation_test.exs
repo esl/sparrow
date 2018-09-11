@@ -6,7 +6,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
   @path "/AuthenticateHandler"
-
+  @pool_name :wname
   setup do
     {:ok, cowboy_pid, cowboys_name} =
       [
@@ -30,12 +30,11 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
 
   test "token based authorisation with correct token succeed", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
-
-    worker_spec = Setup.child_spec(args: config, name: :name)
     headers = Setup.default_headers()
     body = "message, test body"
 
-    {:ok, worker_pid} = start_supervised(worker_spec)
+    Sparrow.H2Worker.Pool.Config.new(@pool_name, config, 4, [])
+    |> Sparrow.H2Worker.Pool.start_link()
 
     success_request =
       OuterRequest.new(
@@ -46,7 +45,11 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
       )
 
     {:ok, {success_answer_headers, success_answer_body}} =
-      Sparrow.H2Worker.send_request(worker_pid, success_request)
+      Sparrow.H2Worker.Pool.send_request(
+        @pool_name,
+        success_request,
+        true
+      )
 
     assert_response_header(success_answer_headers, {":status", "200"})
 
@@ -67,11 +70,11 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
   test "token based authorisation with incorrect token fails", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-    worker_spec = Setup.child_spec(args: config, name: :name)
     headers = Setup.default_headers()
     body = "message, test body"
 
-    {:ok, worker_pid} = start_supervised(worker_spec)
+    Sparrow.H2Worker.Pool.Config.new(@pool_name, config, 4, [])
+    |> Sparrow.H2Worker.Pool.start_link()
 
     fail_request =
       OuterRequest.new(
@@ -82,7 +85,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
       )
 
     {:ok, {fail_answer_headers, fail_answer_body}} =
-      Sparrow.H2Worker.send_request(worker_pid, fail_request)
+      Sparrow.H2Worker.Pool.send_request(@pool_name, fail_request)
 
     assert_response_header(fail_answer_headers, {":status", "401"})
 

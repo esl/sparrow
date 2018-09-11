@@ -12,6 +12,11 @@ defmodule Sparrow.APNS do
   @type state :: Sparrow.H2Worker.State.t()
   @type push_opts :: [{:is_sync, boolean()} | {:timeout, non_neg_integer}]
   @type http_status :: non_neg_integer
+  @type authentication :: Sparrow.H2Worker.Config.authentication()
+  @type tls_options :: Sparrow.H2Worker.Config.tls_options()
+  @type time_in_miliseconds :: Sparrow.H2Worker.Config.time_in_miliseconds()
+  @type port_num :: Sparrow.H2Worker.Config.port_num()
+
   @path "/3/device/"
 
   @doc """
@@ -34,21 +39,28 @@ defmodule Sparrow.APNS do
     @device_token "MYFAKEEXAMPLETOKENDEVICE"
     @apns_topic "MYFAKEEXAMPLEAPNSTOPIC"
 
-    #start worker like in ReadMe
-    auth = Sparrow.H2Worker.Authentication.CertificateBased.new("path/to/exampleName.pem","path/to/exampleKey.pem")
-    config = Sparrow.H2Worker.Config.new("api.development.push.apple.com", 443, auth)
-    {:ok, worker_pid} = Sparrow.H2Worker.start_link(:your_apns_workers_name, config)
-    #create notification
+    #Let's assume that `Sparrow.APNS.TokenBearer` is started
+    config =
+        "path/to/exampleName.pem"
+        |> Sparrow.APNS.get_certificate_based_authentication("path/to/exampleKey.pem")
+        |> Sparrow.APNS.get_h2worker_config()
+    {:ok, _pid} =
+        :your_apns_workers_name
+        |> Sparrow.H2Worker.Pool.Config.new(config)
+        |> Sparrow.H2Worker.Pool.start_link()
+
     notification =
-        Notification.new(@device_token)
+        @device_token
+        |> Notification.new()
         |> Notification.add_title("example title")
         |> Notification.add_body("example body")
         |> Notification.add_apns_topic(@apns_topic)
 
-    Sparrow.APNS.push(worker_pid, notification)
+    Sparrow.APNS.push(:your_apns_workers_name, notification)
   """
+
   @spec push(
-          Sparrow.H2Worker.process(),
+          atom,
           Sparrow.APNS.Notification.t(),
           push_opts
         ) ::
@@ -59,10 +71,11 @@ defmodule Sparrow.APNS do
           | {:error, :invalid_notification}
           | {:error, reason}
           | :ok
-  def push(h2_worker, notification, opts \\ []) do
+  def push(h2_worker_pool, notification, opts \\ []) do
     if notification_contains_title_or_body?(notification) do
       is_sync = Keyword.get(opts, :is_sync, true)
       timeout = Keyword.get(opts, :timeout, 5_000)
+      strategy = Keyword.get(opts, :strategy, :random_worker)
       path = @path <> notification.device_token
       headers = notification.headers
       json_body = notification |> make_body() |> Jason.encode!()
@@ -73,7 +86,13 @@ defmodule Sparrow.APNS do
           "action=push_apns_notification, request=#{inspect(request)}"
         end)
 
-      Sparrow.H2Worker.send_request(h2_worker, request, is_sync, timeout)
+      Sparrow.H2Worker.Pool.send_request(
+        h2_worker_pool,
+        request,
+        is_sync,
+        timeout,
+        strategy
+      )
     else
       _ =
         Logger.warn(fn ->
@@ -168,6 +187,80 @@ defmodule Sparrow.APNS do
     notification.custom_data
     |> Map.new()
     |> Map.put("aps", aps_opts)
+  end
+
+  @doc """
+  Function providing `Sparrow.H2Worker.Authentication.TokenBased` for APNS workers.
+  Requres `Sparrow.APNS.TokenBearer` to be started.
+  """
+  @spec get_token_based_authentication() ::
+          Sparrow.H2Worker.Authentication.TokenBased.t()
+  def get_token_based_authentication do
+    getter = fn ->
+      {"authorization", "bearer #{Sparrow.APNS.TokenBearer.get_token()}"}
+    end
+
+    Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+  end
+
+  @doc """
+  Function providing `Sparrow.H2Worker.Authentication.CertificateBased` for APNS workers.
+
+  ##Arguments
+
+    * `path_to_cert` - path to APNS certificate file
+    * `path_to_key` - path to APNS key file
+  """
+  @spec get_certificate_based_authentication(Path.t(), Path.t()) ::
+          Sparrow.H2Worker.Authentication.CertificateBased.t()
+  def get_certificate_based_authentication(path_to_cert, path_to_key) do
+    Sparrow.H2Worker.Authentication.CertificateBased.new(
+      path_to_cert,
+      path_to_key
+    )
+  end
+
+  @doc """
+  Function providing `Sparrow.H2Worker.Config` for APNS workers.
+
+  ## Example
+
+  # Token based authentication:
+    config =
+      Sparrow.APNS.get_token_based_authentication()
+      |> Sparrow.APNS.get_h2worker_config()
+
+  # Certificate based authentication:
+    config =
+      "path/to/certificate"
+      |> Sparrow.APNS.get_certificate_based_authentication("path/to/key")
+      |> Sparrow.APNS.get_h2worker_config()
+
+  """
+  @spec get_h2worker_config(
+          authentication,
+          String.t(),
+          pos_integer,
+          tls_options,
+          time_in_miliseconds,
+          pos_integer
+        ) :: Sparrow.H2Worker.Config.t()
+  def get_h2worker_config(
+        authentication,
+        uri \\ "api.development.push.apple.com",
+        port \\ 443,
+        tls_opts \\ [],
+        ping_interval \\ 5000,
+        reconnect_attempts \\ 3
+      ) do
+    Sparrow.H2Worker.Config.new(
+      uri,
+      port,
+      authentication,
+      tls_opts,
+      ping_interval,
+      reconnect_attempts
+    )
   end
 
   @spec notification_contains_title_or_body?(Sparrow.APNS.Notification.t()) ::

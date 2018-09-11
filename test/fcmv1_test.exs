@@ -60,6 +60,7 @@ defmodule Sparrow.FCM.V1Test do
   @android_title_loc_key "android test title_loc_key"
   @android_ttl 4321
 
+  @pool_name :name
   setup do
     {:ok, _cowboy_pid, cowboys_name} =
       [
@@ -81,21 +82,20 @@ defmodule Sparrow.FCM.V1Test do
         :token_based
       )
 
-    worker_spec = Setup.child_spec(args: config, name: :name)
-    {:ok, worker_pid} = start_supervised(worker_spec)
+    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    |> Sparrow.H2Worker.Pool.start_link()
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)
     end)
 
-    {:ok, port: :ranch.get_port(cowboys_name), worker_pid: worker_pid}
+    {:ok, port: :ranch.get_port(cowboys_name)}
   end
 
-  test "empty notification is built and sent", context do
+  test "empty notification is built and sent" do
     notification = test_notification("EchoBodyHandler")
 
-    {:ok, {_headers, body}} =
-      Sparrow.FCM.V1.push(context[:worker_pid], notification)
+    {:ok, {_headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
 
     actual_decoded_notification =
       body
@@ -105,13 +105,12 @@ defmodule Sparrow.FCM.V1Test do
     assert @notification_data == Map.get(actual_decoded_notification, "data")
   end
 
-  test "android notification is built and sent", context do
+  test "android notification is built and sent" do
     notification =
       test_notification("EchoBodyHandler")
       |> Notification.add_android(test_android())
 
-    {:ok, {_headers, body}} =
-      Sparrow.FCM.V1.push(context[:worker_pid], notification)
+    {:ok, {_headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
 
     actual_decoded_android =
       body
@@ -137,13 +136,12 @@ defmodule Sparrow.FCM.V1Test do
              Map.get(actual_decoded_android_notification, "title")
   end
 
-  test "webpush notification is built and sent", context do
+  test "webpush notification is built and sent" do
     notification =
       test_notification("EchoBodyHandler")
       |> Notification.add_webpush(test_webpush())
 
-    {:ok, {_headers, body}} =
-      Sparrow.FCM.V1.push(context[:worker_pid], notification)
+    {:ok, {_headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
 
     actual_decoded_webpush =
       body
@@ -162,13 +160,12 @@ defmodule Sparrow.FCM.V1Test do
              Map.get(actual_decoded_webpush_notification, "title")
   end
 
-  test "apns notification is built and sent", context do
+  test "apns notification is built and sent" do
     notification =
       test_notification_without_optional_args("EchoBodyHandler")
       |> Notification.add_apns(test_apns())
 
-    {:ok, {_headers, body}} =
-      Sparrow.FCM.V1.push(context[:worker_pid], notification)
+    {:ok, {_headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
 
     actual_decoded_apns =
       body
@@ -191,6 +188,23 @@ defmodule Sparrow.FCM.V1Test do
 
     assert @apns_title == Map.get(alert_dictionary, "title")
     assert @apns_body == Map.get(alert_dictionary, "body")
+  end
+
+  test "FCm token based config is biuld correctly" do
+    {:ok, _pid} = Sparrow.FCM.V1.TokenBearer.start_link("./sparrow_token.json")
+
+    auth = Sparrow.FCM.V1.get_token_based_authentication()
+
+    config =
+      auth
+      |> Sparrow.FCM.V1.get_h2worker_config()
+
+    assert config.domain == "fcm.googleapis.com"
+    assert config.port == 443
+    assert config.tls_options == []
+    assert config.ping_interval == 5000
+    assert config.reconnect_attempts == 3
+    assert config.authentication == auth
   end
 
   defp test_notification(project_id) do

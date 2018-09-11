@@ -30,7 +30,6 @@ defmodule Sparrow.H2WorkerTest do
   test "server timeouts request", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            name: atom(min: 5, max: 20),
             port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
@@ -55,7 +54,7 @@ defmodule Sparrow.H2WorkerTest do
           {:ok, stream_id}
         end,
         close: fn _ -> :ok end do
-        args =
+        config =
           Config.new(
             domain,
             port,
@@ -64,13 +63,11 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        spec = child_spec(args: args, name: name)
-        {:ok, worker_pid} = start_supervised(spec)
-
+        {:ok, pid} = GenServer.start_link(Sparrow.H2Worker, config)
         request = OuterRequest.new(headers, body, path, request_timeout)
 
         assert {:error, :request_timeout} ==
-                 Sparrow.H2Worker.send_request(worker_pid, request)
+                 GenServer.call(pid, {:send_request, request})
       end
     end
   end
@@ -78,7 +75,6 @@ defmodule Sparrow.H2WorkerTest do
   test "server receives call request and returns answer", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            name: atom(min: 5, max: 20),
             port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
@@ -102,7 +98,7 @@ defmodule Sparrow.H2WorkerTest do
         post: fn _, _, _, _, _ ->
           {:ok, stream_id}
         end,
-        get_reponse: fn _, _ ->
+        get_response: fn _, _ ->
           {:ok, {headers, body}}
         end,
         close: fn _ -> :ok end do
@@ -115,14 +111,13 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        spec = child_spec(args: config, name: name)
-        {:ok, worker_pid} = start_supervised(spec)
+        {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
 
         :erlang.send_after(1_000, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
 
         assert {:ok, {headers, body}} ==
-                 Sparrow.H2Worker.send_request(worker_pid, request)
+                 GenServer.call(worker_pid, {:send_request, request})
       end
     end
   end
@@ -131,7 +126,6 @@ defmodule Sparrow.H2WorkerTest do
        context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            name: atom(min: 5, max: 20),
             port: int(min: 0, max: 65_535),
             code: int(min: 0, max: 1000),
             tls_options: list(of: atom(), min: 0, max: 3),
@@ -156,7 +150,7 @@ defmodule Sparrow.H2WorkerTest do
         post: fn _, _, _, _, _ ->
           {:error, code}
         end,
-        get_reponse: fn _, _ ->
+        get_response: fn _, _ ->
           {{:ok, {headers, body}}}
         end,
         close: fn _ -> :ok end do
@@ -169,14 +163,13 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        spec = child_spec(args: config, name: name)
-        {:ok, worker_pid} = start_supervised(spec)
+        {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
 
         :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
 
         assert {:error, code} ==
-                 Sparrow.H2Worker.send_request(worker_pid, request)
+                 GenServer.call(worker_pid, {:send_request, request})
       end
     end
   end
@@ -193,7 +186,7 @@ defmodule Sparrow.H2WorkerTest do
             path: string(min: 3, max: 15, chars: :ascii),
             stream_id: int(min: 1, max: 65_535)
           ],
-          repeat_for: @repeats do
+          repeat_for: 1 do
       ponger = pid()
       ping_interval = 100
       request_timeout = 300
@@ -208,7 +201,7 @@ defmodule Sparrow.H2WorkerTest do
         post: fn _, _, _, _, _ ->
           {:ok, stream_id}
         end,
-        get_reponse: fn _, _ ->
+        get_response: fn _, _ ->
           {:error, :not_ready}
         end,
         close: fn _ -> :ok end do
@@ -221,14 +214,13 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        spec = child_spec(args: config)
-        {:ok, worker_pid} = start_supervised(spec)
+        {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
 
         :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
 
         assert {:error, :not_ready} ==
-                 Sparrow.H2Worker.send_request(worker_pid, request)
+                 GenServer.call(worker_pid, {:send_request, request})
       end
     end
   end
@@ -236,7 +228,6 @@ defmodule Sparrow.H2WorkerTest do
   test "server receives request as cast but does not return answer", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            name: atom(min: 5, max: 20),
             port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
@@ -270,13 +261,12 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        spec = child_spec(args: config, name: name)
-        {:ok, pid} = start_supervised(spec)
+        {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
 
-        :erlang.send_after(150, pid, {:END_STREAM, stream_id})
+        :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
-        req_result = Sparrow.H2Worker.send_request(pid, request, false)
-        state = :sys.get_state(pid)
+        req_result = GenServer.cast(worker_pid, {:send_request, request})
+        state = :sys.get_state(worker_pid)
         inner_request = Map.get(state.requests, stream_id)
         assert :ok == req_result
         assert headers == inner_request.headers
@@ -343,7 +333,6 @@ defmodule Sparrow.H2WorkerTest do
   test "server cancel timeout on older request", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
-            name: atom(min: 5, max: 20),
             port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
@@ -367,11 +356,11 @@ defmodule Sparrow.H2WorkerTest do
         post: fn _, _, _, _, _ ->
           {:ok, stream_id}
         end,
-        get_reponse: fn _, _ ->
+        get_response: fn _, _ ->
           {:ok, {headers, body}}
         end,
         close: fn _ -> :ok end do
-        args =
+        config =
           Config.new(
             domain,
             port,
@@ -380,21 +369,20 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        spec = child_spec(args: args, name: name)
-        {:ok, worker_pid} = start_supervised(spec)
+        {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
 
         :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
         :erlang.send_after(300, worker_pid, {:END_STREAM, stream_id})
         request = OuterRequest.new(headers, body, path, request_timeout)
 
         assert {:ok, {headers, body}} ==
-                 Sparrow.H2Worker.send_request(worker_pid, request)
+                 GenServer.call(worker_pid, {:send_request, request})
 
         assert {:ok, {headers, body}} ==
-                 Sparrow.H2Worker.send_request(worker_pid, request)
+                 GenServer.call(worker_pid, {:send_request, request})
 
         assert {:error, :request_timeout} ==
-                 Sparrow.H2Worker.send_request(worker_pid, request)
+                 GenServer.call(worker_pid, {:send_request, request})
       end
     end
   end
@@ -417,7 +405,7 @@ defmodule Sparrow.H2WorkerTest do
           :ok
         end,
         close: fn _ -> :ok end do
-        args =
+        config =
           Config.new(
             domain,
             port,
@@ -426,8 +414,7 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        spec = child_spec(args: args)
-        {:ok, pid} = start_supervised(spec)
+        {:ok, pid} = GenServer.start_link(Sparrow.H2Worker, config)
         :erlang.trace(pid, true, [:receive])
 
         :timer.sleep(ping_interval * 2)
@@ -456,7 +443,7 @@ defmodule Sparrow.H2WorkerTest do
           :ok
         end,
         close: fn _ -> :ok end do
-        args =
+        config =
           Config.new(
             domain,
             port,
@@ -465,8 +452,8 @@ defmodule Sparrow.H2WorkerTest do
           )
 
         message = {:DOWN, make_ref(), :process, not_conn_pid, reason}
-        spec = child_spec(args: args)
-        {:ok, pid} = start_supervised(spec)
+
+        {:ok, pid} = GenServer.start_link(Sparrow.H2Worker, config)
         :erlang.trace(pid, true, [:receive])
 
         before_down_message_state = :sys.get_state(pid)
@@ -577,7 +564,6 @@ defmodule Sparrow.H2WorkerTest do
             domain: string(min: 3, max: 10, chars: ?a..?z),
             port: int(min: 0, max: 65_535),
             tls_options: list(of: atom(), min: 0, max: 3),
-            workers_name: atom(min: 2, max: 5),
             headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
             headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
             body: string(min: 3, max: 7, chars: :ascii),
@@ -617,13 +603,11 @@ defmodule Sparrow.H2WorkerTest do
           config: config
         }
 
-        {:ok, worker_pid} = Sparrow.H2Worker.start_link(workers_name, config)
+        {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
         Process.unlink(worker_pid)
         :sys.replace_state(worker_pid, fn _ -> new_state end)
 
-        assert catch_exit(
-                 Sparrow.H2Worker.send_request(worker_pid, request, true)
-               )
+        assert catch_exit(GenServer.call(worker_pid, {:send_request, request}))
       end
     end
   end
@@ -648,7 +632,7 @@ defmodule Sparrow.H2WorkerTest do
         open: fn _, _, _ ->
           {:ok, context[:connection_ref]}
         end,
-        get_reponse: fn _, _ -> {:ok, {headers, body}} end,
+        get_response: fn _, _ -> {:ok, {headers, body}} end,
         post: fn _, _, _, _, _ -> {:ok, stream_id} end,
         close: fn _ -> :ok end do
         config =
@@ -661,10 +645,11 @@ defmodule Sparrow.H2WorkerTest do
           )
 
         request = OuterRequest.new(headers, body, path, 1000)
-
-        {:ok, worker_pid} = Sparrow.H2Worker.start_link(:workers_name, config)
+        {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
         Process.unlink(worker_pid)
-        assert :ok == Sparrow.H2Worker.send_request(worker_pid, request, false)
+
+        assert :ok == GenServer.cast(worker_pid, {:send_request, request})
+
         send(worker_pid, {:END_STREAM, stream_id})
         assert %{} == :sys.get_state(worker_pid).requests
         assert {:messages, []} == :erlang.process_info(self(), :messages)
@@ -715,7 +700,7 @@ defmodule Sparrow.H2WorkerTest do
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:error, reason} end do
-        args =
+        config =
           Config.new(
             domain,
             port,
@@ -724,7 +709,7 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        assert {:stop, reason} == Sparrow.H2Worker.init(args)
+        assert {:stop, reason} == Sparrow.H2Worker.init(config)
       end
     end
   end
@@ -759,17 +744,5 @@ defmodule Sparrow.H2WorkerTest do
 
   defp pid do
     spawn(fn -> :timer.sleep(5_000) end)
-  end
-
-  defp child_spec(opts) do
-    args = opts[:args]
-    name = opts[:name]
-
-    id = :rand.uniform(100_000)
-
-    %{
-      :id => id,
-      :start => {Sparrow.H2Worker, :start_link, [name, args]}
-    }
   end
 end

@@ -27,10 +27,7 @@ defmodule H2Integration.CerificateRejectedTest do
   test "cowboy does not accept certificate", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-    worker_spec = Setup.child_spec(args: config, name: :name)
-
-    {:error, reason} = start_supervised(worker_spec, [])
-    {actual_reason, _} = reason
+    {:error, actual_reason} = GenServer.start(Sparrow.H2Worker, config)
     assert {:tls_alert, 'bad certificate'} == actual_reason
   end
 end
