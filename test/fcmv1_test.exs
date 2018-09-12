@@ -270,7 +270,7 @@ defmodule Sparrow.FCM.V1Test do
   defp test_apns do
     apns_notiifcation =
       "dummy_device_token"
-      |> Sparrow.APNS.Notification.new()
+      |> Sparrow.APNS.Notification.new(:dev)
       |> Sparrow.APNS.Notification.add_title(@apns_title)
       |> Sparrow.APNS.Notification.add_body(@apns_body)
       |> Sparrow.APNS.Notification.add_custom_data(

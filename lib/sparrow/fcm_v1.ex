@@ -1,6 +1,6 @@
 defmodule Sparrow.FCM.V1 do
   @moduledoc """
-  Provides functions to build and send push notifications to FCM v1
+  Provides functions to build and send push notifications to FCM v1.
   """
   require Logger
 
@@ -30,7 +30,6 @@ defmodule Sparrow.FCM.V1 do
       * `{:error, :invalid_notification}` when notification does not contain neither title nor body.
       * `{:error, :reason}` when error with other reason occures.
     * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
-
   """
   @spec push(
           atom,

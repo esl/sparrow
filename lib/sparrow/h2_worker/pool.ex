@@ -58,7 +58,7 @@ defmodule Sparrow.H2Worker.Pool do
 
   ## Arguments
     * `wpool_name` - `Sparrow.H2Worker`s pool name
-    * `workers_config` - config of a single worker for APNS see `Sparrow.APNS.get_h2worker_config/1,2,3,4,5,6` and for FCM see `Sparrow.FCM.V1.get_h2worker_config/1,2,3,4,5,6`
+    * `workers_config` - config of a single worker for APNS see `Sparrow.APNS.get_h2worker_config_dev/1,2,3,4,5,6` and for FCM see `Sparrow.FCM.V1.get_h2worker_config/1,2,3,4,5,6`
     * `worker_num` - number of worksers in a pool
     * `raw_opts` - extra config options to pass to wpool. For details see https://github.com/inaka/worker_pool
   """

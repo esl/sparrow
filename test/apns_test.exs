@@ -48,7 +48,7 @@ defmodule Sparrow.APNSTest do
   test "sending request to APNS mock returning success" do
     notification =
       "OkResponseHandler"
-      |> Notification.new()
+      |> Notification.new(:dev)
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
 
@@ -65,7 +65,7 @@ defmodule Sparrow.APNSTest do
   test "sending async request to APNS" do
     notification =
       "OkResponseHandler"
-      |> Notification.new()
+      |> Notification.new(:prod)
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
 
@@ -78,7 +78,7 @@ defmodule Sparrow.APNSTest do
   end
 
   test "sending invalid request blocked" do
-    notification = Notification.new("OkResponseHandler")
+    notification = Notification.new("OkResponseHandler", :dev)
 
     assert {:error, :invalid_notification} ==
              Sparrow.APNS.push(@pool_name, notification)
@@ -87,7 +87,7 @@ defmodule Sparrow.APNSTest do
   test "sending request to APNS mock returning error, chcecking error parsing" do
     notification =
       "ErrorResponseHandler"
-      |> Notification.new()
+      |> Notification.new(:dev)
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
 
@@ -108,7 +108,7 @@ defmodule Sparrow.APNSTest do
 
     notification =
       "EchoBodyHandler"
-      |> Notification.new()
+      |> Notification.new(:dev)
       |> Notification.add_title(@title)
       |> Notification.add_sound(sound)
       |> Notification.add_badge(badge)
@@ -141,7 +141,7 @@ defmodule Sparrow.APNSTest do
 
     notification =
       "EchoBodyHandler"
-      |> Notification.new()
+      |> Notification.new(:dev)
       |> Notification.add_title(@title)
       |> Notification.add_subtitle(@subtitle)
       |> Notification.add_body(@body)
@@ -181,7 +181,7 @@ defmodule Sparrow.APNSTest do
   test "notification headers contain added headers" do
     notification =
       "HeaderToBodyEchoHandler"
-      |> Notification.new()
+      |> Notification.new(:dev)
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
       |> Notification.add_apns_expiration("apns expiration header value")
@@ -212,7 +212,7 @@ defmodule Sparrow.APNSTest do
   test "notification custom data" do
     notification =
       "EchoBodyHandler"
-      |> Notification.new()
+      |> Notification.new(:dev)
       |> Notification.add_title("Game Request")
       |> Notification.add_custom_data("gameID", "12345678")
 
@@ -225,7 +225,7 @@ defmodule Sparrow.APNSTest do
   test "notification apns example based all levels test" do
     notification =
       "EchoBodyHandler"
-      |> Notification.new()
+      |> Notification.new(:dev)
       |> Notification.add_title("Game Request")
       |> Notification.add_subtitle("Five Card Draw")
       |> Notification.add_body("Bob wants to play poker")
@@ -265,7 +265,7 @@ defmodule Sparrow.APNSTest do
 
     config =
       auth
-      |> Sparrow.APNS.get_h2worker_config()
+      |> Sparrow.APNS.get_h2worker_config_dev()
 
     {header_key, header_value} = auth.token_getter.()
     assert header_key == "authorization"
@@ -290,7 +290,7 @@ defmodule Sparrow.APNSTest do
 
     config =
       auth
-      |> Sparrow.APNS.get_h2worker_config()
+      |> Sparrow.APNS.get_h2worker_config_dev()
 
     assert config.domain == "api.development.push.apple.com"
     assert config.port == 443

@@ -43,7 +43,7 @@ defmodule Sparrow.APNS do
     config =
         "path/to/exampleName.pem"
         |> Sparrow.APNS.get_certificate_based_authentication("path/to/exampleKey.pem")
-        |> Sparrow.APNS.get_h2worker_config()
+        |> Sparrow.APNS.get_h2worker_config_dev()
     {:ok, _pid} =
         :your_apns_workers_name
         |> Sparrow.H2Worker.Pool.Config.new(config)
@@ -229,16 +229,16 @@ defmodule Sparrow.APNS do
   # Token based authentication:
     config =
       Sparrow.APNS.get_token_based_authentication()
-      |> Sparrow.APNS.get_h2worker_config()
+      |> Sparrow.APNS.get_h2worker_config_dev()
 
   # Certificate based authentication:
     config =
       "path/to/certificate"
       |> Sparrow.APNS.get_certificate_based_authentication("path/to/key")
-      |> Sparrow.APNS.get_h2worker_config()
+      |> Sparrow.APNS.get_h2worker_config_dev()
 
   """
-  @spec get_h2worker_config(
+  @spec get_h2worker_config_prod(
           authentication,
           String.t(),
           pos_integer,
@@ -246,7 +246,36 @@ defmodule Sparrow.APNS do
           time_in_miliseconds,
           pos_integer
         ) :: Sparrow.H2Worker.Config.t()
-  def get_h2worker_config(
+  def get_h2worker_config_prod(
+        authentication,
+        uri \\ "api.push.apple.com",
+        port \\ 443,
+        tls_opts \\ [],
+        ping_interval \\ 5000,
+        reconnect_attempts \\ 3
+      ) do
+    Sparrow.H2Worker.Config.new(
+      uri,
+      port,
+      authentication,
+      tls_opts,
+      ping_interval,
+      reconnect_attempts
+    )
+  end
+
+  @doc """
+  Function providing `Sparrow.H2Worker.Config` for APNS workers.
+  """
+  @spec get_h2worker_config_dev(
+          authentication,
+          String.t(),
+          pos_integer,
+          tls_options,
+          time_in_miliseconds,
+          pos_integer
+        ) :: Sparrow.H2Worker.Config.t()
+  def get_h2worker_config_dev(
         authentication,
         uri \\ "api.development.push.apple.com",
         port \\ 443,

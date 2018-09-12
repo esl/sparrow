@@ -120,7 +120,8 @@ defmodule Sparrow.FCM.V1.NotificationTest do
 
   test "notification with apns config" do
     apns_notification =
-      APNSNotification.new("dummy device token")
+      "dummy device token"
+      |> APNSNotification.new(:dev)
       |> APNSNotification.add_title("apns title")
       |> APNSNotification.add_body("apns body")
 
