@@ -35,7 +35,7 @@ defmodule Sparrow.APNSTest do
         :ranch.get_port(cowboys_name)
       )
 
-    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
     |> Sparrow.H2Worker.Pool.start_link()
 
     on_exit(fn ->
@@ -263,14 +263,12 @@ defmodule Sparrow.APNSTest do
 
     auth = Sparrow.APNS.get_token_based_authentication(:token_id)
 
-    config =
-      auth
-      |> Sparrow.APNS.get_h2worker_config_dev()
+    config = Sparrow.APNS.get_h2worker_config_prod(auth)
 
     {header_key, header_value} = auth.token_getter.()
     assert header_key == "authorization"
     assert header_value =~ "bearer"
-    assert config.domain == "api.development.push.apple.com"
+    assert config.domain == "api.push.apple.com"
     assert config.port == 443
     assert config.tls_options == []
     assert config.ping_interval == 5000

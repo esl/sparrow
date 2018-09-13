@@ -40,7 +40,7 @@ defmodule H2Integration.ClientServerTest do
       {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
     ]
 
-    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
     |> Sparrow.H2Worker.Pool.start_link()
 
     request =
@@ -65,7 +65,7 @@ defmodule H2Integration.ClientServerTest do
       {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
     ]
 
-    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
     |> Sparrow.H2Worker.Pool.start_link()
 
     request =
@@ -94,7 +94,7 @@ defmodule H2Integration.ClientServerTest do
       {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
     ]
 
-    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
     |> Sparrow.H2Worker.Pool.start_link()
 
     request =
@@ -116,7 +116,7 @@ defmodule H2Integration.ClientServerTest do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
     headers = Setup.default_headers()
 
-    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
     |> Sparrow.H2Worker.Pool.start_link()
 
     request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)

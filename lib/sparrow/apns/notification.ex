@@ -21,7 +21,7 @@ defmodule Sparrow.APNS.Notification do
   """
   alias Sparrow.H2Worker.Request
 
-  @type notification_type :: :dev | :prod
+  @type notification_mode :: :dev | :prod
   @type json_array :: [any]
   @type alert_opt_key ::
           :"title-loc-key"
@@ -55,7 +55,7 @@ defmodule Sparrow.APNS.Notification do
           alert_opts: alert_opts,
           aps_dictionary_opts: aps_dictionary_opts,
           custom_data: [{String.t(), any}],
-          type: notification_type
+          type: notification_mode
         }
   defstruct [
     :device_token,
@@ -73,7 +73,7 @@ defmodule Sparrow.APNS.Notification do
       *`device_token` - Token of the device you want to send notification to.
       *`type` - Notiifcation type determins weater notification is development (`:dev`) or production (`:prod`) type.
   """
-  @spec new(String.t(), notification_type) :: __MODULE__.t()
+  @spec new(String.t(), notification_mode) :: __MODULE__.t()
   def new(device_token, type) do
     %__MODULE__{
       device_token: device_token,

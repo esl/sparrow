@@ -49,6 +49,8 @@ defmodule Sparrow.APNS.TokenBearerTest do
     token_after_update = Sparrow.APNS.TokenBearer.get_token(@token_id)
 
     assert token_before_update != token_after_update
+    assert is_binary(token_before_update)
+    assert is_binary(token_after_update)
   end
 
   test "token bearer is initialized correctly", context do

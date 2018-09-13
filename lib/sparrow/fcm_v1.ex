@@ -16,6 +16,13 @@ defmodule Sparrow.FCM.V1 do
   @type authentication :: Sparrow.H2Worker.Config.authentication()
   @type tls_options :: Sparrow.H2Worker.Config.tls_options()
   @type time_in_miliseconds :: Sparrow.H2Worker.Config.time_in_miliseconds()
+  @type sync_push_result ::
+          {:error, :connection_lost}
+          | {:ok, {headers, body}}
+          | {:error, :request_timeout}
+          | {:error, :not_ready}
+          | {:error, :invalid_notification}
+          | {:error, reason}
 
   @doc """
     Sends the push notification to FCM v1.
@@ -35,14 +42,7 @@ defmodule Sparrow.FCM.V1 do
           atom,
           Sparrow.FCM.V1.Notification.t(),
           push_opts
-        ) ::
-          {:error, :connection_lost}
-          | {:ok, {headers, body}}
-          | {:error, :request_timeout}
-          | {:error, :not_ready}
-          | {:error, :invalid_notification}
-          | {:error, reason}
-          | :ok
+        ) :: sync_push_result | :ok
   def push(h2_worker_pool, notification, opts \\ []) do
     is_sync = Keyword.get(opts, :is_sync, true)
     timeout = Keyword.get(opts, :timeout, 5_000)

@@ -82,7 +82,7 @@ defmodule Sparrow.FCM.V1Test do
         :token_based
       )
 
-    Sparrow.H2Worker.Pool.Config.new(@pool_name, config)
+    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
     |> Sparrow.H2Worker.Pool.start_link()
 
     on_exit(fn ->

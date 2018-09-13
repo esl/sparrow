@@ -18,19 +18,48 @@ defmodule Sparrow.PoolsWarden do
       * `pool_type` - determine if pool is FCM or APNS dev or APNS
       * `tags` - tags that allow to call a particular pool of subset of pools
   """
-  @spec add_new_pool(pool_type, [any]) :: true
-  def add_new_pool(pool_type, tags \\ []) do
-    GenServer.call(@sparrow_pools_warden_name, {:add_pool, pool_type, tags})
+  @spec add_new_pool(pool_type, atom, [any]) :: true
+  def add_new_pool(pool_type, pool_name, tags \\ []) do
+    GenServer.call(
+      @sparrow_pools_warden_name,
+      {:add_pool, pool_type, pool_name, tags}
+    )
   end
 
   @doc """
-  Maybe, some day...
+  Function to get all pools of certain `pool_type`.
+
+  ## Arguments
+      * `pool_type` - can be one of:
+          * `:fcm` - to get FCM pools
+          * `{:apns, :dev}` - to get APNS development pools
+          * `{:apns, :prod}` - to get APNS production pools
+      * `tags` - allows to filter pools, if tags are included only pools with all of these tags are selected
   """
-  @spec get_pools(pool_type) :: [{atom, [any]}]
-  def get_pools(pool_type) do
-    :ets.lookup(@tab_name, pool_type)
+
+  @spec choose_pool(pool_type, [any]) :: atom | nil
+  def choose_pool(pool_type, tags \\ []) do
+    pools = get_pools(pool_type)
+
+    result =
+      for {_pool_type, {pool_name, pool_tags}} <- pools,
+          Enum.all?(tags, fn e -> e in pool_tags end) do
+        pool_name
+      end
+
+    _ =
+      Logger.debug(fn ->
+        "worker=pools_warden, action=choose_pool, result=result, result_len=#{
+          inspect(Enum.count(result))
+        }"
+      end)
+
+    List.first(result)
   end
 
+  @doc """
+  Function to access `Sparrow.PoolsWarden` by name.
+  """
   @spec get_pool_warden_name() :: :sparrow_pools_warden_name
   def get_pool_warden_name do
     @sparrow_pools_warden_name
@@ -38,8 +67,13 @@ defmodule Sparrow.PoolsWarden do
 
   @spec start_link :: GenServer.on_start()
   def start_link do
-    GenServer.start_link(Sparrow.PoolsWarden, :ok, [name: @sparrow_pools_warden_name])
+    GenServer.start_link(
+      Sparrow.PoolsWarden,
+      :ok,
+      name: @sparrow_pools_warden_name
+    )
   end
+
   @spec init(any) :: {:ok, :ok}
   def init(_) do
     @tab_name = :ets.new(@tab_name, [:bag, :protected, :named_table])
@@ -52,7 +86,7 @@ defmodule Sparrow.PoolsWarden do
     {:ok, :ok}
   end
 
-  @spec terminate(any, Sparrow.APNS.TokenBearer.State.t()) :: :ok
+  @spec terminate(any, :ok) :: :ok
   def terminate(reason, _state) do
     ets_del = :ets.delete(@tab_name)
 
@@ -74,18 +108,19 @@ defmodule Sparrow.PoolsWarden do
     {:noreply, :ok}
   end
 
-  @spec handle_call({:add_pool, pool_type, [any]}, GenServer.from, any) :: {:reply, atom, :ok}
-  def handle_call({:add_pool, pool_type, tags},_ , _state) do
-    pool_name = generate_pool_name(pool_type, tags)
+  @spec handle_call(
+          {:add_pool, pool_type, atom, [any]},
+          GenServer.from(),
+          any
+        ) :: {:reply, atom, :ok}
+
+  def handle_call({:add_pool, pool_type, pool_name, tags}, _, _state) do
     :ets.insert(@tab_name, {pool_type, {pool_name, tags}})
     {:reply, pool_name, :ok}
   end
 
-  @spec generate_pool_name(pool_type, [any]) :: atom
-  defp generate_pool_name(pool_type, tags) do
-    inspect(pool_type) <>
-        List.foldr(tags, "", fn elem, acc -> acc <> inspect(elem) end) <>
-        inspect(:rand.uniform(1_000_000_000_000))
-    |> String.to_atom()
+  @spec get_pools(pool_type) :: [{atom, [any]}]
+  defp get_pools(pool_type) do
+    :ets.lookup(@tab_name, pool_type)
   end
 end

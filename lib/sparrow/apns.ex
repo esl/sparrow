@@ -16,6 +16,13 @@ defmodule Sparrow.APNS do
   @type tls_options :: Sparrow.H2Worker.Config.tls_options()
   @type time_in_miliseconds :: Sparrow.H2Worker.Config.time_in_miliseconds()
   @type port_num :: Sparrow.H2Worker.Config.port_num()
+  @type sync_push_result ::
+          {:error, :connection_lost}
+          | {:ok, {headers, body}}
+          | {:error, :request_timeout}
+          | {:error, :not_ready}
+          | {:error, :invalid_notification}
+          | {:error, reason}
 
   @path "/3/device/"
 
@@ -35,7 +42,7 @@ defmodule Sparrow.APNS do
 
   ## Example
 
-    # For more details on how to get device token and apns-topic go to project's ReadMe.
+    #For more details on how to get device token and apns-topic go to project's ReadMe.
     @device_token "MYFAKEEXAMPLETOKENDEVICE"
     @apns_topic "MYFAKEEXAMPLEAPNSTOPIC"
 
@@ -45,8 +52,8 @@ defmodule Sparrow.APNS do
         |> Sparrow.APNS.get_certificate_based_authentication("path/to/exampleKey.pem")
         |> Sparrow.APNS.get_h2worker_config_dev()
     {:ok, _pid} =
-        :your_apns_workers_name
-        |> Sparrow.H2Worker.Pool.Config.new(config)
+        config
+        |> Sparrow.H2Worker.Pool.Config.new(:your_apns_workers_name)
         |> Sparrow.H2Worker.Pool.start_link()
 
     notification =
@@ -63,14 +70,7 @@ defmodule Sparrow.APNS do
           atom,
           Sparrow.APNS.Notification.t(),
           push_opts
-        ) ::
-          {:error, :connection_lost}
-          | {:ok, {headers, body}}
-          | {:error, :request_timeout}
-          | {:error, :not_ready}
-          | {:error, :invalid_notification}
-          | {:error, reason}
-          | :ok
+        ) :: sync_push_result | :ok
   def push(h2_worker_pool, notification, opts \\ []) do
     if notification_contains_title_or_body?(notification) do
       is_sync = Keyword.get(opts, :is_sync, true)

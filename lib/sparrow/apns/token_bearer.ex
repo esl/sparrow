@@ -19,8 +19,8 @@ defmodule Sparrow.APNS.TokenBearer do
   @spec get_token(atom) :: String.t() | nil
   def get_token(token_id) do
     @tab_name
-    |> :ets.lookup_element(:apns_tokens, 2)
-    |> Map.get(token_id)
+    |> :ets.lookup(token_id)
+    |> (fn [{_, token}] -> token end).()
   end
 
   @spec init(
@@ -83,32 +83,28 @@ defmodule Sparrow.APNS.TokenBearer do
     {:noreply, state}
   end
 
-  @spec update_tokens(Sparrow.APNS.TokenBearer.State.t()) :: true
+  @spec update_tokens(Sparrow.APNS.TokenBearer.State.t()) :: :ok
   defp update_tokens(state) do
     schedule_message_after(state.update_token_after, :update_tokens)
     set_new_tokens(state)
   end
 
-  @spec set_new_tokens(Sparrow.APNS.TokenBearer.State.t()) :: true
+  @spec set_new_tokens(Sparrow.APNS.TokenBearer.State.t()) :: :ok
   defp set_new_tokens(state) do
-    keys = Map.keys(state.tokens)
+    state.tokens
+    |> Map.keys()
+    |> Enum.each(fn key ->
+      token_struct = Map.get(state.tokens, key)
 
-    tokens =
-      for key <- keys do
-        token_struct = Map.get(state.tokens, key)
+      {:ok, token, _} =
+        new_jwt_token(
+          token_struct.key_id,
+          token_struct.team_id,
+          token_struct.p8_file_path
+        )
 
-        {:ok, token, _} =
-          new_jwt_token(
-            token_struct.key_id,
-            token_struct.team_id,
-            token_struct.p8_file_path
-          )
-
-        {key, token}
-      end
-      |> Map.new()
-
-    :ets.insert(@tab_name, {:apns_tokens, tokens})
+      :ets.insert(@tab_name, {key, token})
+    end)
   end
 
   @spec new_jwt_token(String.t(), String.t(), String.t()) ::

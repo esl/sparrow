@@ -10,27 +10,28 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
   @project_id "sparrow-2b961"
   @target_type :topic
   @target "news"
+  @pool_name :my_pool_name
 
   @notification_title "Commander Cody"
   @notification_body "the time has come. Execute order 66."
 
   @android_title "Real life"
   @android_body "never heard of that server"
-  @json_path "./priv/fcm/token/sparrow_token.json"
+  @path_to_json "priv/fcm/token/sparrow_token.json"
 
   @tag :skip
   test "real android notification send" do
-    Sparrow.FCM.V1.TokenBearer.start_link(@json_path)
+    Sparrow.FCM.V1.TokenBearer.start_link(@path_to_json)
 
-    auth =
-      Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
-        token = Sparrow.FCM.V1.TokenBearer.get_token()
-        {"Authorization", "Bearer #{inspect(token)}"}
-      end)
+    {:ok, _pid} = Sparrow.PoolsWarden.start_link()
 
-    config = Config.new(@fcm_address, @fcm_port, auth)
-    worker_spec = child_spec(args: config, name: :name)
-    {:ok, worker_pid} = start_supervised(worker_spec)
+    worker_config =
+      Sparrow.FCM.V1.get_token_based_authentication()
+      |> Sparrow.FCM.V1.get_h2worker_config()
+
+    {:ok, pid} =
+      Sparrow.H2Worker.Pool.Config.new(worker_config, @pool_name)
+      |> Sparrow.H2Worker.Pool.start_link(:fcm, [:webpush])
 
     android =
       Sparrow.FCM.V1.Android.new()
@@ -47,7 +48,8 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
       )
       |> Notification.add_android(android)
 
-    {:ok, {headers, body}} = Sparrow.FCM.V1.push(worker_pid, notification)
+    {:ok, {headers, body}} = Sparrow.API.push(notification, [:webpush])
+
 
     IO.puts("headers:")
     IO.inspect(headers)

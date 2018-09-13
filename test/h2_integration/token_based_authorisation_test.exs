@@ -33,7 +33,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
     headers = Setup.default_headers()
     body = "message, test body"
 
-    Sparrow.H2Worker.Pool.Config.new(@pool_name, config, 4, [])
+    Sparrow.H2Worker.Pool.Config.new(config, @pool_name, 4, [])
     |> Sparrow.H2Worker.Pool.start_link()
 
     success_request =
@@ -73,7 +73,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
     headers = Setup.default_headers()
     body = "message, test body"
 
-    Sparrow.H2Worker.Pool.Config.new(@pool_name, config, 4, [])
+    Sparrow.H2Worker.Pool.Config.new(config, @pool_name, 4, [])
     |> Sparrow.H2Worker.Pool.start_link()
 
     fail_request =
