@@ -4,42 +4,53 @@ defmodule Sparrow.APNS.TokenBearerTest do
   @key_id "KEYID"
   @team_id "TEAMID"
   @p8_file_path "token.p8"
-  @refresh_token_time 100
+  @refresh_time 100
+  @token_id :token_id
   setup do
-    config =
-      Sparrow.APNS.Token.new(
-        @key_id,
-        @team_id,
-        @p8_file_path,
-        @refresh_token_time
-      )
-
-    state = %Sparrow.APNS.TokenBearer.State{
-      key_id: @key_id,
-      team_id: @team_id,
-      p8_file_path: @p8_file_path,
-      refresh_token_time: @refresh_token_time
+    config = %{
+      @token_id =>
+        Sparrow.APNS.Token.new(
+          @key_id,
+          @team_id,
+          @p8_file_path
+        )
     }
 
-    {:ok, pid} = GenServer.start_link(Sparrow.APNS.TokenBearer, config)
+    state = %Sparrow.APNS.TokenBearer.State{
+      tokens: %{
+        @token_id =>
+          Sparrow.APNS.Token.new(
+            @key_id,
+            @team_id,
+            @p8_file_path
+          )
+      },
+      update_token_after: @refresh_time
+    }
+
+    {:ok, pid} =
+      GenServer.start_link(Sparrow.APNS.TokenBearer, {config, @refresh_time})
+
     {:ok, config: config, token_bearer_pid: pid, state: state}
   end
 
-  test "token gets refresh time correctly" do
+  test "token gets refresh time correctly", context do
     refresh_time =
-      @key_id
-      |> Sparrow.APNS.Token.new(@team_id, @p8_file_path)
-      |> Map.get(:refresh_token_time)
+      context[:token_bearer_pid]
+      |> :sys.get_state()
+      |> Map.get(:update_token_after)
 
-    assert refresh_time == :timer.minutes(50)
+    assert refresh_time == @refresh_time
   end
 
   test "token gets updated" do
-    token_before_update = Sparrow.APNS.TokenBearer.get_token()
-    :timer.sleep(150)
-    token_after_update = Sparrow.APNS.TokenBearer.get_token()
+    token_before_update = Sparrow.APNS.TokenBearer.get_token(@token_id)
+    :timer.sleep(200)
+    token_after_update = Sparrow.APNS.TokenBearer.get_token(@token_id)
 
     assert token_before_update != token_after_update
+    assert is_binary(token_before_update)
+    assert is_binary(token_after_update)
   end
 
   test "token bearer is initialized correctly", context do

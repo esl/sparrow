@@ -13,7 +13,7 @@ defmodule Sparrow.H2Worker.Pool do
   @type headers :: [{String.t(), String.t()}]
   @type reason :: any
   @type worker_config :: Sparrow.H2Worker.Config.t()
-
+  @type pool_type :: Sparrow.PoolsWarden.pool_type()
   @doc """
   Sends the request and, if `is_sync` is `true`, awaits the response.
 
@@ -54,24 +54,28 @@ defmodule Sparrow.H2Worker.Pool do
   end
 
   @doc """
-  Starting wpool.
-
-  ## Arguments
-    * `wpool_name` - `Sparrow.H2Worker`s pool name
-    * `workers_config` - config of a single worker for APNS see `Sparrow.APNS.get_h2worker_config/1,2,3,4,5,6` and for FCM see `Sparrow.FCM.V1.get_h2worker_config/1,2,3,4,5,6`
-    * `worker_num` - number of worksers in a pool
-    * `raw_opts` - extra config options to pass to wpool. For details see https://github.com/inaka/worker_pool
+  Function to start pool.
   """
   @spec start_link(Sparrow.H2Worker.Pool.Config.t()) ::
           {:error, any} | {:ok, pid}
   def start_link(config) do
     :wpool.start_pool(
-      config.wpool_name,
+      config.pool_name,
       [
         {:workers, config.worker_num},
         {:worker, {Sparrow.H2Worker, config.workers_config}}
         | config.raw_opts
       ]
     )
+  end
+
+  @doc """
+  Function to start pool and "register" it in pool warden.
+  """
+  @spec start_link(Sparrow.H2Worker.Pool.Config.t(), pool_type, [any]) ::
+          {:error, any} | {:ok, pid}
+  def start_link(config, pool_type, tags \\ []) do
+    Sparrow.PoolsWarden.add_new_pool(pool_type, config.pool_name, tags)
+    start_link(config)
   end
 end

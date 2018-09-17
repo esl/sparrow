@@ -16,6 +16,13 @@ defmodule Sparrow.APNS do
   @type tls_options :: Sparrow.H2Worker.Config.tls_options()
   @type time_in_miliseconds :: Sparrow.H2Worker.Config.time_in_miliseconds()
   @type port_num :: Sparrow.H2Worker.Config.port_num()
+  @type sync_push_result ::
+          {:error, :connection_lost}
+          | {:ok, {headers, body}}
+          | {:error, :request_timeout}
+          | {:error, :not_ready}
+          | {:error, :invalid_notification}
+          | {:error, reason}
 
   @path "/3/device/"
 
@@ -35,7 +42,7 @@ defmodule Sparrow.APNS do
 
   ## Example
 
-    # For more details on how to get device token and apns-topic go to project's ReadMe.
+    #For more details on how to get device token and apns-topic go to project's ReadMe.
     @device_token "MYFAKEEXAMPLETOKENDEVICE"
     @apns_topic "MYFAKEEXAMPLEAPNSTOPIC"
 
@@ -43,10 +50,10 @@ defmodule Sparrow.APNS do
     config =
         "path/to/exampleName.pem"
         |> Sparrow.APNS.get_certificate_based_authentication("path/to/exampleKey.pem")
-        |> Sparrow.APNS.get_h2worker_config()
+        |> Sparrow.APNS.get_h2worker_config_dev()
     {:ok, _pid} =
-        :your_apns_workers_name
-        |> Sparrow.H2Worker.Pool.Config.new(config)
+        config
+        |> Sparrow.H2Worker.Pool.Config.new(:your_apns_workers_name)
         |> Sparrow.H2Worker.Pool.start_link()
 
     notification =
@@ -63,14 +70,7 @@ defmodule Sparrow.APNS do
           atom,
           Sparrow.APNS.Notification.t(),
           push_opts
-        ) ::
-          {:error, :connection_lost}
-          | {:ok, {headers, body}}
-          | {:error, :request_timeout}
-          | {:error, :not_ready}
-          | {:error, :invalid_notification}
-          | {:error, reason}
-          | :ok
+        ) :: sync_push_result | :ok
   def push(h2_worker_pool, notification, opts \\ []) do
     if notification_contains_title_or_body?(notification) do
       is_sync = Keyword.get(opts, :is_sync, true)
@@ -193,11 +193,12 @@ defmodule Sparrow.APNS do
   Function providing `Sparrow.H2Worker.Authentication.TokenBased` for APNS workers.
   Requres `Sparrow.APNS.TokenBearer` to be started.
   """
-  @spec get_token_based_authentication() ::
+  @spec get_token_based_authentication(atom) ::
           Sparrow.H2Worker.Authentication.TokenBased.t()
-  def get_token_based_authentication do
+  def get_token_based_authentication(token_id) do
     getter = fn ->
-      {"authorization", "bearer #{Sparrow.APNS.TokenBearer.get_token()}"}
+      {"authorization",
+       "bearer #{Sparrow.APNS.TokenBearer.get_token(token_id)}"}
     end
 
     Sparrow.H2Worker.Authentication.TokenBased.new(getter)
@@ -228,16 +229,16 @@ defmodule Sparrow.APNS do
   # Token based authentication:
     config =
       Sparrow.APNS.get_token_based_authentication()
-      |> Sparrow.APNS.get_h2worker_config()
+      |> Sparrow.APNS.get_h2worker_config_dev()
 
   # Certificate based authentication:
     config =
       "path/to/certificate"
       |> Sparrow.APNS.get_certificate_based_authentication("path/to/key")
-      |> Sparrow.APNS.get_h2worker_config()
+      |> Sparrow.APNS.get_h2worker_config_dev()
 
   """
-  @spec get_h2worker_config(
+  @spec get_h2worker_config_prod(
           authentication,
           String.t(),
           pos_integer,
@@ -245,7 +246,36 @@ defmodule Sparrow.APNS do
           time_in_miliseconds,
           pos_integer
         ) :: Sparrow.H2Worker.Config.t()
-  def get_h2worker_config(
+  def get_h2worker_config_prod(
+        authentication,
+        uri \\ "api.push.apple.com",
+        port \\ 443,
+        tls_opts \\ [],
+        ping_interval \\ 5000,
+        reconnect_attempts \\ 3
+      ) do
+    Sparrow.H2Worker.Config.new(
+      uri,
+      port,
+      authentication,
+      tls_opts,
+      ping_interval,
+      reconnect_attempts
+    )
+  end
+
+  @doc """
+  Function providing `Sparrow.H2Worker.Config` for APNS workers.
+  """
+  @spec get_h2worker_config_dev(
+          authentication,
+          String.t(),
+          pos_integer,
+          tls_options,
+          time_in_miliseconds,
+          pos_integer
+        ) :: Sparrow.H2Worker.Config.t()
+  def get_h2worker_config_dev(
         authentication,
         uri \\ "api.development.push.apple.com",
         port \\ 443,

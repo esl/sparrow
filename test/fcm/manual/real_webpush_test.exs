@@ -19,13 +19,15 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
   test "real webpush notification send" do
     Sparrow.FCM.V1.TokenBearer.start_link(@path_to_json)
 
+    {:ok, _pid} = Sparrow.PoolsWarden.start_link()
+
     worker_config =
       Sparrow.FCM.V1.get_token_based_authentication()
       |> Sparrow.FCM.V1.get_h2worker_config()
 
     {:ok, pid} =
-      Sparrow.H2Worker.Pool.Config.new(@pool_name, worker_config)
-      |> Sparrow.H2Worker.Pool.start_link()
+      Sparrow.H2Worker.Pool.Config.new(worker_config, @pool_name)
+      |> Sparrow.H2Worker.Pool.start_link(:fcm, [:webpush])
 
     webpush =
       Sparrow.FCM.V1.Webpush.new("www.google.com")
@@ -39,14 +41,15 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
         @project_id
       )
       |> Notification.add_webpush(webpush)
-    for i <- 1 ..10 do
-      {:ok, {headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
+
+      #{:ok, {headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
+
+      {:ok, {headers, body}} = Sparrow.API.push(notification, [:webpush])
 
       IO.puts("headers:")
       IO.inspect(headers)
       IO.puts("body:")
       body |> Jason.decode!() |> IO.inspect()
-    end
   end
 
   def child_spec(opts) do

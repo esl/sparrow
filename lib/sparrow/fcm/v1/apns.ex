@@ -21,7 +21,7 @@ defmodule Sparrow.FCM.V1.APNS do
   ## Arguments
 
     * `notification` - APNS notification. See `Sparrow.APNS.Notification`.
-    * `token_getter` - function returning authrization header. See `Sparrow.APNS.TokenBearer.get_token/0`.
+    * `token_getter` - function returning authrization header. See `Sparrow.APNS.TokenBearer.get_token/1`.
   """
   @spec new(Sparrow.APNS.Notification.t(), token_getter) ::
           Sparrow.FCM.V1.APNS.t()

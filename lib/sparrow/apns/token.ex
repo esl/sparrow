@@ -6,17 +6,13 @@ defmodule Sparrow.APNS.Token do
   @type t :: %__MODULE__{
           key_id: String.t(),
           team_id: String.t(),
-          p8_file_path: String.t(),
-          refresh_token_time: non_neg_integer
+          p8_file_path: String.t()
         }
-
-  @default_refresh_token_time :timer.minutes(50)
 
   defstruct [
     :key_id,
     :team_id,
-    :p8_file_path,
-    :refresh_token_time
+    :p8_file_path
   ]
 
   @doc """
@@ -27,7 +23,6 @@ defmodule Sparrow.APNS.Token do
     * `key_id` - APNS key ID
     * `team_id` - 10-character Team ID you use for developing your company’s apps.
     * `p8_file_path` - file path to APNs authentication token signing key to generate the tokens
-    * `refresh_token_time` time of regenerationg APNS token (in miliseconds), use http://erlang.org/doc/man/timer.html#minutes-1 to change minutes to miliseconds
 
   ## How to obtain key (content of file under p8_file_path) and `key_id`?
 
@@ -42,18 +37,16 @@ defmodule Sparrow.APNS.Token do
   Read: https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns
   Section: Refresh Your Token Regularly
   """
-  @spec new(String.t(), String.t(), String.t(), non_neg_integer) :: t
+  @spec new(String.t(), String.t(), String.t()) :: t
   def new(
         key_id,
         team_id,
-        p8_file_path,
-        refresh_token_time \\ @default_refresh_token_time
+        p8_file_path
       ) do
     %__MODULE__{
       key_id: key_id,
       team_id: team_id,
-      p8_file_path: p8_file_path,
-      refresh_token_time: refresh_token_time
+      p8_file_path: p8_file_path
     }
   end
 end

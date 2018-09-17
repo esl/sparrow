@@ -32,7 +32,7 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
 
     notification =
       @device_token
-      |> Notification.new()
+      |> Notification.new(:dev)
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
       |> Notification.add_apns_topic(@apns_topic)
@@ -60,7 +60,7 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
 
     notification =
       @device_token
-      |> Notification.new()
+      |> Notification.new(:dev)
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
       |> Notification.add_apns_topic(@apns_topic)

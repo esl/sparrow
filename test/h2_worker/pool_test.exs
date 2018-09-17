@@ -1,10 +1,10 @@
-defmodule Sparrow.H2Worker.WpoolTest do
+defmodule Sparrow.H2Worker.PoolTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
-  @wpool_name :wpool_name
+  @pool_name :pool_name
   @body "test body"
 
   setup do
@@ -26,7 +26,7 @@ defmodule Sparrow.H2Worker.WpoolTest do
     :wpool.start()
 
     :wpool.start_pool(
-      @wpool_name,
+      @pool_name,
       [
         {:workers, 4},
         {:worker, {Sparrow.H2Worker, config}}
@@ -52,7 +52,7 @@ defmodule Sparrow.H2Worker.WpoolTest do
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      :wpool.call(@wpool_name, {:send_request, request})
+      :wpool.call(@pool_name, {:send_request, request})
 
     length_header = {"content-length", Integer.to_string(String.length(@body))}
 
@@ -71,7 +71,7 @@ defmodule Sparrow.H2Worker.WpoolTest do
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      :wpool.call(@wpool_name, {:send_request, request})
+      :wpool.call(@pool_name, {:send_request, request})
 
     length_header = {"content-length", Integer.to_string(String.length(@body))}
 
@@ -87,7 +87,7 @@ defmodule Sparrow.H2Worker.WpoolTest do
     request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      :wpool.call(@wpool_name, {:send_request, request})
+      :wpool.call(@pool_name, {:send_request, request})
 
     assert_response_header(answer_headers, {":status", "200"})
 
@@ -109,7 +109,7 @@ defmodule Sparrow.H2Worker.WpoolTest do
 
     sending_with_response = fn ->
       for _ <- 1..@messages_for_pool do
-        async_wpool_call(@wpool_name, {:send_request, request})
+        async_wpool_call(@pool_name, {:send_request, request})
       end
 
       for _ <- 1..@messages_for_pool do

@@ -72,7 +72,7 @@ When starting  h2 worker pass key and cerificate to workers tls options:
 config = 
     "path/to/exampleName.pem"
     |> Sparrow.APNS.get_certificate_based_authentication("path/to/exampleKey.pem")
-    |> Sparrow.APNS.get_h2worker_config()
+    |> Sparrow.APNS.get_h2worker_config_dev()
 Sparrow.H2Worker.Pool.start_link(:your_apns_workers_name, config)
 ```
 

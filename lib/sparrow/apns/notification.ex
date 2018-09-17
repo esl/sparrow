@@ -10,15 +10,18 @@ defmodule Sparrow.APNS.Notification do
 
     ## Example
 
-    notification = Sparrow.APNS.Notification.new(device_token)
-    |> add_title("some example title")
-    |> add_body("some example body")
-    |> add_apns_id("some apns id")
-    |> add_apns_topic("apns topic of some kind")
+    notification =
+        device_token
+        |>Sparrow.APNS.Notification.new(:dev)
+        |> add_title("some example title")
+        |> add_body("some example body")
+        |> add_apns_id("some apns id")
+        |> add_apns_topic("apns topic of some kind")
     ...
   """
   alias Sparrow.H2Worker.Request
 
+  @type notification_mode :: :dev | :prod
   @type json_array :: [any]
   @type alert_opt_key ::
           :"title-loc-key"
@@ -51,21 +54,27 @@ defmodule Sparrow.APNS.Notification do
           headers: headers,
           alert_opts: alert_opts,
           aps_dictionary_opts: aps_dictionary_opts,
-          custom_data: [{String.t(), any}]
+          custom_data: [{String.t(), any}],
+          type: notification_mode
         }
   defstruct [
     :device_token,
     :headers,
     :alert_opts,
     :aps_dictionary_opts,
-    :custom_data
+    :custom_data,
+    :type
   ]
 
   @doc """
   Creates new `Sparrow.APNS.Notification`.
+
+  ## Arguments
+      *`device_token` - Token of the device you want to send notification to.
+      *`type` - Notiifcation type determins weater notification is development (`:dev`) or production (`:prod`) type.
   """
-  @spec new(String.t()) :: __MODULE__.t()
-  def new(device_token) do
+  @spec new(String.t(), notification_mode) :: __MODULE__.t()
+  def new(device_token, type) do
     %__MODULE__{
       device_token: device_token,
       headers: [
@@ -74,7 +83,8 @@ defmodule Sparrow.APNS.Notification do
       ],
       alert_opts: [],
       aps_dictionary_opts: [],
-      custom_data: []
+      custom_data: [],
+      type: type
     }
   end
 

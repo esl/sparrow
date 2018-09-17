@@ -8,7 +8,8 @@ defmodule Sparrow.FCM.V1.APNSTest do
     token_getter = fn -> {"Authorization", "Bearer dummy token"} end
 
     apns_notification =
-      Notification.new("dummy device token")
+      "dummy device token"
+      |> Notification.new(:dev)
       |> Notification.add_title("apns title")
       |> Notification.add_body("apns body")
 
