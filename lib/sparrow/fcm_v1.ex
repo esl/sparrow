@@ -16,6 +16,7 @@ defmodule Sparrow.FCM.V1 do
   @type authentication :: Sparrow.H2Worker.Config.authentication()
   @type tls_options :: Sparrow.H2Worker.Config.tls_options()
   @type time_in_miliseconds :: Sparrow.H2Worker.Config.time_in_miliseconds()
+  @type http_status :: non_neg_integer
   @type sync_push_result ::
           {:error, :connection_lost}
           | {:ok, {headers, body}}
@@ -65,6 +66,38 @@ defmodule Sparrow.FCM.V1 do
       strategy
     )
   end
+
+  @spec process_response({:ok, {headers, body}} | {:error, reason}) ::
+          :ok
+          | {:error,
+             {status ::
+                String.t()
+                | nil, reason :: String.t() | nil}
+             | reason :: :request_timeout | :not_ready | reason}
+  def process_response({:ok, {headers, body}}) do
+    if {":status", "200"} in headers do
+      _ =
+        Logger.debug(fn ->
+          "action=handle_push_response, result=succes, status=200"
+        end)
+
+      :ok
+    else
+      status = get_status_from_headers(headers)
+      reason = get_reason_from_body(body)
+
+      _ =
+        Logger.info(fn ->
+          "action=handle_push_response, result=fail, status=#{inspect(status)}, reason=#{
+            inspect(reason)
+          }"
+        end)
+
+      {:error, {status, reason}}
+    end
+  end
+
+  def process_response({:error, reason}), do: {:error, reason}
 
   @doc """
   Function providing `Sparrow.H2Worker.Authentication.TokenBased` for FCM pools.
@@ -185,5 +218,24 @@ defmodule Sparrow.FCM.V1 do
   @spec path(String.t()) :: String.t()
   defp path(project_id) do
     "/v1/projects/#{project_id}/messages:send"
+  end
+
+  @spec get_status_from_headers(headers) :: nil | http_status
+  defp get_status_from_headers(headers) do
+    case List.keyfind(headers, ":status", 0) do
+      {_, status} ->
+        (fn ->
+           {i, _} = Integer.parse(status)
+           i
+         end).()
+
+      nil ->
+        nil
+    end
+  end
+
+  @spec get_reason_from_body(String.t()) :: String.t() | nil
+  defp get_reason_from_body(body) do
+    body |> Jason.decode!() |> Map.get("error") |> Map.get("message")
   end
 end

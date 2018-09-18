@@ -207,6 +207,34 @@ defmodule Sparrow.FCM.V1Test do
     assert config.authentication == auth
   end
 
+  test "process_response handle error correctly" do
+    headers = [
+      {":status", "400"},
+      {"vary", "X-Origin"}
+    ]
+
+    body = "{
+      \"error\" : {
+        \"code\" : 400,
+        \"message\" : \"Request contains an invalid argument.\",
+        \"status\" : \"INVALID_ARGUMENT\"
+      }
+    }"
+
+    assert {:error, {400, "Request contains an invalid argument."}} ==
+             Sparrow.FCM.V1.process_response({:ok, {headers, body}})
+  end
+  test "process_response handle success correctly" do
+    headers = [
+      {":status", "200"},
+      {"vary", "X-Origin"}
+    ]
+
+    body = "{ ok }"
+
+    assert :ok == Sparrow.FCM.V1.process_response({:ok, {headers, body}})
+  end
+
   defp test_notification(project_id) do
     Notification.new(
       @notification_target_type,

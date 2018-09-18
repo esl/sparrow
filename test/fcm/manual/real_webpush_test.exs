@@ -15,6 +15,7 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
   @webpush_target "dummy"
   @pool_name :my_pool_name
   @path_to_json "priv/fcm/token/sparrow_token.json"
+
   @tag :skip
   test "real webpush notification send" do
     Sparrow.FCM.V1.TokenBearer.start_link(@path_to_json)
@@ -42,14 +43,8 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
       )
       |> Notification.add_webpush(webpush)
 
-      #{:ok, {headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
 
-      {:ok, {headers, body}} = Sparrow.API.push(notification, [:webpush])
-
-      IO.puts("headers:")
-      IO.inspect(headers)
-      IO.puts("body:")
-      body |> Jason.decode!() |> IO.inspect()
+    :ok = Sparrow.API.push(notification, [:webpush])
   end
 
   def child_spec(opts) do

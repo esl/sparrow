@@ -73,10 +73,15 @@ defmodule Sparrow.API do
 
   @spec do_push(atom, notification, [{atom, any}]) :: sync_push_result | :ok
   defp do_push(pool, notification = %Sparrow.APNS.Notification{}, opts) do
-    Sparrow.APNS.push(pool, notification, opts)
+    pool
+    |> Sparrow.APNS.push(notification, opts)
+    |> Sparrow.APNS.process_response()
   end
 
   defp do_push(pool, notification = %Sparrow.FCM.V1.Notification{}, opts) do
-    Sparrow.FCM.V1.push(pool, notification, opts)
+    pool
+    |> Sparrow.FCM.V1.push(notification, opts)
+    |> Sparrow.FCM.V1.process_response()
+
   end
 end

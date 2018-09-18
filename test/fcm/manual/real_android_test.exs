@@ -48,13 +48,9 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
       )
       |> Notification.add_android(android)
 
-    {:ok, {headers, body}} = Sparrow.API.push(notification, [:webpush])
-
-
-    IO.puts("headers:")
-    IO.inspect(headers)
-    IO.puts("body:")
-    body |> Jason.decode!() |> IO.inspect()
+      notification
+      |> Sparrow.API.push([:webpush])
+      |> IO.inspect()
   end
 
   def child_spec(opts) do
