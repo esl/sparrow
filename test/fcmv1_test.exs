@@ -1,6 +1,8 @@
 defmodule Sparrow.FCM.V1Test do
   use ExUnit.Case
 
+  import Mock
+
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.FCM.V1.Notification
   alias Sparrow.FCM.V1.Android
@@ -93,101 +95,160 @@ defmodule Sparrow.FCM.V1Test do
   end
 
   test "empty notification is built and sent" do
-    notification = test_notification("EchoBodyHandler")
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, r, _, _, _ ->
+        headers = [{":status", "200"} | r.headers]
+        send(self(), {:ok, {headers, r.body}})
+        {:ok, {headers, r.body}}
+      end do
+      notification = test_notification("EchoBodyHandler")
 
-    {:ok, {_headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
+      assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
 
-    actual_decoded_notification =
-      body
-      |> Jason.decode!()
-      |> Map.get("message")
+      {:ok, {_headers, body}} =
+        receive do
+          {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+        after
+          1_000 -> assert false
+        end
 
-    assert @notification_data == Map.get(actual_decoded_notification, "data")
+      actual_decoded_notification =
+        body
+        |> Jason.decode!()
+        |> Map.get("message")
+
+      assert @notification_data == Map.get(actual_decoded_notification, "data")
+    end
   end
 
   test "android notification is built and sent" do
-    notification =
-      test_notification("EchoBodyHandler")
-      |> Notification.add_android(test_android())
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, r, _, _, _ ->
+        headers = [{":status", "200"} | r.headers]
+        send(self(), {:ok, {headers, r.body}})
+        {:ok, {headers, r.body}}
+      end do
+      notification =
+        test_notification("EchoBodyHandler")
+        |> Notification.add_android(test_android())
 
-    {:ok, {_headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
+      assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
 
-    actual_decoded_android =
-      body
-      |> Jason.decode!()
-      |> Map.get("message")
-      |> Map.get("android")
+      {:ok, {_headers, body}} =
+        receive do
+          {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+        after
+          1_000 -> assert false
+        end
 
-    actual_decoded_android_notification =
-      Map.get(actual_decoded_android, "notification")
+      actual_decoded_android =
+        body
+        |> Jason.decode!()
+        |> Map.get("message")
+        |> Map.get("android")
 
-    assert actual_decoded_android != nil
-    assert @android_data == Map.get(actual_decoded_android, "data")
+      actual_decoded_android_notification =
+        Map.get(actual_decoded_android, "notification")
 
-    assert @android_collapse_key ==
-             Map.get(actual_decoded_android, "collapse_key")
+      assert actual_decoded_android != nil
+      assert @android_data == Map.get(actual_decoded_android, "data")
 
-    expected_ttl = Integer.to_string(@android_ttl) <> "s"
-    assert expected_ttl == Map.get(actual_decoded_android, "ttl")
+      assert @android_collapse_key ==
+               Map.get(actual_decoded_android, "collapse_key")
 
-    assert @android_body == Map.get(actual_decoded_android_notification, "body")
+      expected_ttl = Integer.to_string(@android_ttl) <> "s"
+      assert expected_ttl == Map.get(actual_decoded_android, "ttl")
 
-    assert @android_title ==
-             Map.get(actual_decoded_android_notification, "title")
+      assert @android_body ==
+               Map.get(actual_decoded_android_notification, "body")
+
+      assert @android_title ==
+               Map.get(actual_decoded_android_notification, "title")
+    end
   end
 
   test "webpush notification is built and sent" do
-    notification =
-      test_notification("EchoBodyHandler")
-      |> Notification.add_webpush(test_webpush())
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, r, _, _, _ ->
+        headers = [{":status", "200"} | r.headers]
+        send(self(), {:ok, {headers, r.body}})
+        {:ok, {headers, r.body}}
+      end do
+      notification =
+        test_notification("EchoBodyHandler")
+        |> Notification.add_webpush(test_webpush())
 
-    {:ok, {_headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
+      assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
 
-    actual_decoded_webpush =
-      body
-      |> Jason.decode!()
-      |> Map.get("message")
-      |> Map.get("webpush")
+      {:ok, {_headers, body}} =
+        receive do
+          {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+        after
+          1_000 -> assert false
+        end
 
-    actual_decoded_webpush_notification =
-      Map.get(actual_decoded_webpush, "notification")
+      actual_decoded_webpush =
+        body
+        |> Jason.decode!()
+        |> Map.get("message")
+        |> Map.get("webpush")
 
-    assert actual_decoded_webpush != nil
-    assert @webpush_data == Map.get(actual_decoded_webpush, "data")
-    assert @webpush_body == Map.get(actual_decoded_webpush_notification, "body")
+      actual_decoded_webpush_notification =
+        Map.get(actual_decoded_webpush, "notification")
 
-    assert @webpush_title ==
-             Map.get(actual_decoded_webpush_notification, "title")
+      assert actual_decoded_webpush != nil
+      assert @webpush_data == Map.get(actual_decoded_webpush, "data")
+
+      assert @webpush_body ==
+               Map.get(actual_decoded_webpush_notification, "body")
+
+      assert @webpush_title ==
+               Map.get(actual_decoded_webpush_notification, "title")
+    end
   end
 
   test "apns notification is built and sent" do
-    notification =
-      test_notification_without_optional_args("EchoBodyHandler")
-      |> Notification.add_apns(test_apns())
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, r, _, _, _ ->
+        headers = [{":status", "200"} | r.headers]
+        send(self(), {:ok, {headers, r.body}})
+        {:ok, {headers, r.body}}
+      end do
+      notification =
+        test_notification_without_optional_args("EchoBodyHandler")
+        |> Notification.add_apns(test_apns())
 
-    {:ok, {_headers, body}} = Sparrow.FCM.V1.push(@pool_name, notification)
+      assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
 
-    actual_decoded_apns =
-      body
-      |> Jason.decode!()
-      |> Map.get("message")
-      |> Map.get("apns")
+      {:ok, {_headers, body}} =
+        receive do
+          {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+        after
+          1_000 -> assert false
+        end
 
-    actual_decoded_apns_payload = Map.get(actual_decoded_apns, "payload")
+      actual_decoded_apns =
+        body
+        |> Jason.decode!()
+        |> Map.get("message")
+        |> Map.get("apns")
 
-    aps_dictionary = Map.get(actual_decoded_apns_payload, "aps")
-    alert_dictionary = Map.get(aps_dictionary, "alert")
+      actual_decoded_apns_payload = Map.get(actual_decoded_apns, "payload")
 
-    assert actual_decoded_apns_payload != nil
+      aps_dictionary = Map.get(actual_decoded_apns_payload, "aps")
+      alert_dictionary = Map.get(aps_dictionary, "alert")
 
-    assert @apns_custom_data_value ==
-             Map.get(actual_decoded_apns_payload, @apns_custom_data_key)
+      assert actual_decoded_apns_payload != nil
 
-    assert @apns_badge == Map.get(aps_dictionary, "badge")
-    assert @apns_sound == Map.get(aps_dictionary, "sound")
+      assert @apns_custom_data_value ==
+               Map.get(actual_decoded_apns_payload, @apns_custom_data_key)
 
-    assert @apns_title == Map.get(alert_dictionary, "title")
-    assert @apns_body == Map.get(alert_dictionary, "body")
+      assert @apns_badge == Map.get(aps_dictionary, "badge")
+      assert @apns_sound == Map.get(aps_dictionary, "sound")
+
+      assert @apns_title == Map.get(alert_dictionary, "title")
+      assert @apns_body == Map.get(alert_dictionary, "body")
+    end
   end
 
   test "FCm token based config is biuld correctly" do
@@ -224,6 +285,7 @@ defmodule Sparrow.FCM.V1Test do
     assert {:error, {400, "Request contains an invalid argument."}} ==
              Sparrow.FCM.V1.process_response({:ok, {headers, body}})
   end
+
   test "process_response handle success correctly" do
     headers = [
       {":status", "200"},

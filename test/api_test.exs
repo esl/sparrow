@@ -3,7 +3,7 @@ defmodule Sparrow.APITest do
 
   import Mock
 
-   @body "{
+  @body "{
     \"error\" : {
       \"code\" : 400,
       \"message\" : \"Request contains an invalid argument.\",
@@ -15,8 +15,8 @@ defmodule Sparrow.APITest do
     body = "my test return body"
 
     with_mock Sparrow.FCM.V1,
-      push: fn _, _, _ -> {:ok, {headers, body}} end,
-      push: fn _, _ -> {:ok, {headers, body}} end,
+      push: fn _, _, _ -> :ok end,
+      push: fn _, _ -> :ok end,
       process_response: fn _ -> :ok end do
       Sparrow.PoolsWarden.start_link()
 
@@ -56,9 +56,10 @@ defmodule Sparrow.APITest do
   test "APNS notification is send correctly" do
     headers = [{"key1", "val1"}, {"key2", "val2"}, {":status", "200"}]
     body = "my test return body"
+
     with_mock Sparrow.APNS,
-      push: fn _, _, _ -> {:ok, {headers, body}} end,
-      push: fn _, _ -> {:ok, {headers, body}} end,
+      push: fn _, _, _ -> :ok end,
+      push: fn _, _ -> :ok end,
       process_response: fn _ -> :ok end do
       Sparrow.PoolsWarden.start_link()
 
@@ -92,7 +93,7 @@ defmodule Sparrow.APITest do
   end
 
   test "async notification is send" do
-    headers = [{"key1", "val1"},{":status", "400"}, {"key2", "val2"}]
+    headers = [{"key1", "val1"}, {":status", "400"}, {"key2", "val2"}]
     body = "my test return body"
 
     with_mock Sparrow.APNS,

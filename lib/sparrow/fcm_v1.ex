@@ -58,13 +58,14 @@ defmodule Sparrow.FCM.V1 do
         "action=push_fcm_notification, request=#{inspect(request)}"
       end)
 
-    Sparrow.H2Worker.Pool.send_request(
-      h2_worker_pool,
+    h2_worker_pool
+    |> Sparrow.H2Worker.Pool.send_request(
       request,
       is_sync,
       timeout,
       strategy
     )
+    |> process_response()
   end
 
   @spec process_response({:ok, {headers, body}} | {:error, reason}) ::

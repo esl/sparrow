@@ -85,14 +85,14 @@ defmodule Sparrow.APNS do
         Logger.debug(fn ->
           "action=push_apns_notification, request=#{inspect(request)}"
         end)
-
-      Sparrow.H2Worker.Pool.send_request(
-        h2_worker_pool,
+      h2_worker_pool
+      |> Sparrow.H2Worker.Pool.send_request(
         request,
         is_sync,
         timeout,
         strategy
       )
+      |> process_response()
     else
       _ =
         Logger.warn(fn ->
@@ -135,6 +135,7 @@ defmodule Sparrow.APNS do
           "action=handle_push_response, result=succes, status=200"
         end)
 
+      # TODO extend implementation if needed in further tests
       :ok
     else
       status = get_status_from_headers(headers)

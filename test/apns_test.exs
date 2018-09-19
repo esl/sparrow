@@ -1,6 +1,8 @@
 defmodule Sparrow.APNSTest do
   use ExUnit.Case
 
+  import Mock
+
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.APNS.Notification
 
@@ -46,24 +48,40 @@ defmodule Sparrow.APNSTest do
   end
 
   test "sending request to APNS mock returning success" do
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, r, _, _, _ ->
+        headers = [{":status", "200"} | r.headers]
+        send(self(), {:ok, {headers, r.body}})
+        {:ok, {headers, r.body}}
+      end do
     notification =
       "OkResponseHandler"
       |> Notification.new(:dev)
       |> Notification.add_title(@title)
-      |> Notification.add_body(@body)
+      |> Notification.add_body("")
 
-    {:ok, {headers, body}} = Sparrow.APNS.push(@pool_name, notification)
+    assert :ok == Sparrow.APNS.push(@pool_name, notification)
 
-    result = Sparrow.APNS.process_response({:ok, {headers, body}})
+    {:ok, {headers, body}} =
+        receive do
+          {:ok, {headers, body}} -> {:ok, {headers, body}}
+        after
+          1_000 -> assert false
+        end
 
+    assert :ok == Sparrow.APNS.process_response({:ok, {headers, body}})
     assert {":status", "200"} in headers
-    assert "" == body
-    assert {"content-length", "0"} in headers
-    assert :ok == result
   end
+end
 
   test "sending async request to APNS" do
-    notification =
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, r, _, _, _ ->
+        headers = [{":status", "200"} | r.headers]
+        send(self(), {:ok, {headers, r.body}})
+        {:ok, {headers, r.body}}
+      end do
+        notification =
       "OkResponseHandler"
       |> Notification.new(:prod)
       |> Notification.add_title(@title)
@@ -76,8 +94,9 @@ defmodule Sparrow.APNSTest do
                is_sync: false
              )
   end
+end
 
-  test "sending invalid request blocked" do
+test "sending invalid request blocked" do
     notification = Notification.new("OkResponseHandler", :dev)
 
     assert {:error, :invalid_notification} ==
@@ -91,15 +110,16 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_title(@title)
       |> Notification.add_body(@body)
 
-    {:ok, {headers, body}} = Sparrow.APNS.push(@pool_name, notification)
-
-    result = Sparrow.APNS.process_response({:ok, {headers, body}})
-
-    assert {":status", "321"} in headers
-    assert {:error, {321, "My error reason"}} == result
+    assert {:error, {321, "My error reason"}} == Sparrow.APNS.push(@pool_name, notification)
   end
 
   test "notification json contains options aps_dictionary" do
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, r, _, _, _ ->
+        headers = [{":status", "200"} | r.headers]
+        send(self(), {:ok, {headers, r.body}})
+        {:ok, {headers, r.body}}
+      end do
     sound = "sound of silence"
     badge = "badge123"
     content_available = "shure thing"
@@ -116,7 +136,14 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_category(category)
       |> Notification.add_thread_id(thread_id)
 
-    {:ok, {headers, body}} = Sparrow.APNS.push(@pool_name, notification)
+    assert :ok == Sparrow.APNS.push(@pool_name, notification)
+
+    {:ok, {headers, body}} =
+    receive do
+      {:ok, {headers, body}} -> {:ok, {headers, body}}
+    after
+      1_000 -> assert false
+    end
 
     {:ok, response} = Jason.decode(body)
     aps_opts = Map.get(response, "aps")
@@ -128,6 +155,7 @@ defmodule Sparrow.APNSTest do
     assert category == Map.get(aps_opts, "category")
     assert thread_id == Map.get(aps_opts, "thread-id")
   end
+end
 
   test "notification json contains options alert" do
     title_loc_key = "title_loc_key of some kind"
@@ -139,6 +167,12 @@ defmodule Sparrow.APNSTest do
     loc_key = "loc_key value"
     action_loc_key = "my test action loc key"
 
+    with_mock Sparrow.H2Worker.Pool,
+    send_request: fn _, r, _, _, _ ->
+      headers = [{":status", "200"} | r.headers]
+      send(self(), {:ok, {headers, r.body}})
+      {:ok, {headers, r.body}}
+    end do
     notification =
       "EchoBodyHandler"
       |> Notification.new(:dev)
@@ -154,7 +188,14 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_loc_key(loc_key)
       |> Notification.add_action_loc_key(action_loc_key)
 
-    {:ok, {headers, body}} = Sparrow.APNS.push(@pool_name, notification)
+    assert :ok == Sparrow.APNS.push(@pool_name, notification)
+
+    {:ok, {headers, body}} =
+    receive do
+      {:ok, {headers, body}} -> {:ok, {headers, body}}
+    after
+      1_000 -> assert false
+    end
 
     {:ok, response} = Jason.decode(body)
     alert = Map.get(response, "aps")
@@ -177,8 +218,15 @@ defmodule Sparrow.APNSTest do
     assert loc_key == Map.get(alert_content, "loc-key")
     assert action_loc_key == Map.get(alert_content, "action-loc-key")
   end
+end
 
   test "notification headers contain added headers" do
+    with_mock Sparrow.H2Worker.Pool,
+    send_request: fn _, r, _, _, _ ->
+      headers = [{":status", "200"} | r.headers]
+      send(self(), {:ok, {headers, r.body}})
+      {:ok, {headers, r.body}}
+    end do
     notification =
       "HeaderToBodyEchoHandler"
       |> Notification.new(:dev)
@@ -190,39 +238,64 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_apns_topic("apns topic value")
       |> Notification.add_apns_collapse_id("apns collapse id value")
 
-    {:ok, {response_headers, body}} =
+    :ok =
       Sparrow.APNS.push(@pool_name, notification)
 
-    {response_headers_map, _} = Code.eval_string(body)
-    headers_decoded_from_body = Map.to_list(response_headers_map)
+    {:ok, {headers, body}} =
+    receive do
+      {:ok, {headers, body}} -> {:ok, {headers, body}}
+    after
+      1_000 -> assert false
+    end
 
-    assert {":status", "200"} in response_headers
-    assert {"content-type", "application/json"} in headers_decoded_from_body
-    assert {"accept", "application/json"} in headers_decoded_from_body
+    assert {":status", "200"} in headers
+    assert {"content-type", "application/json"} in headers
+    assert {"accept", "application/json"} in headers
 
-    assert {"apns-expiration", "apns expiration header value"} in headers_decoded_from_body
+    assert {"apns-expiration", "apns expiration header value"} in headers
 
-    assert {"apns-id", "apns id value"} in headers_decoded_from_body
-    assert {"apns-priority", "apns priority value"} in headers_decoded_from_body
-    assert {"apns-topic", "apns topic value"} in headers_decoded_from_body
+    assert {"apns-id", "apns id value"} in headers
+    assert {"apns-priority", "apns priority value"} in headers
+    assert {"apns-topic", "apns topic value"} in headers
 
-    assert {"apns-collapse-id", "apns collapse id value"} in headers_decoded_from_body
+    assert {"apns-collapse-id", "apns collapse id value"} in headers
   end
+end
 
   test "notification custom data" do
+    with_mock Sparrow.H2Worker.Pool,
+    send_request: fn _, r, _, _, _ ->
+      headers = [{":status", "200"} | r.headers]
+      send(self(), {:ok, {headers, r.body}})
+      {:ok, {headers, r.body}}
+    end do
     notification =
       "EchoBodyHandler"
       |> Notification.new(:dev)
       |> Notification.add_title("Game Request")
       |> Notification.add_custom_data("gameID", "12345678")
 
-    {:ok, {_headers, body}} = Sparrow.APNS.push(@pool_name, notification)
+    assert :ok == Sparrow.APNS.push(@pool_name, notification)
+
+    {:ok, {_headers, body}} =
+    receive do
+      {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+    after
+      1_000 -> assert false
+    end
 
     {:ok, response} = Jason.decode(body)
     assert "12345678" == Map.get(response, "gameID")
   end
+end
 
   test "notification apns example based all levels test" do
+    with_mock Sparrow.H2Worker.Pool,
+    send_request: fn _, r, _, _, _ ->
+      headers = [{":status", "200"} | r.headers]
+      send(self(), {:ok, {headers, r.body}})
+      {:ok, {headers, r.body}}
+    end do
     notification =
       "EchoBodyHandler"
       |> Notification.new(:dev)
@@ -232,7 +305,14 @@ defmodule Sparrow.APNSTest do
       |> Notification.add_category("GAME_INVITATION")
       |> Notification.add_custom_data("gameID", "12345678")
 
-    {:ok, {_headers, body}} = Sparrow.APNS.push(@pool_name, notification)
+    :ok = Sparrow.APNS.push(@pool_name, notification)
+
+    {:ok, {_headers, body}} =
+    receive do
+      {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+    after
+      1_000 -> assert false
+    end
 
     {:ok, response} = Jason.decode(body)
 
@@ -250,6 +330,7 @@ defmodule Sparrow.APNSTest do
       |> Jason.decode!()
 
     assert expected_response == response
+    end
   end
 
   @key_id "KEYID"
