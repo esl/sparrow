@@ -85,6 +85,7 @@ defmodule Sparrow.APNS do
         Logger.debug(fn ->
           "action=push_apns_notification, request=#{inspect(request)}"
         end)
+
       h2_worker_pool
       |> Sparrow.H2Worker.Pool.send_request(
         request,
@@ -124,10 +125,7 @@ defmodule Sparrow.APNS do
   @spec process_response({:ok, {headers, body}} | {:error, reason}) ::
           :ok
           | {:error,
-             {status ::
-                String.t()
-                | nil, reason :: String.t() | nil}
-             | reason :: :request_timeout | :not_ready | reason}
+             reason :: String.t() | nil | :request_timeout | :not_ready | reason}
   def process_response({:ok, {headers, body}}) do
     if {":status", "200"} in headers do
       _ =
@@ -135,20 +133,19 @@ defmodule Sparrow.APNS do
           "action=handle_push_response, result=succes, status=200"
         end)
 
-      # TODO extend implementation if needed in further tests
       :ok
     else
-      status = get_status_from_headers(headers)
-      reason = get_reason_from_body(body)
+      reason =
+        body
+        |> get_reason_from_body()
+        |> String.to_atom()
 
       _ =
         Logger.info(fn ->
-          "action=handle_push_response, result=fail, status=#{inspect(status)}, reason=#{
-            inspect(reason)
-          }"
+          "action=handle_push_response, result=fail, reason=#{inspect(reason)}"
         end)
 
-      {:error, {status, reason}}
+      {:error, reason}
     end
   end
 
@@ -163,12 +160,11 @@ defmodule Sparrow.APNS do
 
   ## Arguments
 
-    * `status_code` from http response :status header
-    * `error_string` from http response json body key reason
+    * `code` from http response proccess_response
   """
-  @spec get_error_description(non_neg_integer, String.t()) :: String.t()
-  def get_error_description(status, code) do
-    Sparrow.APNS.Errors.get_error_description(status, code)
+  @spec get_error_description(atom) :: String.t()
+  def get_error_description(code) do
+    Sparrow.APNS.Errors.get_error_description(code)
   end
 
   @doc """
@@ -309,20 +305,6 @@ defmodule Sparrow.APNS do
       notification.alert_opts |> Keyword.get(:body, false) |> to_boolean.()
 
     contains_title or contains_body
-  end
-
-  @spec get_status_from_headers(headers) :: nil | http_status
-  defp get_status_from_headers(headers) do
-    case List.keyfind(headers, ":status", 0) do
-      {_, status} ->
-        (fn ->
-           {i, _} = Integer.parse(status)
-           i
-         end).()
-
-      nil ->
-        nil
-    end
   end
 
   @spec get_reason_from_body(String.t()) :: String.t() | nil
