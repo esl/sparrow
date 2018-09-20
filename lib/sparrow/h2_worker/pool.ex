@@ -11,7 +11,7 @@ defmodule Sparrow.H2Worker.Pool do
           | :next_available_worker
   @type body :: String.t()
   @type headers :: [{String.t(), String.t()}]
-  @type reason :: any
+  @type reason :: atom
   @type worker_config :: Sparrow.H2Worker.Config.t()
   @type pool_type :: Sparrow.PoolsWarden.pool_type()
   @doc """

@@ -6,7 +6,7 @@ defmodule Sparrow.APNS do
 
   alias Sparrow.H2Worker.Request
 
-  @type reason :: any
+  @type reason :: atom
   @type headers :: Request.headers()
   @type body :: String.t()
   @type state :: Sparrow.H2Worker.State.t()
@@ -32,7 +32,7 @@ defmodule Sparrow.APNS do
   ## Options
 
   * `:is_sync` - Determines whether the worker should wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
-      * `{:ok, {headers, body}}` when the response is received. `headers` are the response headers and `body` is the response body.
+      * `:ok` when the response is received.
       * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
       * `{:error, :connection_lost}` when the connection to APNS is lost before the response arrives.
       * `{:error, :not_ready}` when stream response is not yet ready, but it h2worker tries to get it.
@@ -105,16 +105,15 @@ defmodule Sparrow.APNS do
   end
 
   @doc """
-  Parses the return value of `push/2` returning the status code and reason in case of errors
+  Parses the return headers and body in `push/2` returning the status code and reason in case of errors
   You can combine it with `Sparrow.APNS.get_error_description/1` to get a human-readable description of the error reason.
-  Note that this function is useful only if you push the notification in synchronous mode.
+  Note that this function is used only if you push the notification in synchronous mode.
 
   ## Example
 
   push_result =
       worker
       |> Sparrow.APNS.push(notification)
-      |> process_response()
   case push_result do
       :ok ->
           :ok
@@ -160,7 +159,7 @@ defmodule Sparrow.APNS do
 
   ## Arguments
 
-    * `code` from http response proccess_response
+    * `code` - from http response proccess_response
   """
   @spec get_error_description(atom) :: String.t()
   def get_error_description(code) do

@@ -2,15 +2,10 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
   use ExUnit.Case
 
   alias Sparrow.FCM.V1.Notification
-  alias Sparrow.H2Worker.Config
 
-  @fcm_address "fcm.googleapis.com"
-  # documentation says to use 5228, but 443 works fine
-  @fcm_port 443
   @project_id "sparrow-2b961"
   @target_type :topic
   @target "news"
-  @pool_name :my_pool_name
 
   @notification_title "Commander Cody"
   @notification_body "the time has come. Execute order 66."
@@ -29,8 +24,8 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
       Sparrow.FCM.V1.get_token_based_authentication()
       |> Sparrow.FCM.V1.get_h2worker_config()
 
-    {:ok, pid} =
-      Sparrow.H2Worker.Pool.Config.new(worker_config, @pool_name)
+    {:ok, _pid} =
+      Sparrow.H2Worker.Pool.Config.new(worker_config)
       |> Sparrow.H2Worker.Pool.start_link(:fcm, [:webpush])
 
     android =
@@ -51,15 +46,5 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
     notification
     |> Sparrow.API.push([:webpush])
     |> IO.inspect()
-  end
-
-  def child_spec(opts) do
-    args = opts[:args]
-    name = opts[:name]
-
-    %{
-      :id => 28,
-      :start => {Sparrow.H2Worker, :start_link, [name, args]}
-    }
   end
 end

@@ -6,7 +6,7 @@ defmodule Sparrow.FCM.V1 do
 
   alias Sparrow.H2Worker.Request
 
-  @type reason :: any
+  @type reason :: atom
   @type headers :: Request.headers()
   @type body :: String.t()
   @type push_opts :: [{:is_sync, boolean()} | {:timeout, non_neg_integer}]
@@ -31,7 +31,7 @@ defmodule Sparrow.FCM.V1 do
   ## Options
 
   * `:is_sync` - Determines whether the worker should wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
-      * `{:ok, {headers, body}}` when the response is received. `headers` are the response headers and `body` is the response body.
+      * `:ok` when the response is received.
       * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
       * `{:error, :connection_lost}` when the connection to APNS is lost before the response arrives.
       * `{:error, :not_ready}` when stream response is not yet ready, but it h2worker tries to get it.
@@ -70,11 +70,7 @@ defmodule Sparrow.FCM.V1 do
 
   @spec process_response({:ok, {headers, body}} | {:error, reason}) ::
           :ok
-          | {:error,
-             {status ::
-                String.t()
-                | nil, reason :: String.t() | nil}
-             | reason :: :request_timeout | :not_ready | reason}
+          | {:error, reason :: :request_timeout | :not_ready | reason}
   def process_response({:ok, {headers, body}}) do
     if {":status", "200"} in headers do
       _ =
@@ -82,19 +78,25 @@ defmodule Sparrow.FCM.V1 do
           "action=handle_push_response, result=succes, status=200"
         end)
 
+      # TODO extend implementation if needed in further tests
+
       :ok
     else
       status = get_status_from_headers(headers)
-      reason = get_reason_from_body(body)
+
+      reason =
+        body
+        |> get_reason_from_body()
+        |> String.to_atom()
 
       _ =
-        Logger.info(fn ->
-          "action=handle_push_response, result=fail, status=#{inspect(status)}, reason=#{
-            inspect(reason)
+        Logger.warn(fn ->
+          "action=handle_push_response, result=fail, status=#{inspect(status)}, response_body=#{
+            inspect(body)
           }"
         end)
 
-      {:error, {status, reason}}
+      {:error, reason}
     end
   end
 
@@ -221,22 +223,15 @@ defmodule Sparrow.FCM.V1 do
     "/v1/projects/#{project_id}/messages:send"
   end
 
-  @spec get_status_from_headers(headers) :: nil | http_status
+  @spec get_status_from_headers(headers) :: http_status
   defp get_status_from_headers(headers) do
-    case List.keyfind(headers, ":status", 0) do
-      {_, status} ->
-        (fn ->
-           {i, _} = Integer.parse(status)
-           i
-         end).()
-
-      nil ->
-        nil
-    end
+    {_, status} = List.keyfind(headers, ":status", 0)
+    {result, _} = Integer.parse(status)
+    result
   end
 
   @spec get_reason_from_body(String.t()) :: String.t() | nil
   defp get_reason_from_body(body) do
-    body |> Jason.decode!() |> Map.get("error") |> Map.get("message")
+    body |> Jason.decode!() |> Map.get("error") |> Map.get("status")
   end
 end

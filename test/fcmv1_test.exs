@@ -107,7 +107,7 @@ defmodule Sparrow.FCM.V1Test do
 
       {:ok, {_headers, body}} =
         receive do
-          {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+          {:ok, {headers, body}} -> {:ok, {headers, body}}
         after
           1_000 -> assert false
         end
@@ -136,7 +136,7 @@ defmodule Sparrow.FCM.V1Test do
 
       {:ok, {_headers, body}} =
         receive do
-          {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+          {:ok, {headers, body}} -> {:ok, {headers, body}}
         after
           1_000 -> assert false
         end
@@ -182,7 +182,7 @@ defmodule Sparrow.FCM.V1Test do
 
       {:ok, {_headers, body}} =
         receive do
-          {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+          {:ok, {headers, body}} -> {:ok, {headers, body}}
         after
           1_000 -> assert false
         end
@@ -222,7 +222,7 @@ defmodule Sparrow.FCM.V1Test do
 
       {:ok, {_headers, body}} =
         receive do
-          {:ok, {_headers, body}} -> {:ok, {_headers, body}}
+          {:ok, {headers, body}} -> {:ok, {headers, body}}
         after
           1_000 -> assert false
         end
@@ -268,7 +268,7 @@ defmodule Sparrow.FCM.V1Test do
     assert config.authentication == auth
   end
 
-  test "process_response handle error correctly" do
+  test "process_response handle invalid_argument correctly" do
     headers = [
       {":status", "400"},
       {"vary", "X-Origin"}
@@ -282,7 +282,54 @@ defmodule Sparrow.FCM.V1Test do
       }
     }"
 
-    assert {:error, {400, "Request contains an invalid argument."}} ==
+    assert {:error, :INVALID_ARGUMENT} ==
+             Sparrow.FCM.V1.process_response({:ok, {headers, body}})
+  end
+
+  test "process_response handle error correctly" do
+    headers = [
+      {":status", "400"},
+      {"vary", "X-Origin"}
+    ]
+
+    body = "{
+      \"error\": {
+        \"code\": 400,
+        \"message\": \"Invalid JSON payload received. Unknown name \\\"wololo\\\" at 'message': Cannot find field.\",
+        \"status\": \"INVALID_ARGUMENT\",
+        \"details\": [
+          {
+            \"@type\": \"type.googleapis.com/google.rpc.BadRequest\",
+            \"fieldViolations\": [
+              {
+                \"field\": \"message\",
+                \"description\": \"Invalid JSON payload received. Unknown name \\\"wololo\\\" at 'message': Cannot find field.\"
+              }
+            ]
+          }
+        ]
+      }
+    }"
+
+    assert {:error, :INVALID_ARGUMENT} ==
+             Sparrow.FCM.V1.process_response({:ok, {headers, body}})
+  end
+
+  test "process_response handle token problem correctly" do
+    headers = [
+      {":status", "401"},
+      {"vary", "X-Origin"}
+    ]
+
+    body = "{
+      \"error\": {
+        \"code\": 401,
+        \"message\": \"Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.\",
+        \"status\": \"UNAUTHENTICATED\"
+      }
+    }"
+
+    assert {:error, :UNAUTHENTICATED} ==
              Sparrow.FCM.V1.process_response({:ok, {headers, body}})
   end
 

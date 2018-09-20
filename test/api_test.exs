@@ -3,17 +3,7 @@ defmodule Sparrow.APITest do
 
   import Mock
 
-  @body "{
-    \"error\" : {
-      \"code\" : 400,
-      \"message\" : \"Request contains an invalid argument.\",
-      \"status\" : \"INVALID_ARGUMENT\"
-    }
-  }"
   test "FCM notification is send correctly" do
-    headers = [{"key1", "val1"}, {"key2", "val2"}, {":status", "400"}]
-    body = "my test return body"
-
     with_mock Sparrow.FCM.V1,
       push: fn _, _, _ -> :ok end,
       push: fn _, _ -> :ok end,
@@ -54,9 +44,6 @@ defmodule Sparrow.APITest do
   end
 
   test "APNS notification is send correctly" do
-    headers = [{"key1", "val1"}, {"key2", "val2"}, {":status", "200"}]
-    body = "my test return body"
-
     with_mock Sparrow.APNS,
       push: fn _, _, _ -> :ok end,
       push: fn _, _ -> :ok end,
@@ -87,15 +74,17 @@ defmodule Sparrow.APITest do
         |> Sparrow.APNS.Notification.add_body("body")
 
       assert :ok == Sparrow.API.push(apns_notification, [:alpha])
+      assert :ok == Sparrow.API.push_async(apns_notification, [:alpha])
 
       assert called Sparrow.APNS.push(pool_1_name, apns_notification, [])
+
+      assert called Sparrow.APNS.push(pool_1_name, apns_notification, [
+                      {:is_sync, false}
+                    ])
     end
   end
 
   test "async notification is send" do
-    headers = [{"key1", "val1"}, {":status", "400"}, {"key2", "val2"}]
-    body = "my test return body"
-
     with_mock Sparrow.APNS,
       push: fn _, _, _ -> :ok end,
       push: fn _, _ -> :ok end,

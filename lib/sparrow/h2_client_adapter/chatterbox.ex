@@ -54,9 +54,10 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
 
   @doc """
     Opens a new stream and sends request through it.
+    DONT PASS PSEUDO HEADERS IN `headers`!!!
   """
   @spec post(connection_ref, String.t(), String.t(), headers, body) ::
-          {:error, reason} | {:ok, stream_id}
+          {:error, byte()} | {:ok, stream_id}
   def post(conn, domain, path, headers, body) do
     headers = make_headers(:post, domain, path, headers, body)
     :h2_client.send_request(conn, headers, body)
@@ -85,6 +86,7 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
     :h2_client.send_ping(conn)
   end
 
+  @spec make_headers(:post, String.t(), String.t(), headers, body) :: headers
   defp make_headers(method, domain, path, headers, body) do
     [
       {":method", String.upcase(Atom.to_string(method))},
