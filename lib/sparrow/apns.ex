@@ -6,7 +6,7 @@ defmodule Sparrow.APNS do
 
   alias Sparrow.H2Worker.Request
 
-  @type reason :: any
+  @type reason :: atom
   @type headers :: Request.headers()
   @type body :: String.t()
   @type state :: Sparrow.H2Worker.State.t()
@@ -32,7 +32,7 @@ defmodule Sparrow.APNS do
   ## Options
 
   * `:is_sync` - Determines whether the worker should wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
-      * `{:ok, {headers, body}}` when the response is received. `headers` are the response headers and `body` is the response body.
+      * `:ok` when the response is received.
       * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
       * `{:error, :connection_lost}` when the connection to APNS is lost before the response arrives.
       * `{:error, :not_ready}` when stream response is not yet ready, but it h2worker tries to get it.
@@ -86,13 +86,14 @@ defmodule Sparrow.APNS do
           "action=push_apns_notification, request=#{inspect(request)}"
         end)
 
-      Sparrow.H2Worker.Pool.send_request(
-        h2_worker_pool,
+      h2_worker_pool
+      |> Sparrow.H2Worker.Pool.send_request(
         request,
         is_sync,
         timeout,
         strategy
       )
+      |> process_response()
     else
       _ =
         Logger.warn(fn ->
@@ -104,16 +105,15 @@ defmodule Sparrow.APNS do
   end
 
   @doc """
-  Parses the return value of `push/2` returning the status code and reason in case of errors
+  Parses the return headers and body in `push/2` returning the status code and reason in case of errors
   You can combine it with `Sparrow.APNS.get_error_description/1` to get a human-readable description of the error reason.
-  Note that this function is useful only if you push the notification in synchronous mode.
+  Note that this function is used only if you push the notification in synchronous mode.
 
   ## Example
 
   push_result =
       worker
       |> Sparrow.APNS.push(notification)
-      |> process_response()
   case push_result do
       :ok ->
           :ok
@@ -124,10 +124,7 @@ defmodule Sparrow.APNS do
   @spec process_response({:ok, {headers, body}} | {:error, reason}) ::
           :ok
           | {:error,
-             {status ::
-                String.t()
-                | nil, reason :: String.t() | nil}
-             | reason :: :request_timeout | :not_ready | reason}
+             reason :: String.t() | nil | :request_timeout | :not_ready | reason}
   def process_response({:ok, {headers, body}}) do
     if {":status", "200"} in headers do
       _ =
@@ -137,17 +134,17 @@ defmodule Sparrow.APNS do
 
       :ok
     else
-      status = get_status_from_headers(headers)
-      reason = get_reason_from_body(body)
+      reason =
+        body
+        |> get_reason_from_body()
+        |> String.to_atom()
 
       _ =
         Logger.info(fn ->
-          "action=handle_push_response, result=fail, status=#{inspect(status)}, reason=#{
-            inspect(reason)
-          }"
+          "action=handle_push_response, result=fail, reason=#{inspect(reason)}"
         end)
 
-      {:error, {status, reason}}
+      {:error, reason}
     end
   end
 
@@ -162,12 +159,11 @@ defmodule Sparrow.APNS do
 
   ## Arguments
 
-    * `status_code` from http response :status header
-    * `error_string` from http response json body key reason
+    * `code` - from http response proccess_response
   """
-  @spec get_error_description(non_neg_integer, String.t()) :: String.t()
-  def get_error_description(status, code) do
-    Sparrow.APNS.Errors.get_error_description(status, code)
+  @spec get_error_description(atom) :: String.t()
+  def get_error_description(code) do
+    Sparrow.APNS.Errors.get_error_description(code)
   end
 
   @doc """
@@ -308,20 +304,6 @@ defmodule Sparrow.APNS do
       notification.alert_opts |> Keyword.get(:body, false) |> to_boolean.()
 
     contains_title or contains_body
-  end
-
-  @spec get_status_from_headers(headers) :: nil | http_status
-  defp get_status_from_headers(headers) do
-    case List.keyfind(headers, ":status", 0) do
-      {_, status} ->
-        (fn ->
-           {i, _} = Integer.parse(status)
-           i
-         end).()
-
-      nil ->
-        nil
-    end
   end
 
   @spec get_reason_from_body(String.t()) :: String.t() | nil

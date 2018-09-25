@@ -6,7 +6,7 @@ defmodule Sparrow.FCM.V1 do
 
   alias Sparrow.H2Worker.Request
 
-  @type reason :: any
+  @type reason :: atom
   @type headers :: Request.headers()
   @type body :: String.t()
   @type push_opts :: [{:is_sync, boolean()} | {:timeout, non_neg_integer}]
@@ -16,6 +16,7 @@ defmodule Sparrow.FCM.V1 do
   @type authentication :: Sparrow.H2Worker.Config.authentication()
   @type tls_options :: Sparrow.H2Worker.Config.tls_options()
   @type time_in_miliseconds :: Sparrow.H2Worker.Config.time_in_miliseconds()
+  @type http_status :: non_neg_integer
   @type sync_push_result ::
           {:error, :connection_lost}
           | {:ok, {headers, body}}
@@ -30,7 +31,7 @@ defmodule Sparrow.FCM.V1 do
   ## Options
 
   * `:is_sync` - Determines whether the worker should wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
-      * `{:ok, {headers, body}}` when the response is received. `headers` are the response headers and `body` is the response body.
+      * `:ok` when the response is received.
       * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
       * `{:error, :connection_lost}` when the connection to APNS is lost before the response arrives.
       * `{:error, :not_ready}` when stream response is not yet ready, but it h2worker tries to get it.
@@ -57,14 +58,49 @@ defmodule Sparrow.FCM.V1 do
         "action=push_fcm_notification, request=#{inspect(request)}"
       end)
 
-    Sparrow.H2Worker.Pool.send_request(
-      h2_worker_pool,
+    h2_worker_pool
+    |> Sparrow.H2Worker.Pool.send_request(
       request,
       is_sync,
       timeout,
       strategy
     )
+    |> process_response()
   end
+
+  @spec process_response({:ok, {headers, body}} | {:error, reason}) ::
+          :ok
+          | {:error, reason :: :request_timeout | :not_ready | reason}
+  def process_response({:ok, {headers, body}}) do
+    if {":status", "200"} in headers do
+      _ =
+        Logger.debug(fn ->
+          "action=handle_push_response, result=succes, status=200"
+        end)
+
+      # TODO extend implementation if needed in further tests
+
+      :ok
+    else
+      status = get_status_from_headers(headers)
+
+      reason =
+        body
+        |> get_reason_from_body()
+        |> String.to_atom()
+
+      _ =
+        Logger.warn(fn ->
+          "action=handle_push_response, result=fail, status=#{inspect(status)}, response_body=#{
+            inspect(body)
+          }"
+        end)
+
+      {:error, reason}
+    end
+  end
+
+  def process_response({:error, reason}), do: {:error, reason}
 
   @doc """
   Function providing `Sparrow.H2Worker.Authentication.TokenBased` for FCM pools.
@@ -185,5 +221,17 @@ defmodule Sparrow.FCM.V1 do
   @spec path(String.t()) :: String.t()
   defp path(project_id) do
     "/v1/projects/#{project_id}/messages:send"
+  end
+
+  @spec get_status_from_headers(headers) :: http_status
+  defp get_status_from_headers(headers) do
+    {_, status} = List.keyfind(headers, ":status", 0)
+    {result, _} = Integer.parse(status)
+    result
+  end
+
+  @spec get_reason_from_body(String.t()) :: String.t() | nil
+  defp get_reason_from_body(body) do
+    body |> Jason.decode!() |> Map.get("error") |> Map.get("status")
   end
 end

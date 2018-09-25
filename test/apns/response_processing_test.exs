@@ -36,7 +36,7 @@ defmodule Sparrow.APNS.ResponseProcessingTest do
     headers = [{"some header", "200"}, {"another header", "value"}]
     body = "{\"reason\" : \"MyReason\"}"
 
-    assert {:error, {nil, "MyReason"}} ==
+    assert {:error, :MyReason} ==
              Sparrow.APNS.process_response({:ok, {headers, body}})
   end
 end

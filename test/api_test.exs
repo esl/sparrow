@@ -4,12 +4,10 @@ defmodule Sparrow.APITest do
   import Mock
 
   test "FCM notification is send correctly" do
-    headers = [{"key1", "val1"}, {"key2", "val2"}]
-    body = "my test return body"
-
     with_mock Sparrow.FCM.V1,
-      push: fn _, _, _ -> {:ok, {headers, body}} end,
-      push: fn _, _ -> {:ok, {headers, body}} end do
+      push: fn _, _, _ -> :ok end,
+      push: fn _, _ -> :ok end,
+      process_response: fn _ -> :ok end do
       Sparrow.PoolsWarden.start_link()
 
       auth =
@@ -39,20 +37,17 @@ defmodule Sparrow.APITest do
         Sparrow.FCM.V1.Notification.new(:topic, "news", "fake_id")
         |> Sparrow.FCM.V1.Notification.add_android(android_notification)
 
-      assert {:ok, {headers, body}} ==
-               Sparrow.API.push(fcm_notification, [:alpha])
+      assert :ok == Sparrow.API.push(fcm_notification, [:alpha])
 
       assert called Sparrow.FCM.V1.push(pool_1_name, fcm_notification, [])
     end
   end
 
   test "APNS notification is send correctly" do
-    headers = [{"key1", "val1"}, {"key2", "val2"}]
-    body = "my test return body"
-
     with_mock Sparrow.APNS,
-      push: fn _, _, _ -> {:ok, {headers, body}} end,
-      push: fn _, _ -> {:ok, {headers, body}} end do
+      push: fn _, _, _ -> :ok end,
+      push: fn _, _ -> :ok end,
+      process_response: fn _ -> :ok end do
       Sparrow.PoolsWarden.start_link()
 
       auth =
@@ -78,20 +73,22 @@ defmodule Sparrow.APITest do
         |> Sparrow.APNS.Notification.add_title("title")
         |> Sparrow.APNS.Notification.add_body("body")
 
-      assert {:ok, {headers, body}} ==
-               Sparrow.API.push(apns_notification, [:alpha])
+      assert :ok == Sparrow.API.push(apns_notification, [:alpha])
+      assert :ok == Sparrow.API.push_async(apns_notification, [:alpha])
 
       assert called Sparrow.APNS.push(pool_1_name, apns_notification, [])
+
+      assert called Sparrow.APNS.push(pool_1_name, apns_notification, [
+                      {:is_sync, false}
+                    ])
     end
   end
 
   test "async notification is send" do
-    headers = [{"key1", "val1"}, {"key2", "val2"}]
-    body = "my test return body"
-
     with_mock Sparrow.APNS,
       push: fn _, _, _ -> :ok end,
-      push: fn _, _ -> :ok end do
+      push: fn _, _ -> :ok end,
+      process_response: fn _ -> :ok end do
       Sparrow.PoolsWarden.start_link()
 
       auth =

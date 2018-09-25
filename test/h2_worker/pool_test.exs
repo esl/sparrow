@@ -100,6 +100,14 @@ defmodule Sparrow.H2Worker.PoolTest do
     assert answer_body == "Hello"
   end
 
+  test "cowboy replies Hello async" do
+    headers = Setup.default_headers()
+
+    request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
+
+    assert :ok == Sparrow.H2Worker.Pool.send_request(@pool_name, request, false)
+  end
+
   @messages_for_pool 1_000
   @moduletag :capture_log
   test "cowboy replies Hello n times" do
