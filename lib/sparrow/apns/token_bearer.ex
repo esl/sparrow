@@ -23,6 +23,15 @@ defmodule Sparrow.APNS.TokenBearer do
     |> (fn [{_, token}] -> token end).()
   end
 
+  @spec start_link(
+          %{required(atom) => Sparrow.APNS.Token.t()}
+          | {%{required(atom) => Sparrow.APNS.Token.t()}, pos_integer}
+        ) :: {:ok, pid}
+  def start_link(tokens) do
+    _ = init(tokens)
+    {:ok, self()}
+  end
+
   @spec init(
           %{required(atom) => Sparrow.APNS.Token.t()}
           | {%{required(atom) => Sparrow.APNS.Token.t()}, pos_integer}

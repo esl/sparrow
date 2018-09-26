@@ -74,6 +74,11 @@ defmodule Sparrow.PoolsWarden do
     )
   end
 
+  @spec start_link(any) :: {:ok, :ok}
+  def start_link(_) do
+    init(:ok)
+  end
+
   @spec init(any) :: {:ok, :ok}
   def init(_) do
     @tab_name = :ets.new(@tab_name, [:bag, :protected, :named_table])
