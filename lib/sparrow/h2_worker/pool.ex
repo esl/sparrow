@@ -72,7 +72,7 @@ defmodule Sparrow.H2Worker.Pool do
   @doc """
   Function to start pool and "register" it in pool warden.
   """
-  @spec start_link(Sparrow.H2Worker.Pool.Config.t(), pool_type, [any]) ::
+  @spec start_link(Sparrow.H2Worker.Pool.Config.t(), pool_type, [atom]) ::
           {:error, any} | {:ok, pid}
   def start_link(config, pool_type, tags \\ []) do
     Sparrow.PoolsWarden.add_new_pool(pool_type, config.pool_name, tags)

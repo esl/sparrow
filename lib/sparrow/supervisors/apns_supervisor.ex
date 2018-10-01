@@ -23,14 +23,16 @@ defmodule Sparrow.APNSSupervisor do
         get_apns_pool_configs(prod_raw_configs, :prod)
 
     children =
-      for pool_config <- pool_configs do
+      for {{pool_config, pool_tags}, pool_type} <- pool_configs do
         pool_id = ".APNS." <> Integer.to_string(get_next())
         id = String.to_atom("Sparrow.APNSPoolSupervisor" <> pool_id)
 
         %{
           id: id,
+          type: :supervisor,
           start:
-            {Sparrow.APNSPoolSupervisor, :start_link, [{pool_id, pool_config}]}
+            {Sparrow.APNSPoolSupervisor, :start_link,
+             [{pool_id, pool_config, {:apns, pool_type}, pool_tags}]}
         }
       end ++
         [
@@ -77,18 +79,18 @@ defmodule Sparrow.APNSSupervisor do
   end
 
   @spec get_apns_pool_configs(nil | [{atom, any}], :dev | :prod) :: [
-          Sparrow.H2Worker.Pool.Config.t()
+          {{Sparrow.H2Worker.Pool.Config.t(), [atom]}, :dev | :prod}
         ]
   defp get_apns_pool_configs(nil, _), do: []
 
   defp get_apns_pool_configs(raw_pool_configs, pool_type) do
     for raw_pool_config <- raw_pool_configs do
-      get_apns_pool_config(raw_pool_config, pool_type)
+      {get_apns_pool_config(raw_pool_config, pool_type), pool_type}
     end
   end
 
   @spec get_apns_pool_config([{atom, any}], :dev | :prod) ::
-          Sparrow.H2Worker.Pool.Config.t()
+          {Sparrow.H2Worker.Pool.Config.t(), [atom]}
   defp get_apns_pool_config(raw_pool_config, pool_type) do
     uri =
       case pool_type do
@@ -119,23 +121,24 @@ defmodule Sparrow.APNSSupervisor do
           cert = Keyword.get(raw_pool_config, :cert)
           key = Keyword.get(raw_pool_config, :key)
           Sparrow.H2Worker.Authentication.CertificateBased.new(cert, key)
-
-        nil ->
-          raise "Authentication type not defined!!"
       end
 
     pool_name = Keyword.get(raw_pool_config, :pool_name)
-    pool_size = Keyword.get(raw_pool_config, :pool_size, 3)
+    pool_size = Keyword.get(raw_pool_config, :worker_num, 3)
     pool_opts = Keyword.get(raw_pool_config, :raw_opts, [])
+    pool_tags = Keyword.get(raw_pool_config, :tags, [])
 
-    uri
-    |> Sparrow.H2Worker.Config.new(
-      port,
-      auth,
-      tls_opts,
-      ping_interval,
-      reconnection_attempts
-    )
-    |> Sparrow.H2Worker.Pool.Config.new(pool_name, pool_size, pool_opts)
+    config =
+      uri
+      |> Sparrow.H2Worker.Config.new(
+        port,
+        auth,
+        tls_opts,
+        ping_interval,
+        reconnection_attempts
+      )
+      |> Sparrow.H2Worker.Pool.Config.new(pool_name, pool_size, pool_opts)
+
+    {config, pool_tags}
   end
 end

@@ -21,6 +21,7 @@ defmodule Sparrow.FCMSupervisor do
       },
       %{
         id: Sparrow.FCMPoolSupervisor,
+        type: :supervisor,
         start: {Sparrow.FCMPoolSupervisor, :start_link, [raw_config]}
       }
     ]

@@ -49,7 +49,7 @@ defmodule Sparrow.PoolsWarden do
 
     _ =
       Logger.debug(fn ->
-        "worker=pools_warden, action=choose_pool, result=result, result_len=#{
+        "worker=pools_warden, action=choose_pool, result=#{inspect(result)}, result_len=#{
           inspect(Enum.count(result))
         }"
       end)
@@ -72,11 +72,6 @@ defmodule Sparrow.PoolsWarden do
       :ok,
       name: @sparrow_pools_warden_name
     )
-  end
-
-  @spec start_link(any) :: {:ok, :ok}
-  def start_link(_) do
-    init(:ok)
   end
 
   @spec init(any) :: {:ok, :ok}

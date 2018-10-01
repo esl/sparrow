@@ -22,10 +22,6 @@ defmodule Helpers.SetupHelper do
     :look
   end
 
-  defp current_dir do
-    System.cwd()
-  end
-
   def create_h2_worker_config(
         address \\ server_host(),
         port \\ 8080,
@@ -50,9 +46,9 @@ defmodule Helpers.SetupHelper do
 
   defp certificate_settings_list do
     [
-      {:cacertfile, current_dir() <> "/priv/ssl/fake_cert.pem"},
-      {:certfile, current_dir() <> "/priv/ssl/fake_cert.pem"},
-      {:keyfile, current_dir() <> "/priv/ssl/fake_key.pem"}
+      {:cacertfile, "priv/ssl/fake_cert.pem"},
+      {:certfile, "priv/ssl/fake_cert.pem"},
+      {:keyfile, "priv/ssl/fake_key.pem"}
     ]
   end
 

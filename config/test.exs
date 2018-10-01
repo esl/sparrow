@@ -1,3 +1,3 @@
 use Mix.Config
 
-config :sparrow, []
+config :sparrow, config: []

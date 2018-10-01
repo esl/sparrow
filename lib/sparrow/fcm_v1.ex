@@ -33,7 +33,7 @@ defmodule Sparrow.FCM.V1 do
   * `:is_sync` - Determines whether the worker should wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
       * `:ok` when the response is received.
       * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
-      * `{:error, :connection_lost}` when the connection to APNS is lost before the response arrives.
+      * `{:error, :connection_lost}` when the connection to FCM is lost before the response arrives.
       * `{:error, :not_ready}` when stream response is not yet ready, but it h2worker tries to get it.
       * `{:error, :invalid_notification}` when notification does not contain neither title nor body.
       * `{:error, :reason}` when error with other reason occures.
@@ -72,6 +72,11 @@ defmodule Sparrow.FCM.V1 do
           :ok
           | {:error, reason :: :request_timeout | :not_ready | reason}
   def process_response({:ok, {headers, body}}) do
+    _ =
+      Logger.debug(fn ->
+        "action=handle_push_response, raw=#{inspect({:ok, {headers, body}})}"
+      end)
+
     if {":status", "200"} in headers do
       _ =
         Logger.debug(fn ->
@@ -110,8 +115,7 @@ defmodule Sparrow.FCM.V1 do
           Sparrow.H2Worker.Authentication.TokenBased.t()
   def get_token_based_authentication do
     getter = fn ->
-      {"Authorization",
-       "Bearer #{inspect(Sparrow.FCM.V1.TokenBearer.get_token())}"}
+      {"Authorization", "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token()}"}
     end
 
     Sparrow.H2Worker.Authentication.TokenBased.new(getter)
