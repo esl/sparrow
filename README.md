@@ -14,8 +14,8 @@ and
 
 ## Installation
 
-[![Build Status](https://travis-ci.com/aleklisi/sparrow.svg?branch=master)](https://travis-ci.com/aleklisi/sparrow)
-[![Coverage Status](https://coveralls.io/repos/github/aleklisi/sparrow/badge.svg)](https://coveralls.io/github/aleklisi/sparrow)
+[![Build Status](https://travis-ci.com/esl/sparrow.svg?branch=master)](https://travis-ci.com/esl/sparrow)
+[![Coverage Status](https://coveralls.io/repos/github/esl/sparrow/badge.svg)](https://coveralls.io/github/esl/sparrow)
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `sparrow` to your list of dependencies in `mix.exs`:
