@@ -25,7 +25,7 @@ defmodule SparrowTest do
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
     on_exit(fn ->
-    Application.stop(:sparrow)
+      Application.stop(:sparrow)
       :cowboy.stop_listener(cowboys_name)
     end)
 
@@ -49,11 +49,13 @@ defmodule SparrowTest do
       end do
       config = [
         fcm: [
-          path_to_json: "sparrow_token.json",
-          endpoint: "localhost",
-          port: context[:port],
-          tags: [:yippee_ki_yay],
-          worker_num: 3
+          [
+            path_to_json: "sparrow_token.json",
+            endpoint: "localhost",
+            port: context[:port],
+            tags: [:yippee_ki_yay],
+            worker_num: 3
+          ]
         ],
         apns: [
           dev: [
@@ -97,7 +99,6 @@ defmodule SparrowTest do
       ]
 
       Application.stop(:sparrow)
-      :timer.sleep(1000)
 
       Application.put_env(:sparrow, :config, config)
       Application.start(:sparrow)
@@ -162,16 +163,17 @@ defmodule SparrowTest do
       end do
       config = [
         fcm: [
-          path_to_json: "sparrow_token.json",
-          endpoint: "localhost",
-          port: context[:port],
-          tags: [:yippee_ki_yay],
-          worker_num: 3
+          [
+            path_to_json: "sparrow_token.json",
+            endpoint: "localhost",
+            port: context[:port],
+            tags: [:yippee_ki_yay],
+            worker_num: 3
+          ]
         ]
       ]
 
       Application.stop(:sparrow)
-      :timer.sleep(1000)
 
       Application.put_env(:sparrow, :config, config)
       Application.start(:sparrow)
@@ -239,7 +241,6 @@ defmodule SparrowTest do
     ]
 
     Application.stop(:sparrow)
-    :timer.sleep(1000)
 
     Application.put_env(:sparrow, :config, config)
     Application.start(:sparrow)

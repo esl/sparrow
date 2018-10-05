@@ -3,8 +3,10 @@ use Mix.Config
 config :sparrow,
   config: [
     fcm: [
-      # TODO replace me with real data
-      path_to_json: "sparrow_token.json"
+      [
+        # TODO replace me with real data
+        path_to_json: "sparrow_token.json"
+      ]
     ],
     apns: [
       dev: [

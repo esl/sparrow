@@ -13,7 +13,6 @@ config :sparrow,
       reconnect_attempts: 3,
       # pool config
       tags: [],
-      pool_name: :my_fcm_pool,
       worker_num: 3,
       raw_opts: []
     ],
@@ -31,7 +30,6 @@ config :sparrow,
           reconnect_attempts: 3,
           # pool config
           tags: [:first_batch_clients, :beta_users],
-          pool_name: :my_apns_dev_1_pool,
           worker_num: 3,
           raw_opts: []
         ],
@@ -48,7 +46,6 @@ config :sparrow,
           reconnect_attempts: 3,
           # pool config
           tags: [:another_batch_clients],
-          pool_name: :my_apns_dev_2_pool,
           worker_num: 3,
           raw_opts: []
         ]
@@ -66,7 +63,6 @@ config :sparrow,
           reconnect_attempts: 3,
           # pool config
           tags: [:test_prod, :alpha],
-          pool_name: :my_apns_prod_pool,
           worker_num: 3,
           raw_opts: []
         ]

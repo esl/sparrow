@@ -11,7 +11,7 @@ defmodule Sparrow do
     start(raw_config)
   end
 
-  @spec start([{atom, any}]) :: Supervisor.on_start()
+  @spec start(Keyword.t()) :: Supervisor.on_start()
   def start(raw_config) do
     raw_fcm_config = Keyword.get(raw_config, :fcm)
     raw_apns_config = Keyword.get(raw_config, :apns)
@@ -21,13 +21,10 @@ defmodule Sparrow do
         []
       else
         [
-          %{
-            id: Sparrow.PoolsWarden,
-            start: {Sparrow.PoolsWarden, :start_link, []}
-          }
+          Sparrow.PoolsWarden
         ]
-        |> maybe_append({Sparrow.FCMSupervisor, raw_fcm_config})
-        |> maybe_append({Sparrow.APNSSupervisor, raw_apns_config})
+        |> maybe_append({Sparrow.FCM.V1.Supervisor, raw_fcm_config})
+        |> maybe_append({Sparrow.APNS.Supervisor, raw_apns_config})
       end
 
     opts = [strategy: :one_for_one]

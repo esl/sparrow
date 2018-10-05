@@ -1,16 +1,18 @@
-defmodule Sparrow.FCMPoolSupervisor do
+defmodule Sparrow.FCM.V1.Pool.Supervisor do
   @moduledoc """
   Supervises a single FCM workers pool.
   """
   use Supervisor
 
-  @spec start_link([{atom, any}]) :: Supervisor.on_start()
+  @fcm_default_endpoint "fcm.googleapis.com"
+
+  @spec start_link(Keyword.t()) :: Supervisor.on_start()
   def start_link(arg) do
-    init(arg)
+    Supervisor.start_link(__MODULE__, arg)
   end
 
-  @spec init([{atom, any}]) ::
-          {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}} | :ignore
+  @spec init(Keyword.t()) ::
+          {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}}
   def init(raw_config) do
     {pool_config, pool_tags} = get_fcm_pool_config(raw_config)
 
@@ -22,13 +24,13 @@ defmodule Sparrow.FCMPoolSupervisor do
       }
     ]
 
-    Supervisor.start_link(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :one_for_one)
   end
 
-  @spec get_fcm_pool_config([{atom, any}]) ::
+  @spec get_fcm_pool_config(Keyword.t()) ::
           {Sparrow.H2Worker.Pool.Config.t(), [atom]}
   defp get_fcm_pool_config(raw_pool_config) do
-    uri = Keyword.get(raw_pool_config, :endpoint, "fcm.googleapis.com")
+    uri = Keyword.get(raw_pool_config, :endpoint, @fcm_default_endpoint)
     port = Keyword.get(raw_pool_config, :port, 443)
     tls_opts = Keyword.get(raw_pool_config, :tls_opts, [])
     ping_interval = Keyword.get(raw_pool_config, :ping_interval, 5000)

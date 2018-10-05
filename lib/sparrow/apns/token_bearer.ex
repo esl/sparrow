@@ -26,10 +26,9 @@ defmodule Sparrow.APNS.TokenBearer do
   @spec start_link(
           %{required(atom) => Sparrow.APNS.Token.t()}
           | {%{required(atom) => Sparrow.APNS.Token.t()}, pos_integer}
-        ) :: {:ok, pid}
+        ) :: GenServer.on_start()
   def start_link(tokens) do
-    _ = init(tokens)
-    {:ok, self()}
+    GenServer.start_link(__MODULE__, tokens, name: __MODULE__)
   end
 
   @spec init(
