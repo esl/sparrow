@@ -1,36 +1,312 @@
 # Sparrow
-
-**TODO: Add description**
-
-**TODO: Redirect Erlang lager to Elixir logger**
-
-**TODO: Add publishing package to hex** 
-
-**TODO: Check API diffs between these articles:** 
-
-[link](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/generating_a_remote_notification)
-and
-[link](https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/PayloadKeyReference.html#//apple_ref/doc/uid/TP40008194-CH17-SW1)
-
-## Installation
-
-[![Build Status](https://travis-ci.com/esl/sparrow.svg?branch=master)](https://travis-ci.com/esl/sparrow)
+## Summary
+Sparrow is an Elixir library for [push notifications](en.wikipedia.org/wiki/Push_technology#Push_notification).
+[![Build Status](https://travis-ci.org/esl/sparrow.svg?branch=master)](https://travis-ci.org/esl/sparrow)
 [![Coverage Status](https://coveralls.io/repos/github/esl/sparrow/badge.svg)](https://coveralls.io/github/esl/sparrow)
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `sparrow` to your list of dependencies in `mix.exs`:
+Currently it provides support for the following APIs:
+* [FCM v1](https://firebase.google.com/docs/cloud-messaging/)
+* [APNS](https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/APNSOverview.html)
+
+## Requirements
+* Elixir 1.6 or higher
+* Erlang OTP 20.3.6 or higher
+
+# Build sparrow config
+This section describes how to write a config file for Sparrow.
+If you wish to use just one of the following services, do not include the other in the config.
 
 ```elixir
-def deps do
-  [
-    {:sparrow, "~> 0.1.0"}
-  ]
-end
+config :sparrow, 
+    fcm: [...],
+    apns: [...]
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/sparrow](https://hexdocs.pm/sparrow).
+## Config examples
+
+FCM only:
+
+```elixir
+config :sparrow, fcm: [
+        [
+            path_to_json: "path/to/fcm_token.json"
+        ]
+    ]
+```
+
+APNS only:
+
+```elixir
+config :sparrow, 
+    apns: [
+        dev:
+        [
+            [
+                auth_type: :certificate_based,
+                cert: "path/to/apns/cert.pem",
+                key: "path/to/apns/key.pem"
+            ]
+        ],
+        prod:
+        [
+            [ 
+                auth_type: :token_based,
+                token_id: :some_atom_id,
+                tags: [:production, :token_based_auth]
+            ],
+            [ 
+                auth_type: :token_based,
+                token_id: :other_atom_id,
+                tags: [:other_production_pool, :token_based_auth]
+            ]
+        ],
+        tokens:
+        [
+            [
+                token_id: :some_atom_id,
+                key_id: "FAKE_KEY_ID",
+                team_id: "FAKE_TEAM_ID",
+                p8_file_path: "path/to/file/token.p8"
+            ],
+             [
+                token_id: :other_atom_id,
+                key_id: "OTHER_FAKE_KEY_ID",
+                team_id: "OTHER_FAKE_TEAM_ID",
+                p8_file_path: "path/to/file/other/token.p8"
+            ]
+        ]
+    ]
+```
+
+Both FCM  and APNS:
+
+```elixir
+config :sparrow,
+    fcm: [
+        [
+            path_to_json: "path/to/fcm_token.json"
+        ]
+    ],
+    apns: [
+        dev:
+        [
+            [
+                auth_type: :certificate_based,
+                cert: "path/to/apns/cert.pem",
+                key: "path/to/apns/key.pem"
+            ]
+        ]
+    ]
+```
+
+## Config options description
+
+### FCM specific
+- `:path_to_json` - is a path to a json file provided by FCM
+
+### APNS specific
+- `:auth_type` - defines the authentication type, the allowed values are: `:token_based`, `:certificate_based`
+
+    - `:token_based` requires setting:
+        - `:token_id` - is a unique atom referring to a token with the same `:token_id` in config
+    
+    - `:certificate_based` requires setting:
+    
+        - `:cert` - path to the certificate file provided by APNS
+        - `:key` - path to the key file provided by APNS
+
+
+### Connection config
+- `:endpoint` - service uri
+- `:port` - service port
+- `:tls_opts` - passed to erlang [ssl](http://erlang.org/doc/man/ssl.html) module (see DATA TYPES -> ssl_option())
+- `:ping_interval` - number of miliseconds between each [ping](https://http2.github.io/http2-spec/#PING)
+- `:reconnect_attempts` - number of attempts to reconnect before failing the connection
+
+### Connection pool config
+- `:tags` - see the [tags](#tags) section
+- `:worker_num` - number of workers in a pool
+- `:raw_opts` - opts passed directly to [wpool](github.com/inaka/worker_pool)
+
+### FCM config example
+```elixir
+fcm_config = 
+    [
+        [
+            # Authentication
+            path_to_json: "path/to/fcm_token.json", # mandatory, path to FCM authentication JSON file
+            # Connection config
+            endpoint: "fcm.googleapis.com", # optional
+            port: 443, # optional
+            tls_opts: [], # optional
+            ping_interval: 5000, # optional
+            reconnect_attempts: 3, # optional
+            # Pool config 
+            tags: [], # optional
+            worker_num: 3, # optional
+            raw_opts: [] # optional, options passed directly to wpool
+        ]
+    ]
+```
+### APNS config example
+```elixir
+apns_config = 
+[
+    dev: [apns_pool_1, apns_pool_2 ], # list of apns_pool_configs by default set to APNS development endpoint, is a list of APNS pools
+    prod: [apns_pool_3 ],  # list of apns_pool_configs by default set to APNS production endpoint, is a list of APNS pools
+    tokens: [apns_token_1, apns_token_2 ] # optional, is a list of APNS tokens
+]
+```
+### APNS pool example
+
+Token based authentication example:
+```elixir
+apns_pool = [
+    # Token based authentication
+    auth_type: :token_based, # mandatory, :token_based or :certificate_based
+    token_id: :some_atom_id, # mandatory, token with the same id must be in `tokens` in `apns_config`
+    # Connection config
+    endpoint: "api.development.push.apple.com", # optional
+    port: 443, # optional
+    tls_opts: [], # optional
+    ping_interval: 5000, # optional
+    reconnect_attempts: 3, # optional
+    # pool config
+    tags: [:first_batch_clients, :beta_users], # optional
+    worker_num: 3, # optional
+    raw_opts: [], # optional
+]
+```
+
+Certificate based authentication example:
+
+```elixir
+apns_pool = [
+    # Certificate based authentication
+    auth_type: :certificate_based, # mandatory, :token_based or :certificate_based
+    cert: "path/to/apns/cert.pem", # mandatory, path to certificate file provided by APNS
+    key: "path/to/apns/key.pem", # mandatory, path to key file provided by APNS
+    # Connection config
+    endpoint: "api.push.apple.com", # optional
+    port: 443, # optional
+    tls_opts: [], # optional
+    ping_interval: 5000, # optional
+    reconnect_attempts: 3, # optional
+    # pool config
+    tags: [:another_batch_clients], # optional
+    worker_num: 3, # optional
+    raw_opts: [] # optional
+]
+```
+
+### APNS token example
+
+```elixir
+apns_token = [
+          token_id: :some_atom_id, # mandatory, the same as in APNSPOOL
+          key_id: "FAKE_KEY_ID", # mandatory, data obtained form APNS account
+          team_id: "FAKE_TEAM_ID", # mandatory, data obtained form APNS account
+          p8_file_path: "path/to/file/token.p8" # mandatory, path to file storing APNS token
+        ]
+```
+
+## Include sparrow in your project
+
+```elixir
+defp deps do
+    [
+      {:sparrow, github: "esl/sprrow", tag: "cc80bbc"},
+      ]
+  end
+```
+
+## Many pools
+
+Sparrow suports many pools in a single `:sparrow` instance.
+[Tags](#tags) are used to choose a pool when sending a notification.
+[](https://placehold.it/15/ff0000/ff0000?text=+) *`This feature is not yet implemented for FCM.`*
+
+## Tags
+
+Tags is a mechanism allowing to choose a pool to send a notification from.
+Each pool has a defined list of tags (`[]` as default).
+The algorithm has the following steps:
+1) Filter pooltype based on notification type (`:fcm` or `:{apns, :dev}` or `{:apns, :prod}`).
+2) Choose only pools that have all tags (from the function call) included in their tags (from pool configuration).
+3) Choose first of the filtered pools.
+
+Example:
+    Let's say you have the following pools:
+
+- `{:apns, :dev}`:
+    - *pool1*: `[:test_pool, :dev_pool, :homer]`,
+    - *pool2*: `[:test_pool, :dev_pool, :bart]`,
+    - *pool3*: `[:test_pool, :dev_pool, :ned, :bart]`
+- `{:apns, :prod}`:
+    - *pool1*: `[:prod_pool]`
+
+
+Lets assume the notification type is `{:apns, :dev}`.
+
+If you pass `[]`, *pool1* is chosen. 
+
+If you pass `[:homer]`, *pool1* is chosen. 
+
+If you pass `[:bart]`, *pool2* is chosen. 
+
+If you pass `[:ned]`, *pool3* is chosen. 
+
+If you pass `[:test_pool]`, *pool1* is chosen. 
+
+If you pass `[:test_pool, :homer]`, *pool1* is chosen. 
+
+If you pass `[:test_pool, :dev_pool, :homer]`, *pool1* is chosen. 
+
+If you pass `[:test_pool, :dev_pool, :ned]`, *pool3* is chosen. 
+
+If you pass `[:not_existing, :set_of_tags]`, `{:error, :configuration_error}` is returned. 
+
+[](https://placehold.it/15/ff0000/ff0000?text=+) *`It is not recommended to choose a pool based on pools order!`*
+
+# Send your first push notification
+
+1) [Define your config](#build-sparrow-config)
+2) Start an application
+```elixir
+Application.start(:sparrow)
+```
+3) Build and *Push* the notification
+    3.1 APNS
+    ```elixir
+        :ok =
+            "my_device_token"
+            |> Sparrow.APNS.Notification.new(:dev)
+            |> Sparrow.APNS.Notification.add_title("my first notification title")
+            |> Sparrow.APNS.Notification.add_body("my first notification body")
+            # |> Sparrow.APNS.Notification.add_...
+            |> Sparrow.API.push()
+    ```
+    3.1 FCM
+    ```elixir
+    @project_id "my-project-123"
+    android =
+        Sparrow.FCM.V1.Android.new()
+        |> Sparrow.FCM.V1.Android.add_title("my first notification title")
+        |> Sparrow.FCM.V1.Android.add_body("my first notification body")
+    
+    webpush = 
+        Sparrow.FCM.V1.Webpush.new("www.my.test.link.com")
+        |> Sparrow.FCM.V1.Webpush.add_title("my first notification title")
+        |> Sparrow.FCM.V1.Webpush.add_body("my first notification body")
+      
+    notification =
+        Sparrow.FCM.V1.Notification.new(:topic, "news", @project_id)
+        |> Sparrow.FCM.V1.Notification.add_android(android)
+        |> Sparrow.FCM.V1.Notification.add_webpush(webpush)
+        Sparrow.API.push()
+    ```
+    
+***
 
 ## How to obtain and use APNS certificate for certificate based authorization?
 
@@ -45,7 +321,7 @@ When you reach point where you have `exampleName.cer` file, import it to Keychai
 File -> Import Items... -> Chose `exampleName.cer` 
 
 Next, export the certificate you just imported as `exampleName.p12`.
-Note: you can just go with empty password by pressing Enter. If you enter a password rememeber it.
+Note: you can just go with no password by pressing Enter. If you enter a password, remember it.
 I shall refer to this password as (pass1) later in tutorial.
 
 Open terminal, go to your `exampleName.p12` file location 
@@ -66,21 +342,11 @@ Next extract key:
 openssl rsa -in `exampleName.pem` -out `exampleKey.pem`
 ```
 
-When starting  h2 worker pass key and cerificate to workers tls options:
-
-```elixir
-config = 
-    "path/to/exampleName.pem"
-    |> Sparrow.APNS.get_certificate_based_authentication("path/to/exampleKey.pem")
-    |> Sparrow.APNS.get_h2worker_config_dev()
-Sparrow.H2Worker.Pool.start_link(:your_apns_workers_name, config)
-```
-
-## How to obtain device token??
+### How to obtain a device token?
 
 Try [this](https://developer.apple.com/documentation/usernotifications/registering_your_app_with_apns).
 
-## How to obtain apns-topic??
+### How to obtain an apns-topic?
 
 Last but not least, to get the 'apns-topic' header value, go to:
 Xcode -> open your swift app -> General -> Identity -> Bundle Identifier
