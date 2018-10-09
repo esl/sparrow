@@ -16,7 +16,8 @@ defmodule Sparrow.MixProject do
 
   def application do
     [
-      extra_applications: [:lager, :logger, :chatterbox, :httpoison]
+      extra_applications: [:logger],
+      mod: {Sparrow, []}
     ]
   end
 
@@ -24,8 +25,7 @@ defmodule Sparrow.MixProject do
     [
       {:dialyxir, "~> 0.4", runtime: false, only: [:dev, :test]},
       {:credo, "~> 0.10", runtime: false, only: :dev},
-      {:chatterbox,
-       github: "joedevivo/chatterbox", tag: "b737985"},
+      {:chatterbox, github: "joedevivo/chatterbox", ref: "b737985"},
       {:excoveralls, "~> 0.5", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},
       {:uuid, "~> 1.1"},

@@ -6,7 +6,7 @@ defmodule Sparrow.H2Worker.Pool.Config do
           pool_name: atom,
           workers_config: Sparrow.H2Worker.Config.t(),
           worker_num: pos_integer,
-          raw_opts: [{atom, any}]
+          raw_opts: Keyword.t()
         }
 
   defstruct [
@@ -26,7 +26,7 @@ defmodule Sparrow.H2Worker.Pool.Config do
     * `worker_num` - number of workers in a pool
     * `raw_opts` - extra config options to pass to wpool. For details see https://github.com/inaka/worker_pool
   """
-  @spec new(Sparrow.H2Worker.Config.t(), atom | nil, pos_integer, [{atom, any}]) ::
+  @spec new(Sparrow.H2Worker.Config.t(), atom | nil, pos_integer, Keyword.t()) ::
           t
   def new(
         workers_config,

@@ -23,7 +23,7 @@ defmodule Sparrow.API do
         * `:timeout` - works only if `:is_sync` is `true`, after set `:timeout` miliseconds request is timeouted
         * `:strategy` - strategy of choosing worker in pool strategy
   """
-  @spec push(notification, [any], [{atom, any}]) ::
+  @spec push(notification, [any], Keyword.t()) ::
           :ok | sync_push_result | {:error, :configuration_error}
   def push(notification, tags \\ [], opts \\ []) do
     pool_type = get_pool_type(notification)
@@ -56,7 +56,7 @@ defmodule Sparrow.API do
       * `opts` -
           * `:strategy` - strategy of choosing worker in pool strategy
   """
-  @spec push_async(notification, [any], [{atom, any}]) ::
+  @spec push_async(notification, [any], Keyword.t()) ::
           :ok | {:error, :configuration_error}
   def push_async(notification, tags \\ [], opts \\ []) do
     push(notification, tags, [{:is_sync, false} | opts])
@@ -71,7 +71,7 @@ defmodule Sparrow.API do
     :fcm
   end
 
-  @spec do_push(atom, notification, [{atom, any}]) :: sync_push_result | :ok
+  @spec do_push(atom, notification, Keyword.t()) :: sync_push_result | :ok
   defp do_push(pool, notification = %Sparrow.APNS.Notification{}, opts) do
     Sparrow.APNS.push(pool, notification, opts)
   end

@@ -9,7 +9,6 @@ defmodule Sparrow.PoolsWarden do
   @type pool_type :: :fcm | {:apns, :dev} | {:apns, :prod}
 
   @tab_name :sparrow_pools_warden_tab
-  @sparrow_pools_warden_name :sparrow_pools_warden_name
 
   @doc """
   Function to "register" new workers pool, allows for `Sparrow.API.push/3` to automatically choose pool.
@@ -21,7 +20,7 @@ defmodule Sparrow.PoolsWarden do
   @spec add_new_pool(pool_type, atom, [any]) :: true
   def add_new_pool(pool_type, pool_name, tags \\ []) do
     GenServer.call(
-      @sparrow_pools_warden_name,
+      __MODULE__,
       {:add_pool, pool_type, pool_name, tags}
     )
   end
@@ -49,7 +48,7 @@ defmodule Sparrow.PoolsWarden do
 
     _ =
       Logger.debug(fn ->
-        "worker=pools_warden, action=choose_pool, result=result, result_len=#{
+        "worker=pools_warden, action=choose_pool, result=#{inspect(result)}, result_len=#{
           inspect(Enum.count(result))
         }"
       end)
@@ -57,12 +56,9 @@ defmodule Sparrow.PoolsWarden do
     List.first(result)
   end
 
-  @doc """
-  Function to access `Sparrow.PoolsWarden` by name.
-  """
-  @spec get_pool_warden_name() :: :sparrow_pools_warden_name
-  def get_pool_warden_name do
-    @sparrow_pools_warden_name
+  @spec start_link(any) :: GenServer.on_start()
+  def start_link(_) do
+    start_link()
   end
 
   @spec start_link :: GenServer.on_start()
@@ -70,7 +66,7 @@ defmodule Sparrow.PoolsWarden do
     GenServer.start_link(
       Sparrow.PoolsWarden,
       :ok,
-      name: @sparrow_pools_warden_name
+      name: __MODULE__
     )
   end
 
@@ -116,6 +112,14 @@ defmodule Sparrow.PoolsWarden do
 
   def handle_call({:add_pool, pool_type, pool_name, tags}, _, _state) do
     :ets.insert(@tab_name, {pool_type, {pool_name, tags}})
+
+    _ =
+      Logger.info(fn ->
+        "worker=pools_warden, action=adding_pool, pool_type=#{
+          inspect(pool_type)
+        }, pool_name=#{inspect(pool_name)}, pool_tags=#{inspect(tags)}"
+      end)
+
     {:reply, pool_name, :ok}
   end
 
