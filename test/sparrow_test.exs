@@ -8,10 +8,12 @@ defmodule SparrowTest do
   @path "/3/device/"
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
+  @wrong_cert_path "wrong/priv/ssl/client_cert.pem"
+  @wrong_key_path "wrong/priv/ssl/client_key.pem"
   @project_id "OkFCMHandler"
 
   setup do
-    {:ok, cowboy_pid, cowboys_name} =
+    {:ok, _cowboy_pid, cowboys_name} =
       [
         {":_",
          [
@@ -29,7 +31,7 @@ defmodule SparrowTest do
       :cowboy.stop_listener(cowboys_name)
     end)
 
-    {:ok, port: :ranch.get_port(cowboys_name), cowboy_pid: cowboy_pid}
+    {:ok, port: :ranch.get_port(cowboys_name)}
   end
 
   test "Sparrow starts correctly", context do
@@ -101,7 +103,7 @@ defmodule SparrowTest do
       Application.stop(:sparrow)
 
       Application.put_env(:sparrow, :config, config)
-      Application.start(:sparrow)
+      assert :ok == Application.start(:sparrow)
 
       assert :ok ==
                "OkResponseHandler"
@@ -176,7 +178,7 @@ defmodule SparrowTest do
       Application.stop(:sparrow)
 
       Application.put_env(:sparrow, :config, config)
-      Application.start(:sparrow)
+      assert :ok == Application.start(:sparrow)
 
       android =
         Sparrow.FCM.V1.Android.new()
@@ -243,7 +245,7 @@ defmodule SparrowTest do
     Application.stop(:sparrow)
 
     Application.put_env(:sparrow, :config, config)
-    Application.start(:sparrow)
+    assert :ok == Application.start(:sparrow)
 
     assert :ok ==
              "OkResponseHandler"
@@ -268,5 +270,44 @@ defmodule SparrowTest do
              |> Sparrow.APNS.Notification.new(:dev)
              |> Sparrow.APNS.Notification.add_body("dummy body")
              |> Sparrow.API.push([:welele])
+  end
+
+  @correct_token [
+    token_id: :correct_token_id,
+    key_id: "FAKE_KEY_ID",
+    team_id: "FAKE_TEAM_ID",
+    p8_file_path: "token.p8"
+  ]
+  test "APNS wrong config" do
+    config = [
+      apns: [
+        dev: [
+          [
+            auth_type: :certificate_based,
+            cert: @wrong_cert_path,
+            key: @wrong_key_path
+          ]
+        ],
+        tokens: [
+          @correct_token,
+          @correct_token
+        ]
+      ]
+    ]
+     Application.stop(:sparrow)
+    :timer.sleep(1000)
+     Application.put_env(:sparrow, :config, config)
+    {:error, _} = Application.start(:sparrow)
+  end
+   test "FCM wrong config" do
+    config = [
+      fcm: [
+        path_to_json: "wrong/sparrow_token.json"
+      ]
+    ]
+     Application.stop(:sparrow)
+    :timer.sleep(1000)
+     Application.put_env(:sparrow, :config, config)
+     {:error, _} = Application.start(:sparrow)
   end
 end

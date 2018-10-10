@@ -13,6 +13,14 @@ defmodule Sparrow.FCM.V1.Supervisor do
   @spec init([Keyword.t()]) ::
           {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}}
   def init([raw_fcm_config]) do
+      case Sparrow.H2Worker.Pool.AppConfigChecker.validate_config(
+             raw_fcm_config,
+             Sparrow.FCM.V1.AppConfigChecker
+           ) do
+        [] -> :ok
+        wrong_configs -> raise "Mistake found in config #{inspect(wrong_configs)}"
+      end
+
     children = [
       %{
         id: Sparrow.FCM.V1.TokenBearer,
