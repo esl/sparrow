@@ -13,8 +13,8 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
 
   @spec init(Keyword.t()) ::
           {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}}
-  def init(raw_config) do
-    {pool_config, pool_tags} = get_fcm_pool_config(raw_config)
+  def init(raw_fcm_config) do
+    {pool_config, pool_tags} = get_fcm_pool_config(raw_fcm_config)
 
     children = [
       %{

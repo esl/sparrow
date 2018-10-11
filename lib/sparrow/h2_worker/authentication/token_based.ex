@@ -9,11 +9,6 @@ defmodule Sparrow.H2Worker.Authentication.TokenBased do
   import Sparrow.APNS.TokenBearer
   # For APNS token can be obtanin from `Sparrow.APNS.TokenBearer.get_token(token_id)`
   token_getter = fn -> {"authorization", "bearer \#{get_token(token_id)}"} end
-
-  ## Example 2
-
-  # For FCM legacy
-  token_getter = fn -> {"Authorization", "key="my_dummy_fcm_token""} end
   """
   @type token_getter :: (() -> {String.t(), String.t()})
   @type t :: %__MODULE__{

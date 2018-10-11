@@ -15,6 +15,14 @@ defmodule Sparrow.APNS.Supervisor do
   def init(raw_apns_config) do
     tokens = get_apns_tokens(raw_apns_config)
 
+    case Sparrow.H2Worker.Pool.AppConfigChecker.validate_config(
+      raw_apns_config,
+      Sparrow.APNS.AppConfigChecker
+    ) do
+      [] -> :ok
+      wrong_configs -> raise "Mistake found in config #{inspect(wrong_configs)}"
+    end
+
     children = [
       {Sparrow.APNS.Pool.Supervisor, raw_apns_config},
       {Sparrow.APNS.TokenBearer, tokens}
