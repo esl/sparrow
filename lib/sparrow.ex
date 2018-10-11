@@ -7,15 +7,13 @@ defmodule Sparrow do
   use Application
 
   def start(_type, _args) do
-    raw_config = Application.get_env(:sparrow, :config)
-    start(raw_config)
+    raw_fcm_config = Application.get_env(:sparrow, :fcm)
+    raw_apns_config = Application.get_env(:sparrow, :apns)
+    start({raw_fcm_config, raw_apns_config})
   end
 
-  @spec start(Keyword.t()) :: Supervisor.on_start()
-  def start(raw_config) do
-    raw_fcm_config = Keyword.get(raw_config, :fcm)
-    raw_apns_config = Keyword.get(raw_config, :apns)
-
+  @spec start({Keyword.t(), Keyword.t()}) :: Supervisor.on_start()
+  def start({raw_fcm_config, raw_apns_config}) do
     children =
       if raw_apns_config == nil and raw_fcm_config == nil do
         []
