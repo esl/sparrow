@@ -47,60 +47,63 @@ defmodule SparrowTest do
 
         Sparrow.H2Worker.Authentication.TokenBased.new(getter)
       end do
-      config = [
-        fcm: [
+      fcm = [
+        [
+          path_to_json: "sparrow_token.json",
+          endpoint: "localhost",
+          port: context[:port],
+          tags: [:yippee_ki_yay],
+          worker_num: 3
+        ]
+      ]
+
+      apns = [
+        dev: [
           [
-            path_to_json: "sparrow_token.json",
+            auth_type: :certificate_based,
+            cert: @cert_path,
+            key: @key_path,
             endpoint: "localhost",
             port: context[:port],
-            tags: [:yippee_ki_yay],
-            worker_num: 3
+            worker_num: 2,
+            tags: [:wololo]
+          ],
+          [
+            auth_type: :certificate_based,
+            cert: @cert_path,
+            key: @key_path,
+            endpoint: "localhost",
+            port: context[:port],
+            worker_num: 2,
+            tags: [:walala]
           ]
         ],
-        apns: [
-          dev: [
-            [
-              auth_type: :certificate_based,
-              cert: @cert_path,
-              key: @key_path,
-              endpoint: "localhost",
-              port: context[:port],
-              worker_num: 2,
-              tags: [:wololo]
-            ],
-            [
-              auth_type: :certificate_based,
-              cert: @cert_path,
-              key: @key_path,
-              endpoint: "localhost",
-              port: context[:port],
-              worker_num: 2,
-              tags: [:walala]
-            ]
-          ],
-          prod: [
-            [
-              auth_type: :token_based,
-              token_id: :some_atom_id,
-              endpoint: "localhost",
-              port: context[:port],
-              worker_num: 4
-            ]
-          ],
-          tokens: [
-            [
-              token_id: :some_atom_id,
-              key_id: "FAKE_KEY_ID",
-              team_id: "FAKE_TEAM_ID",
-              p8_file_path: "token.p8"
-            ]
+        prod: [
+          [
+            auth_type: :token_based,
+            token_id: :some_atom_id,
+            endpoint: "localhost",
+            port: context[:port],
+            worker_num: 4
+          ]
+        ],
+        tokens: [
+          [
+            token_id: :some_atom_id,
+            key_id: "FAKE_KEY_ID",
+            team_id: "FAKE_TEAM_ID",
+            p8_file_path: "token.p8"
           ]
         ]
       ]
 
       Application.stop(:sparrow)
+      Application.put_env(:sparrow, :apns, nil)
+      Application.put_env(:sparrow, :fcm, nil)
 
-      Application.put_env(:sparrow, :config, config)
+      Application.put_env(:sparrow, :fcm, fcm)
+      Application.put_env(:sparrow, :apns, apns)
+
       Application.start(:sparrow)
 
       assert :ok ==
@@ -161,21 +164,21 @@ defmodule SparrowTest do
 
         Sparrow.H2Worker.Authentication.TokenBased.new(getter)
       end do
-      config = [
-        fcm: [
-          [
-            path_to_json: "sparrow_token.json",
-            endpoint: "localhost",
-            port: context[:port],
-            tags: [:yippee_ki_yay],
-            worker_num: 3
-          ]
+      fcm = [
+        [
+          path_to_json: "sparrow_token.json",
+          endpoint: "localhost",
+          port: context[:port],
+          tags: [:yippee_ki_yay],
+          worker_num: 3
         ]
       ]
 
       Application.stop(:sparrow)
+      Application.put_env(:sparrow, :apns, nil)
+      Application.put_env(:sparrow, :fcm, nil)
 
-      Application.put_env(:sparrow, :config, config)
+      Application.put_env(:sparrow, :fcm, fcm)
       Application.start(:sparrow)
 
       android =
@@ -198,51 +201,52 @@ defmodule SparrowTest do
   end
 
   test "Sparrow starts correctly, APNS only", context do
-    config = [
-      apns: [
-        dev: [
-          [
-            auth_type: :certificate_based,
-            cert: @cert_path,
-            key: @key_path,
-            endpoint: "localhost",
-            port: context[:port],
-            worker_num: 2,
-            tags: [:wololo]
-          ],
-          [
-            auth_type: :certificate_based,
-            cert: @cert_path,
-            key: @key_path,
-            endpoint: "localhost",
-            port: context[:port],
-            worker_num: 2,
-            tags: [:walala]
-          ]
+    apns = [
+      dev: [
+        [
+          auth_type: :certificate_based,
+          cert: @cert_path,
+          key: @key_path,
+          endpoint: "localhost",
+          port: context[:port],
+          worker_num: 2,
+          tags: [:wololo]
         ],
-        prod: [
-          [
-            auth_type: :token_based,
-            token_id: :some_atom_id,
-            endpoint: "localhost",
-            port: context[:port],
-            worker_num: 4
-          ]
-        ],
-        tokens: [
-          [
-            token_id: :some_atom_id,
-            key_id: "FAKE_KEY_ID",
-            team_id: "FAKE_TEAM_ID",
-            p8_file_path: "token.p8"
-          ]
+        [
+          auth_type: :certificate_based,
+          cert: @cert_path,
+          key: @key_path,
+          endpoint: "localhost",
+          port: context[:port],
+          worker_num: 2,
+          tags: [:walala]
+        ]
+      ],
+      prod: [
+        [
+          auth_type: :token_based,
+          token_id: :some_atom_id,
+          endpoint: "localhost",
+          port: context[:port],
+          worker_num: 4
+        ]
+      ],
+      tokens: [
+        [
+          token_id: :some_atom_id,
+          key_id: "FAKE_KEY_ID",
+          team_id: "FAKE_TEAM_ID",
+          p8_file_path: "token.p8"
         ]
       ]
     ]
 
     Application.stop(:sparrow)
 
-    Application.put_env(:sparrow, :config, config)
+    Application.put_env(:sparrow, :apns, nil)
+    Application.put_env(:sparrow, :fcm, nil)
+
+    Application.put_env(:sparrow, :apns, apns)
     Application.start(:sparrow)
 
     assert :ok ==
