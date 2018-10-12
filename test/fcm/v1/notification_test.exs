@@ -127,7 +127,7 @@ defmodule Sparrow.FCM.V1.NotificationTest do
 
     apns =
       APNS.new(apns_notification, fn ->
-        {"Authorization", "Bearer dummy token"}
+        {"authorization", "Bearer dummy token"}
       end)
 
     fcm_notification =
