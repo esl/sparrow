@@ -5,7 +5,7 @@ defmodule Sparrow.FCM.V1.APNSTest do
   alias Sparrow.FCM.V1.APNS
 
   test "apns config is built correcly" do
-    token_getter = fn -> {"Authorization", "Bearer dummy token"} end
+    token_getter = fn -> {"authorization", "Bearer dummy token"} end
 
     apns_notification =
       "dummy device token"

@@ -12,7 +12,7 @@ defmodule Sparrow.APITest do
 
       auth =
         Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
-          {"Authorization", "my_dummy_fcm_token"}
+          {"authorization", "my_dummy_fcm_token"}
         end)
 
       pool_1_config =
@@ -52,7 +52,7 @@ defmodule Sparrow.APITest do
 
       auth =
         Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
-          {"Authorization", "my_dummy_fcm_token"}
+          {"authorization", "my_dummy_fcm_token"}
         end)
 
       pool_1_config =
@@ -93,7 +93,7 @@ defmodule Sparrow.APITest do
 
       auth =
         Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
-          {"Authorization", "my_dummy_fcm_token"}
+          {"authorization", "my_dummy_fcm_token"}
         end)
 
       pool_1_config =
@@ -128,7 +128,7 @@ defmodule Sparrow.APITest do
       add_new_pool: fn _, _, _ -> true end do
       auth =
         Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
-          {"Authorization", "my_dummy_fcm_token"}
+          {"authorization", "my_dummy_fcm_token"}
         end)
 
       pool_1_config =
@@ -158,7 +158,7 @@ defmodule Sparrow.APITest do
       add_new_pool: fn _, _, _ -> true end do
       auth =
         Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
-          {"Authorization", "my_dummy_fcm_token"}
+          {"authorization", "my_dummy_fcm_token"}
         end)
 
       pool_1_config =

@@ -34,11 +34,6 @@ defmodule SparrowTest do
 
   test "Sparrow starts correctly", context do
     # DON'T COPY THIS TOKEN GETTER
-    # mock is needed due to bug in Google API:
-    # https://firebase.google.com/docs/cloud-messaging/auth-server
-    # is in conflict with
-    # https://tools.ietf.org/html/rfc7540#section-8.1.2
-    # DON'T COPY THIS TOKEN GETTER
     with_mock Sparrow.FCM.V1, [:passthrough],
       get_token_based_authentication: fn ->
         getter = fn ->
@@ -150,11 +145,6 @@ defmodule SparrowTest do
   end
 
   test "Sparrow starts correctly, FCM only", context do
-    # DON'T COPY THIS TOKEN GETTER
-    # mock is needed due to bug in Google API:
-    # https://firebase.google.com/docs/cloud-messaging/auth-server
-    # is in conflict with
-    # https://tools.ietf.org/html/rfc7540#section-8.1.2
     # DON'T COPY THIS TOKEN GETTER
     with_mock Sparrow.FCM.V1, [:passthrough],
       get_token_based_authentication: fn ->

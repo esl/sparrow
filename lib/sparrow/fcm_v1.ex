@@ -115,7 +115,7 @@ defmodule Sparrow.FCM.V1 do
           Sparrow.H2Worker.Authentication.TokenBased.t()
   def get_token_based_authentication do
     getter = fn ->
-      {"Authorization", "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token()}"}
+      {"authorization", "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token()}"}
     end
 
     Sparrow.H2Worker.Authentication.TokenBased.new(getter)
