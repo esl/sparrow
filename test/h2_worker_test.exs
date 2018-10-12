@@ -439,7 +439,7 @@ defmodule Sparrow.H2WorkerTest do
     end
   end
 
-  test "server correctly starting with succesfull connection and does not scheduale or runs pinging",
+  test "server correctly starting with successful connection and does not schedule or runs pinging",
        context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
@@ -447,15 +447,11 @@ defmodule Sparrow.H2WorkerTest do
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
           repeat_for: @repeats do
-      ponger = pid()
       ping_interval = nil
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-        ping: fn _ ->
-          send(self(), {:PONG, ponger})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
         config =
           Config.new(
@@ -466,13 +462,37 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        {:ok, pid} = GenServer.start(Sparrow.H2Worker, config)
-        :erlang.trace(pid, true, [:receive])
+        {:ok, _pid} = GenServer.start_link(Sparrow.H2Worker, config)
 
-        :timer.sleep(3_000)
         assert not called(H2Adapter.ping(context[:connection_ref]))
+      end
+    end
+  end
 
-        Process.exit(pid, :kill)
+  test "default ping_inerval is set correctly",
+       context do
+    ptest [
+            domain: string(min: 3, max: 10, chars: ?a..?z),
+            port: int(min: 0, max: 65_535)
+          ],
+          repeat_for: @repeats do
+      with_mock H2Adapter,
+        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        ping: fn _ ->
+          :ok
+        end,
+        close: fn _ -> :ok end do
+        config =
+          Config.new(
+            domain,
+            port,
+            context[:auth]
+          )
+
+        {:ok, pid} = GenServer.start_link(Sparrow.H2Worker, config)
+        state = :sys.get_state(pid)
+
+        assert 5000 == state.config.ping_interval
       end
     end
   end

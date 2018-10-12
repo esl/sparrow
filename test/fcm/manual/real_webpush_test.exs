@@ -19,9 +19,7 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
       ]
     ]
 
-    Application.stop(:sparrow)
-    Application.put_env(:sparrow, :fcm, fcm)
-    Application.start(:sparrow)
+    start_sparrow_with_fcm_config(fcm)
 
     webpush =
       Sparrow.FCM.V1.Webpush.new("www.google.com")
@@ -37,5 +35,11 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
       |> Notification.add_webpush(webpush)
 
     :ok = Sparrow.API.push(notification)
+  end
+
+  defp start_sparrow_with_fcm_config(config) do
+    Application.stop(:sparrow)
+    Application.put_env(:sparrow, :fcm, config)
+    Application.start(:sparrow)
   end
 end
