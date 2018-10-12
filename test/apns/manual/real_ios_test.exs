@@ -44,9 +44,9 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
 
   @tag :skip
   test "real notification token based authentication test" do
-    opts = Sparrow.APNS.Token.new(@key_id, @team_id, @p8_file_path, 2000)
+    tokens = Sparrow.APNS.Token.new(@key_id, @team_id, @p8_file_path, 2000)
 
-    {:ok, pid} = Sparrow.APNS.TokenBearer.init(opts)
+    {:ok, pid} = Sparrow.APNS.TokenBearer.init(tokens)
     {:ok, token_bearer: pid}
 
     auth =

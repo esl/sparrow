@@ -439,6 +439,44 @@ defmodule Sparrow.H2WorkerTest do
     end
   end
 
+  test "server correctly starting with succesfull connection and does not scheduale or runs pinging",
+       context do
+    ptest [
+            domain: string(min: 3, max: 10, chars: ?a..?z),
+            port: int(min: 0, max: 65_535),
+            tls_options: list(of: atom(), min: 0, max: 3)
+          ],
+          repeat_for: @repeats do
+      ponger = pid()
+      ping_interval = nil
+
+      with_mock H2Adapter,
+        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        ping: fn _ ->
+          send(self(), {:PONG, ponger})
+          :ok
+        end,
+        close: fn _ -> :ok end do
+        config =
+          Config.new(
+            domain,
+            port,
+            context[:auth],
+            tls_options,
+            ping_interval
+          )
+
+        {:ok, pid} = GenServer.start(Sparrow.H2Worker, config)
+        :erlang.trace(pid, true, [:receive])
+
+        :timer.sleep(3_000)
+        assert not called(H2Adapter.ping(context[:connection_ref]))
+
+        Process.exit(pid, :kill)
+      end
+    end
+  end
+
   test "server receives down message with not conn pid", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
