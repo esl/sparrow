@@ -78,8 +78,12 @@ defmodule Sparrow.H2Worker do
   end
 
   def handle_info(:ping, state) do
-    H2Adapter.ping(state.connection_ref)
-    _ = schedule_message_after(:ping, state.config.ping_interval)
+    _ =
+      if state.config.ping_interval do
+        H2Adapter.ping(state.connection_ref)
+        schedule_message_after(:ping, state.config.ping_interval)
+      end
+
     {:noreply, state}
   end
 

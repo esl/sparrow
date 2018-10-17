@@ -9,22 +9,17 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
   # get token from browser
   @webpush_target_type :token
   @webpush_target "dummy"
-  @pool_name :my_pool_name
   @path_to_json "priv/fcm/token/sparrow_token.json"
 
   @tag :skip
   test "real webpush notification send" do
-    Sparrow.FCM.V1.TokenBearer.start_link(@path_to_json)
+    fcm = [
+      [
+        path_to_json: @path_to_json
+      ]
+    ]
 
-    {:ok, _pid} = Sparrow.PoolsWarden.start_link()
-
-    worker_config =
-      Sparrow.FCM.V1.get_token_based_authentication()
-      |> Sparrow.FCM.V1.get_h2worker_config()
-
-    {:ok, _pid} =
-      Sparrow.H2Worker.Pool.Config.new(worker_config, @pool_name)
-      |> Sparrow.H2Worker.Pool.start_link(:fcm, [:webpush])
+    start_sparrow_with_fcm_config(fcm)
 
     webpush =
       Sparrow.FCM.V1.Webpush.new("www.google.com")
@@ -39,6 +34,12 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
       )
       |> Notification.add_webpush(webpush)
 
-    :ok = Sparrow.API.push(notification, [:webpush])
+    :ok = Sparrow.API.push(notification)
+  end
+
+  defp start_sparrow_with_fcm_config(config) do
+    Application.stop(:sparrow)
+    Application.put_env(:sparrow, :fcm, config)
+    Application.start(:sparrow)
   end
 end

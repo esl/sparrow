@@ -29,7 +29,7 @@ FCM only:
 ```elixir
 config :sparrow, fcm: [
         [
-            path_to_json: "path/to/fcm_token.json"
+            path_to_json: "path/to/google-services.json"
         ]
     ]
 ```
@@ -120,7 +120,7 @@ config :sparrow,
 - `:endpoint` - service uri
 - `:port` - service port
 - `:tls_opts` - passed to erlang [ssl](http://erlang.org/doc/man/ssl.html) module (see DATA TYPES -> ssl_option())
-- `:ping_interval` - number of miliseconds between each [ping](https://http2.github.io/http2-spec/#PING)
+- `:ping_interval` - number of miliseconds between each [ping](https://http2.github.io/http2-spec/#PING), to switch ping off set `:ping_interval` to `nil`
 - `:reconnect_attempts` - number of attempts to reconnect before failing the connection
 
 ### Connection pool config

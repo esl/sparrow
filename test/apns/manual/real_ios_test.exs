@@ -4,8 +4,6 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
   alias Sparrow.APNS.Notification
   alias Sparrow.H2Worker.Config
 
-  @apns_address_a "api.development.push.apple.com"
-  @apns_port 2197
   @device_token System.get_env("TOKENDEVICE")
   @apns_topic System.get_env("APNSTOPIC")
   @key_id System.get_env("KEYID")
@@ -20,15 +18,17 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
 
   @tag :skip
   test "real notification certificate based authentication test" do
-    auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
-        @path_to_cert,
-        @path_to_key
-      )
+    apns = [
+      dev: [
+        [
+          auth_type: :certificate_based,
+          cert: @path_to_cert,
+          key: @path_to_key
+        ]
+      ]
+    ]
 
-    config = Config.new(@apns_address_a, @apns_port, auth)
-    worker_spec = child_spec(args: config, name: :name)
-    {:ok, worker_pid} = start_supervised(worker_spec)
+    start_sparrow_with_apns_config(apns)
 
     notification =
       @device_token
@@ -37,26 +37,29 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
       |> Notification.add_body(@body)
       |> Notification.add_apns_topic(@apns_topic)
 
-    # IO.inspect(
-    Sparrow.APNS.push(worker_pid, notification)
-    # )
+    assert :ok == Sparrow.API.push(notification)
   end
 
   @tag :skip
   test "real notification token based authentication test" do
-    opts = Sparrow.APNS.Token.new(@key_id, @team_id, @p8_file_path, 2000)
+    apns = [
+      dev: [
+        [
+          auth_type: :token_based,
+          token_id: :some_atom_id
+        ]
+      ],
+      tokens: [
+        [
+          token_id: :some_atom_id,
+          key_id: @key_id,
+          team_id: @team_id,
+          p8_file_path: @p8_file_path
+        ]
+      ]
+    ]
 
-    {:ok, pid} = Sparrow.APNS.TokenBearer.init(opts)
-    {:ok, token_bearer: pid}
-
-    auth =
-      Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
-        {"authorization", "bearer #{Sparrow.APNS.TokenBearer.get_token()}"}
-      end)
-
-    config = Config.new(@apns_address_a, @apns_port, auth)
-    worker_spec = child_spec(args: config, name: :name)
-    {:ok, worker_pid} = start_supervised(worker_spec)
+    start_sparrow_with_apns_config(apns)
 
     notification =
       @device_token
@@ -65,18 +68,12 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
       |> Notification.add_body(@body)
       |> Notification.add_apns_topic(@apns_topic)
 
-    # IO.inspect(
-    Sparrow.APNS.push(worker_pid, notification)
-    # )
+    assert :ok == Sparrow.API.push(notification)
   end
 
-  def child_spec(opts) do
-    args = opts[:args]
-    name = opts[:name]
-
-    %{
-      :id => 28,
-      :start => {Sparrow.H2Worker, :start_link, [name, args]}
-    }
+  defp start_sparrow_with_apns_config(config) do
+    Application.stop(:sparrow)
+    Application.put_env(:sparrow, :apns, config)
+    Application.start(:sparrow)
   end
 end
