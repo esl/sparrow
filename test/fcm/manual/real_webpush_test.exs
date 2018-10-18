@@ -34,7 +34,7 @@ defmodule Sparrow.FCM.Manual.RealWebpushTest do
       )
       |> Notification.add_webpush(webpush)
 
-    :ok = Sparrow.API.push(notification)
+    assert :ok == Sparrow.API.push(notification)
   end
 
   defp start_sparrow_with_fcm_config(config) do

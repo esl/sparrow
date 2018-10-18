@@ -68,9 +68,15 @@ defmodule Sparrow.FCM.V1 do
     |> process_response()
   end
 
-  @spec process_response({:ok, {headers, body}} | {:error, reason}) ::
+  @spec process_response(:ok | {:ok, {headers, body}} | {:error, reason}) ::
           :ok
           | {:error, reason :: :request_timeout | :not_ready | reason}
+
+  def process_response(:ok) do
+    _ = Logger.debug(fn -> "action=handle_async_push_response" end)
+    :ok
+  end
+
   def process_response({:ok, {headers, body}}) do
     _ =
       Logger.debug(fn ->
