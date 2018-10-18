@@ -2,7 +2,6 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
   use ExUnit.Case
 
   alias Sparrow.APNS.Notification
-  alias Sparrow.H2Worker.Config
 
   @device_token System.get_env("TOKENDEVICE")
   @apns_topic System.get_env("APNSTOPIC")
