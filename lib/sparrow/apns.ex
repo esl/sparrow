@@ -121,10 +121,16 @@ defmodule Sparrow.APNS do
           Sparrow.APNS.get_error_description(status, reason)
   end
   """
-  @spec process_response({:ok, {headers, body}} | {:error, reason}) ::
+  @spec process_response(:ok | {:ok, {headers, body}} | {:error, reason}) ::
           :ok
           | {:error,
              reason :: String.t() | nil | :request_timeout | :not_ready | reason}
+
+  def process_response(:ok) do
+    _ = Logger.debug(fn -> "action=handle_async_push_response" end)
+    :ok
+  end
+
   def process_response({:ok, {headers, body}}) do
     if {":status", "200"} in headers do
       _ =

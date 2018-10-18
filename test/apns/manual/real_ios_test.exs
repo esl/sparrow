@@ -2,13 +2,12 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
   use ExUnit.Case
 
   alias Sparrow.APNS.Notification
-  alias Sparrow.H2Worker.Config
 
   @device_token System.get_env("TOKENDEVICE")
   @apns_topic System.get_env("APNSTOPIC")
   @key_id System.get_env("KEYID")
   @team_id System.get_env("TEAMID")
-  @p8_file_path "token.p8"
+  @p8_file_path "test/priv/tokens/apns_token.p8"
 
   @path_to_cert "test/priv/certs/Certificates1.pem"
   @path_to_key "test/priv/certs/key.pem"
