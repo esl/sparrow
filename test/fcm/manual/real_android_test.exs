@@ -10,11 +10,11 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
   @notification_title "Commander Cody"
   @notification_body "the time has come. Execute order 66."
 
-  @android_title "Real life"
-  @android_body "never heard of that server"
-  @path_to_json "priv/fcm/token/sparrow_token.json"
+  @android_title "Alice                                             1"
+  @android_body "What does the fox say?"
+  @path_to_json "sparrow_token.json"
 
-  @tag :skip
+  # @tag :skip
   test "real android notification send" do
     fcm = [
       [
