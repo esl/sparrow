@@ -12,7 +12,7 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
 
   @android_title "Alice                                             1"
   @android_body "What does the fox say?"
-  @path_to_json "sparrow_token.json"
+  @path_to_json "priv/tokens/sparrow_token.json"
 
   # @tag :skip
   test "real android notification send" do
@@ -28,6 +28,7 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
       Sparrow.FCM.V1.Android.new()
       |> Sparrow.FCM.V1.Android.add_title(@android_title)
       |> Sparrow.FCM.V1.Android.add_body(@android_body)
+      |> Sparrow.FCM.V1.Android.add_color("#09ACC4")
 
     notification =
       @target_type
