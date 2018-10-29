@@ -3,6 +3,10 @@ PRESET=$1
 case $PRESET in
     test)
         mix certs.dev
+        mix test
+        ;;
+    test_with_coveralls)
+        mix certs.dev
         MIX_ENV=test mix coveralls.travis --include system
         ;;
     credo)

@@ -38,6 +38,10 @@ matrix:
           otp_release: 20.3.6
           elixir: 1.6.6
           env: PRESET=credo
+        - name: "Coveralls"
+          otp_release: 20.3.6
+          elixir: 1.6.6
+          env: PRESET=test_with_coveralls
     allow_failures:
         - otp_release: 21.0
 
