@@ -173,6 +173,7 @@ defmodule Sparrow.APNSTest do
         |> Notification.add_content_available(content_available)
         |> Notification.add_category(category)
         |> Notification.add_thread_id(thread_id)
+        |> Notification.add_mutable_content()
 
       assert :ok == Sparrow.APNS.push(@pool_name, notification)
 
@@ -192,6 +193,7 @@ defmodule Sparrow.APNSTest do
       assert content_available == Map.get(aps_opts, "content-available")
       assert category == Map.get(aps_opts, "category")
       assert thread_id == Map.get(aps_opts, "thread-id")
+      assert 1 == Map.get(aps_opts, "mutable-content")
     end
   end
 
@@ -199,7 +201,7 @@ defmodule Sparrow.APNSTest do
     title_loc_key = "title_loc_key of some kind"
     title_loc_args = "args loc titile"
     subtitle_loc_key = "subtitle_loc_key of some kind"
-    subtitle_loc_args = "subargs loc titile"
+    subtitle_loc_args = ["subargs loc titile", "c titile"]
     loc_args = " arg1 arg2"
     launch_image = "image lanch"
     loc_key = "loc_key value"
