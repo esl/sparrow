@@ -120,10 +120,10 @@ defmodule SparrowTest do
                |> Sparrow.API.push()
 
       assert :ok ==
-      "OkResponseHandler"
-      |> Sparrow.APNS.Notification.new(:prod)
-      |> Sparrow.APNS.Notification.add_title("dummy title")
-      |> Sparrow.API.push([],[is_sync: false])
+               "OkResponseHandler"
+               |> Sparrow.APNS.Notification.new(:prod)
+               |> Sparrow.APNS.Notification.add_title("dummy title")
+               |> Sparrow.API.push([], is_sync: false)
 
       assert {:error, :configuration_error} ==
                "OkResponseHandler"
@@ -187,7 +187,7 @@ defmodule SparrowTest do
 
       assert :ok == Sparrow.API.push(notiifcation)
       assert :ok == Sparrow.API.push(notiifcation, [:yippee_ki_yay])
-      assert :ok == Sparrow.API.push(notiifcation, [], [is_sync: false])
+      assert :ok == Sparrow.API.push(notiifcation, [], is_sync: false)
 
       assert {:error, :configuration_error} ==
                Sparrow.API.push(notiifcation, [

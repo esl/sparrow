@@ -98,8 +98,9 @@ defmodule Sparrow.APNS.Notification do
 
   @doc """
   Sets the `sound` option of the aps dictionary.
+  Use `Sparrow.APNS.Notification.Sound` if you want this value to be dictionary.
   """
-  @spec add_sound(__MODULE__.t(), String.t()) :: __MODULE__.t()
+  @spec add_sound(__MODULE__.t(), String.t() | map) :: __MODULE__.t()
   def add_sound(notification, value) do
     add_aps_dictionary_opt(notification, :sound, value)
   end
