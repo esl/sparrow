@@ -5,6 +5,7 @@ defmodule Sparrow.APNSTest do
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.APNS.Notification
+  alias Sparrow.APNS.Notification.Sound
 
   @apns_mock_address "localhost"
   @path "/3/device/"
@@ -114,6 +115,42 @@ defmodule Sparrow.APNSTest do
              Sparrow.APNS.push(@pool_name, notification)
   end
 
+  test "notification json contains sound as dictionary" do
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, r, _, _, _ ->
+        headers = [{":status", "200"} | r.headers]
+        send(self(), {:ok, {headers, r.body}})
+        {:ok, {headers, r.body}}
+      end do
+      sound =
+        "chirp"
+        |> Sound.new()
+        |> Sound.add_critical()
+        |> Sound.add_volume(0.07)
+
+      notification =
+        "EchoBodyHandler"
+        |> Notification.new(:dev)
+        |> Notification.add_title(@title)
+        |> Notification.add_sound(sound)
+
+      assert :ok == Sparrow.APNS.push(@pool_name, notification)
+
+      {:ok, {headers, body}} =
+        receive do
+          {:ok, {headers, body}} -> {:ok, {headers, body}}
+        after
+          1_000 -> assert false
+        end
+
+      {:ok, response} = Jason.decode(body)
+      aps_opts = Map.get(response, "aps")
+
+      assert {":status", "200"} in headers
+      assert sound == Map.get(aps_opts, "sound")
+    end
+  end
+
   test "notification json contains options aps_dictionary" do
     with_mock Sparrow.H2Worker.Pool,
       send_request: fn _, r, _, _, _ ->
@@ -136,6 +173,7 @@ defmodule Sparrow.APNSTest do
         |> Notification.add_content_available(content_available)
         |> Notification.add_category(category)
         |> Notification.add_thread_id(thread_id)
+        |> Notification.add_mutable_content()
 
       assert :ok == Sparrow.APNS.push(@pool_name, notification)
 
@@ -155,6 +193,7 @@ defmodule Sparrow.APNSTest do
       assert content_available == Map.get(aps_opts, "content-available")
       assert category == Map.get(aps_opts, "category")
       assert thread_id == Map.get(aps_opts, "thread-id")
+      assert 1 == Map.get(aps_opts, "mutable-content")
     end
   end
 
@@ -162,7 +201,7 @@ defmodule Sparrow.APNSTest do
     title_loc_key = "title_loc_key of some kind"
     title_loc_args = "args loc titile"
     subtitle_loc_key = "subtitle_loc_key of some kind"
-    subtitle_loc_args = "subargs loc titile"
+    subtitle_loc_args = ["subargs loc titile", "c titile"]
     loc_args = " arg1 arg2"
     launch_image = "image lanch"
     loc_key = "loc_key value"

@@ -41,7 +41,12 @@ defmodule Sparrow.APNS.Notification do
         ]
   @type aps_dictionary_opts :: [aps_dictionary_opt]
   @type aps_dictionary_key ::
-          :badge | :sound | :"content-available" | :category | :"thread-id"
+          :badge
+          | :sound
+          | :"content-available"
+          | :category
+          | :"thread-id"
+          | :"mutable-content"
   @type aps_dictionary_opt ::
           {:badge, integer}
           | {:sound, String.t()}
@@ -89,6 +94,14 @@ defmodule Sparrow.APNS.Notification do
   end
 
   @doc """
+  Sets the `mutable-content` option of the aps dictionary to 1.
+  """
+  @spec add_mutable_content(__MODULE__.t()) :: __MODULE__.t()
+  def add_mutable_content(notification) do
+    add_aps_dictionary_opt(notification, :"mutable-content", 1)
+  end
+
+  @doc """
   Sets the `badge` option of the aps dictionary.
   """
   @spec add_badge(__MODULE__.t(), integer) :: __MODULE__.t()
@@ -98,8 +111,9 @@ defmodule Sparrow.APNS.Notification do
 
   @doc """
   Sets the `sound` option of the aps dictionary.
+  Use `Sparrow.APNS.Notification.Sound` if you want this value to be dictionary.
   """
-  @spec add_sound(__MODULE__.t(), String.t()) :: __MODULE__.t()
+  @spec add_sound(__MODULE__.t(), String.t() | map) :: __MODULE__.t()
   def add_sound(notification, value) do
     add_aps_dictionary_opt(notification, :sound, value)
   end
@@ -147,8 +161,7 @@ defmodule Sparrow.APNS.Notification do
   @doc """
   Sets the `subtitle-loc-args` option of the alert dictionary.
   """
-  @spec add_subtitle_loc_args(__MODULE__.t(), String.t() | json_array) ::
-          __MODULE__.t()
+  @spec add_subtitle_loc_args(__MODULE__.t(), [String.t()]) :: __MODULE__.t()
   def add_subtitle_loc_args(notification, value) do
     add_alert_opt(notification, :"subtitle-loc-args", value)
   end
