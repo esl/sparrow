@@ -107,4 +107,12 @@ defmodule Sparrow.FCM.V1.Notification do
   def add_apns(notification, config) do
     %{notification | apns: config}
   end
+
+  @doc """
+  Add `project_id` to `Sparrow.FCM.V1.Notification`.
+  """
+  @spec add_project_id(t, project_id :: String.t()) :: t
+  def add_project_id(notification, project_id) do
+    %{notification | project_id: project_id}
+  end
 end

@@ -16,6 +16,11 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
   def init(raw_config) do
     {pool_config, pool_tags} = get_fcm_pool_config(raw_config)
 
+    Sparrow.FCM.V1.ProjectIdBearer.add_project_id(
+      raw_config[:path_to_json],
+      pool_config.pool_name
+    )
+
     children = [
       %{
         id: Sparrow.H2Worker.Pool,

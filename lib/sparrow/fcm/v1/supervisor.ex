@@ -20,6 +20,7 @@ defmodule Sparrow.FCM.V1.Supervisor do
           {Sparrow.FCM.V1.TokenBearer, :start_link,
            [raw_fcm_config[:path_to_json]]}
       },
+      Sparrow.FCM.V1.ProjectIdBearer,
       {Sparrow.FCM.V1.Pool.Supervisor, raw_fcm_config}
     ]
 
