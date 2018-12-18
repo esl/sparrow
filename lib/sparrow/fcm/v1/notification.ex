@@ -14,7 +14,7 @@ defmodule Sparrow.FCM.V1.Notification do
   @type apns :: nil | Sparrow.FCM.V1.APNS.t()
   @type headers :: Request.headers()
   @type t :: %__MODULE__{
-          project_id: String.t(),
+          project_id: String.t() | nil,
           headers: headers,
           data: map,
           title: String.t() | nil,
@@ -57,7 +57,6 @@ defmodule Sparrow.FCM.V1.Notification do
   @spec new(
           target_type,
           String.t(),
-          String.t(),
           String.t() | nil,
           String.t() | nil,
           map
@@ -65,13 +64,12 @@ defmodule Sparrow.FCM.V1.Notification do
   def new(
         target_type,
         target,
-        project_id,
         title \\ nil,
         body \\ nil,
         data \\ %{}
       ) do
     %__MODULE__{
-      project_id: project_id,
+      project_id: nil,
       headers: @headers,
       data: data,
       title: title,
@@ -110,6 +108,8 @@ defmodule Sparrow.FCM.V1.Notification do
 
   @doc """
   Add `project_id` to `Sparrow.FCM.V1.Notification`.
+  WARNING This function is called automatically when pushing notification.
+  There is NO need to cally it manually when creating notiifcation.
   """
   @spec add_project_id(t, project_id :: String.t()) :: t
   def add_project_id(notification, project_id) do

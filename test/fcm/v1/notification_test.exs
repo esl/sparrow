@@ -10,7 +10,6 @@ defmodule Sparrow.FCM.V1.NotificationTest do
   @title "test title"
   @body "test body"
   @target "test target"
-  @project_id "test project_id"
   @data %{:keyA => :valueA, :B => :b}
 
   test "notification without any config" do
@@ -18,13 +17,12 @@ defmodule Sparrow.FCM.V1.NotificationTest do
       Sparrow.FCM.V1.Notification.new(
         :token,
         @target,
-        @project_id,
         @title,
         @body,
         @data
       )
 
-    assert fcm_notification.project_id == @project_id
+    assert fcm_notification.project_id == nil
     assert fcm_notification.title == @title
     assert fcm_notification.body == @body
     assert fcm_notification.target == @target
@@ -35,7 +33,7 @@ defmodule Sparrow.FCM.V1.NotificationTest do
   end
 
   test "notification default values are set correctly" do
-    notification = Notification.new(:token, "dummy token", "project_id")
+    notification = Notification.new(:token, "dummy token")
 
     assert notification.title == nil
     assert notification.body == nil
@@ -43,8 +41,7 @@ defmodule Sparrow.FCM.V1.NotificationTest do
   end
 
   test "notification default values are set but to default value" do
-    notification =
-      Notification.new(:token, "dummy token", "project_id", nil, nil, %{})
+    notification = Notification.new(:token, "dummy token", nil, nil, %{})
 
     assert notification.title == nil
     assert notification.body == nil
@@ -56,7 +53,6 @@ defmodule Sparrow.FCM.V1.NotificationTest do
       Notification.new(
         :token,
         "dummy token",
-        "project_id",
         @title,
         @body,
         @data
@@ -77,14 +73,13 @@ defmodule Sparrow.FCM.V1.NotificationTest do
       Sparrow.FCM.V1.Notification.new(
         :token,
         @target,
-        @project_id,
         nil,
         nil,
         @data
       )
       |> Notification.add_android(android)
 
-    assert fcm_notification.project_id == @project_id
+    assert fcm_notification.project_id == nil
     assert fcm_notification.title == nil
     assert fcm_notification.body == nil
     assert fcm_notification.target == @target
@@ -101,14 +96,13 @@ defmodule Sparrow.FCM.V1.NotificationTest do
       Sparrow.FCM.V1.Notification.new(
         :token,
         @target,
-        @project_id,
         @title,
         @body,
         @data
       )
       |> Notification.add_webpush(webpush)
 
-    assert fcm_notification.project_id == @project_id
+    assert fcm_notification.project_id == nil
     assert fcm_notification.title == @title
     assert fcm_notification.body == @body
     assert fcm_notification.target == @target
@@ -134,14 +128,13 @@ defmodule Sparrow.FCM.V1.NotificationTest do
       Sparrow.FCM.V1.Notification.new(
         :token,
         @target,
-        @project_id,
         @title,
         @body,
         @data
       )
       |> Notification.add_apns(apns)
 
-    assert fcm_notification.project_id == @project_id
+    assert fcm_notification.project_id == nil
     assert fcm_notification.title == @title
     assert fcm_notification.body == @body
     assert fcm_notification.target == @target
