@@ -71,12 +71,18 @@ defmodule Sparrow.API do
     :fcm
   end
 
-  @spec do_push(atom, notification, Keyword.t()) :: sync_push_result | :ok
-  defp do_push(pool, notification = %Sparrow.APNS.Notification{}, opts) do
-    Sparrow.APNS.push(pool, notification, opts)
+  @spec do_push(pool_name :: atom, notification, Keyword.t()) ::
+          sync_push_result | :ok
+  defp do_push(pool_name, notification = %Sparrow.APNS.Notification{}, opts) do
+    Sparrow.APNS.push(pool_name, notification, opts)
   end
 
-  defp do_push(pool, notification = %Sparrow.FCM.V1.Notification{}, opts) do
-    Sparrow.FCM.V1.push(pool, notification, opts)
+  defp do_push(pool_name, notification = %Sparrow.FCM.V1.Notification{}, opts) do
+    project_id = Sparrow.FCM.V1.ProjectIdBearer.get_project_id(pool_name)
+
+    notification =
+      Sparrow.FCM.V1.Notification.add_project_id(notification, project_id)
+
+    Sparrow.FCM.V1.push(pool_name, notification, opts)
   end
 end

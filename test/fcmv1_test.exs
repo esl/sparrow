@@ -101,7 +101,7 @@ defmodule Sparrow.FCM.V1Test do
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}
       end do
-      notification = test_notification("EchoBodyHandler")
+      notification = test_notification()
 
       assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
 
@@ -129,7 +129,7 @@ defmodule Sparrow.FCM.V1Test do
         {:ok, {headers, r.body}}
       end do
       notification =
-        test_notification("EchoBodyHandler")
+        test_notification()
         |> Notification.add_android(test_android())
 
       assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
@@ -175,7 +175,7 @@ defmodule Sparrow.FCM.V1Test do
         {:ok, {headers, r.body}}
       end do
       notification =
-        test_notification("EchoBodyHandler")
+        test_notification()
         |> Notification.add_webpush(test_webpush())
 
       assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
@@ -215,7 +215,7 @@ defmodule Sparrow.FCM.V1Test do
         {:ok, {headers, r.body}}
       end do
       notification =
-        test_notification_without_optional_args("EchoBodyHandler")
+        test_notification_without_optional_args()
         |> Notification.add_apns(test_apns())
 
       assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
@@ -344,22 +344,20 @@ defmodule Sparrow.FCM.V1Test do
     assert :ok == Sparrow.FCM.V1.process_response({:ok, {headers, body}})
   end
 
-  defp test_notification(project_id) do
+  defp test_notification() do
     Notification.new(
       @notification_target_type,
       @notification_target,
-      project_id,
       @notification_title,
       @notification_body,
       @notification_data
     )
   end
 
-  defp test_notification_without_optional_args(project_id) do
+  defp test_notification_without_optional_args() do
     Notification.new(
       @notification_target_type,
-      @notification_target,
-      project_id
+      @notification_target
     )
   end
 

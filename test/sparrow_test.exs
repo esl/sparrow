@@ -8,7 +8,7 @@ defmodule SparrowTest do
   @path "/3/device/"
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
-  @project_id "OkFCMHandler"
+  @project_id "sparrow-test-id"
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
@@ -135,15 +135,15 @@ defmodule SparrowTest do
         Sparrow.FCM.V1.Android.new()
         |> Sparrow.FCM.V1.Android.add_title("dummy title")
 
-      notiifcation =
-        Sparrow.FCM.V1.Notification.new(:topic, "news", @project_id)
+      notification =
+        Sparrow.FCM.V1.Notification.new(:topic, "news")
         |> Sparrow.FCM.V1.Notification.add_android(android)
 
-      assert :ok == Sparrow.API.push(notiifcation)
-      assert :ok == Sparrow.API.push(notiifcation, [:yippee_ki_yay])
+      assert :ok == Sparrow.API.push(notification)
+      assert :ok == Sparrow.API.push(notification, [:yippee_ki_yay])
 
       assert {:error, :configuration_error} ==
-               Sparrow.API.push(notiifcation, [
+               Sparrow.API.push(notification, [
                  :yippee_ki_yay,
                  :wrong_tag
                ])
@@ -182,7 +182,7 @@ defmodule SparrowTest do
         |> Sparrow.FCM.V1.Android.add_title("dummy title")
 
       notiifcation =
-        Sparrow.FCM.V1.Notification.new(:topic, "news", @project_id)
+        Sparrow.FCM.V1.Notification.new(:topic, "news")
         |> Sparrow.FCM.V1.Notification.add_android(android)
 
       assert :ok == Sparrow.API.push(notiifcation)

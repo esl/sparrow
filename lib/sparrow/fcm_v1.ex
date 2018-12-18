@@ -95,6 +95,10 @@ defmodule Sparrow.FCM.V1 do
     else
       status = get_status_from_headers(headers)
 
+      _ = Logger.debug(fn ->
+        "action=handle_push_response, result=fail, status=#{inspect(status)}"
+      end)
+
       reason =
         body
         |> get_reason_from_body()
@@ -102,7 +106,7 @@ defmodule Sparrow.FCM.V1 do
 
       _ =
         Logger.warn(fn ->
-          "action=handle_push_response, result=fail, status=#{inspect(status)}, response_body=#{
+          "action=handle_push_response, result=fail, response_body=#{
             inspect(body)
           }"
         end)

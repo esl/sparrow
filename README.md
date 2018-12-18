@@ -288,7 +288,6 @@ Application.start(:sparrow)
     ```
     3.1 FCM
     ```elixir
-    @project_id "my-project-123"
     android =
         Sparrow.FCM.V1.Android.new()
         |> Sparrow.FCM.V1.Android.add_title("my first notification title")
@@ -300,7 +299,7 @@ Application.start(:sparrow)
         |> Sparrow.FCM.V1.Webpush.add_body("my first notification body")
       
     notification =
-        Sparrow.FCM.V1.Notification.new(:topic, "news", @project_id)
+        Sparrow.FCM.V1.Notification.new(:topic, "news")
         |> Sparrow.FCM.V1.Notification.add_android(android)
         |> Sparrow.FCM.V1.Notification.add_webpush(webpush)
         Sparrow.API.push()
