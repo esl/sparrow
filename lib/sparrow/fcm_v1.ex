@@ -95,7 +95,7 @@ defmodule Sparrow.FCM.V1 do
     else
       status = get_status_from_headers(headers)
 
-      Logger.debug(fn ->
+      _ = Logger.debug(fn ->
         "action=handle_push_response, result=fail, status=#{inspect(status)}"
       end)
 
