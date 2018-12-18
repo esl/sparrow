@@ -11,10 +11,6 @@ defmodule Sparrow.APITest do
         assert n.project_id == @project_id
         :ok
       end,
-      push: fn _, n ->
-        assert n.project_id == @project_id
-        :ok
-      end,
       process_response: fn _ -> :ok end do
       Sparrow.PoolsWarden.start_link()
       Sparrow.FCM.V1.ProjectIdBearer.start_link()

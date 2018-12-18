@@ -69,7 +69,6 @@ defmodule Sparrow.FCM.V1.Notification do
         data \\ %{}
       ) do
     %__MODULE__{
-      project_id: nil,
       headers: @headers,
       data: data,
       title: title,
