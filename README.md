@@ -215,7 +215,7 @@ apns_token = [
 ```elixir
 defp deps do
     [
-      {:sparrow, github: "esl/sprrow", tag: "cc80bbc"},
+      {:sparrow, github: "esl/sparrow", tag: "cc80bbc"},
       ]
   end
 ```
