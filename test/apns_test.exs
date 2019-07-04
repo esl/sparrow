@@ -97,10 +97,10 @@ defmodule Sparrow.APNSTest do
     end
   end
 
-  test "sending invalid request blocked" do
+  test "sending empty request not blocked" do
     notification = Notification.new("OkResponseHandler", :dev)
 
-    assert {:error, :invalid_notification} ==
+    assert :ok ==
              Sparrow.APNS.push(@pool_name, notification)
   end
 
@@ -376,7 +376,7 @@ defmodule Sparrow.APNSTest do
   @team_id "TEAMID"
   @p8_file_path "token.p8"
 
-  test "APNS token based config is biuld correctly" do
+  test "APNS token based config is built correctly" do
     {:ok, _pid} =
       %{:token_id => Sparrow.APNS.Token.new(@key_id, @team_id, @p8_file_path)}
       |> Sparrow.APNS.TokenBearer.init()
@@ -396,7 +396,7 @@ defmodule Sparrow.APNSTest do
     assert config.authentication == auth
   end
 
-  test "APNS certificate based config is biuld correctly" do
+  test "APNS certificate based config is built correctly" do
     path_to_cert = "path/to/cert"
     path_to_key = "path/to/key"
 
@@ -418,5 +418,38 @@ defmodule Sparrow.APNSTest do
     assert config.authentication == auth
     assert auth.certfile == path_to_cert
     assert auth.keyfile == path_to_key
+  end
+
+  test "APNS empty alert config" do
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, r, _, _, _ ->
+        headers = [{":status", "200"} | r.headers]
+        send(self(), {:ok, {headers, r.body}})
+        {:ok, {headers, r.body}}
+      end do
+      notification =
+        "EchoBodyHandler"
+        |> Notification.new(:dev)
+        |> Notification.add_custom_data("gameID", "192837")
+        |> Notification.add_category("GAME_INVITATION")
+
+      :ok = Sparrow.APNS.push(@pool_name, notification)
+
+      {:ok, {_headers, body}} =
+        receive do
+          {:ok, {headers, body}} -> {:ok, {headers, body}}
+        after
+          1_000 -> assert false
+        end
+
+      {:ok, response} = Jason.decode(body)
+      expected_response =
+        "{\"aps\":
+          {\"category\":\"GAME_INVITATION\"
+          },
+          \"gameID\" : \"192837\"
+        }" |> Jason.decode!()
+      assert expected_response == response
+    end
   end
 end

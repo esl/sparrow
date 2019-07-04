@@ -72,7 +72,6 @@ defmodule Sparrow.APNS do
           push_opts
         ) :: sync_push_result | :ok
   def push(h2_worker_pool, notification, opts \\ []) do
-    if notification_contains_title_or_body?(notification) do
       is_sync = Keyword.get(opts, :is_sync, true)
       timeout = Keyword.get(opts, :timeout, 5_000)
       strategy = Keyword.get(opts, :strategy, :random_worker)
@@ -94,14 +93,6 @@ defmodule Sparrow.APNS do
         strategy
       )
       |> process_response()
-    else
-      _ =
-        Logger.warn(fn ->
-          "Attempt to send notification without title and body"
-        end)
-
-      {:error, :invalid_notification}
-    end
   end
 
   @doc """
@@ -184,7 +175,7 @@ defmodule Sparrow.APNS do
     aps_opts =
       notification.aps_dictionary_opts
       |> Map.new()
-      |> Map.put("alert", alert)
+      |> maybe_alert(alert)
 
     notification.custom_data
     |> Map.new()
@@ -315,5 +306,12 @@ defmodule Sparrow.APNS do
   @spec get_reason_from_body(String.t()) :: String.t() | nil
   defp get_reason_from_body(body) do
     body |> Jason.decode!() |> Map.get("reason")
+  end
+
+  defp maybe_alert(map, alert) do
+    case Map.keys(alert) do
+      [] -> map
+      _ -> Map.put(map, "alert", alert)
+    end
   end
 end
