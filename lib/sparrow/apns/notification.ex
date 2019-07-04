@@ -76,7 +76,7 @@ defmodule Sparrow.APNS.Notification do
 
   ## Arguments
       *`device_token` - Token of the device you want to send notification to.
-      *`type` - Notiifcation type determins weater notification is development (`:dev`) or production (`:prod`) type.
+      *`type` - Notification type determines whether notification is development (`:dev`) or production (`:prod`) type.
   """
   @spec new(String.t(), notification_mode) :: __MODULE__.t()
   def new(device_token, type) do

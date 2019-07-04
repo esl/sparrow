@@ -15,15 +15,11 @@ defmodule Sparrow do
   @spec start({Keyword.t(), Keyword.t()}) :: Supervisor.on_start()
   def start({raw_fcm_config, raw_apns_config}) do
     children =
-      if raw_apns_config == nil and raw_fcm_config == nil do
-        []
-      else
         [
           Sparrow.PoolsWarden
         ]
         |> maybe_append({Sparrow.FCM.V1.Supervisor, raw_fcm_config})
         |> maybe_append({Sparrow.APNS.Supervisor, raw_apns_config})
-      end
 
     opts = [strategy: :one_for_one]
     Supervisor.start_link(children, opts)
