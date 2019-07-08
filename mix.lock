@@ -20,7 +20,7 @@
   "json_web_token": {:hex, :json_web_token, "0.2.10", "61041d56369422c5e3a770cf7d7bf27224b3c4c12d3a7d79b43a002df766db22", [:mix], [{:poison, "~> 3.1", [hex: :poison, repo: "hexpm", optional: false]}], "hexpm"},
   "lager": {:hex, :lager, "3.6.6", "23c8f5abc4189f46804791e16bf6421c14ebc5b529dc113bc54639c6c62f255d", [:rebar3], [{:goldrush, "0.1.9", [hex: :goldrush, repo: "hexpm", optional: false]}], "hexpm"},
   "logger_lager_backend": {:hex, :logger_lager_backend, "0.1.0", "4858d5ac26a3a6085274933bf8b3061973cadac4adbe8e0181933e8cece78abb", [:mix], [{:lager, "~> 3.2", [hex: :lager, repo: "hexpm", optional: false]}], "hexpm"},
-  "meck": {:hex, :meck, "0.8.12", "1f7b1a9f5d12c511848fec26bbefd09a21e1432eadb8982d9a8aceb9891a3cf2", [:rebar3], [], "hexpm"},
+  "meck": {:git, "https://github.com/eproxus/meck.git", "2c7ba603416e95401500d7e116c5a829cb558665", []},
   "metrics": {:hex, :metrics, "1.0.1", "25f094dea2cda98213cecc3aeff09e940299d950904393b2a29d191c346a8486", [:rebar3], [], "hexpm"},
   "mime": {:hex, :mime, "1.3.0", "5e8d45a39e95c650900d03f897fbf99ae04f60ab1daa4a34c7a20a5151b7a5fe", [:mix], [], "hexpm"},
   "mimerl": {:hex, :mimerl, "1.0.2", "993f9b0e084083405ed8252b99460c4f0563e41729ab42d9074fd5e52439be88", [:rebar3], [], "hexpm"},

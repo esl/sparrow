@@ -28,6 +28,10 @@ defmodule H2Integration.CerificateRejectedTest do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
     {:error, actual_reason} = GenServer.start(Sparrow.H2Worker, config)
-    assert {:tls_alert, 'bad certificate'} == actual_reason
+    case actual_reason do
+      {:tls_alert, 'bad certificate'} -> :ok
+      {:tls_alert, {:bad_certificate, _}} -> :ok
+      _ -> flunk(actual_reason)
+    end
   end
 end
