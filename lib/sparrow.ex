@@ -14,10 +14,14 @@ defmodule Sparrow do
 
   @spec start({Keyword.t(), Keyword.t()}) :: Supervisor.on_start()
   def start({raw_fcm_config, raw_apns_config}) do
+    %{:enabled => is_enabled} = Application.get_env(:sparrow, Sparrow.PoolsWarden)
     children =
-        [
-          Sparrow.PoolsWarden
-        ]
+      case is_enabled do
+        true ->
+          [Sparrow.PoolsWarden]
+        _ ->
+          []
+      end
         |> maybe_append({Sparrow.FCM.V1.Supervisor, raw_fcm_config})
         |> maybe_append({Sparrow.APNS.Supervisor, raw_apns_config})
 

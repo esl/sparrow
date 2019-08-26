@@ -26,4 +26,6 @@ use Mix.Config
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
+config :sparrow, Sparrow.PoolsWarden,
+%{enabled: true}
 import_config "#{Mix.env()}.exs"
