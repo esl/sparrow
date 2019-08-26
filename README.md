@@ -124,6 +124,7 @@ config :sparrow,
 - `:reconnect_attempts` - number of attempts to reconnect before failing the connection
 
 ### Connection pool config
+- `:pool_name` - defines pool name, not recommended - please use [tags](#tags) instead 
 - `:tags` - see the [tags](#tags) section
 - `:worker_num` - number of workers in a pool
 - `:raw_opts` - opts passed directly to [wpool](github.com/inaka/worker_pool)

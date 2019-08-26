@@ -29,11 +29,12 @@ defmodule SparrowTest do
       :cowboy.stop_listener(cowboys_name)
     end)
 
+    {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
+
     {:ok, port: :ranch.get_port(cowboys_name), cowboy_pid: cowboy_pid}
   end
 
   test "Sparrow starts correctly", context do
-    {:ok, pid} = start_supervised(Sparrow.PoolsWarden)
     # DON'T COPY THIS TOKEN GETTER
     with_mock Sparrow.FCM.V1, [:passthrough],
       get_token_based_authentication: fn ->
@@ -152,7 +153,6 @@ defmodule SparrowTest do
   end
 
   test "Sparrow starts correctly, FCM only", context do
-    {:ok, pid} = start_supervised(Sparrow.PoolsWarden)
     # DON'T COPY THIS TOKEN GETTER
     with_mock Sparrow.FCM.V1, [:passthrough],
       get_token_based_authentication: fn ->
@@ -200,7 +200,6 @@ defmodule SparrowTest do
   end
 
   test "Sparrow starts correctly, APNS only", context do
-    {:ok, pid} = start_supervised(Sparrow.PoolsWarden)
     apns = [
       dev: [
         [

@@ -141,7 +141,7 @@ defmodule Sparrow.APITest do
   test "APNS pool not found" do
     with_mock Sparrow.PoolsWarden,
       choose_pool: fn _, _ -> nil end,
-      add_new_pool: fn _, _, _ -> true end do
+      add_new_pool: fn _, _, _, _ -> true end do
       auth =
         Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
           {"authorization", "my_dummy_fcm_token"}
@@ -171,7 +171,7 @@ defmodule Sparrow.APITest do
   test "FCM pool not found" do
     with_mock Sparrow.PoolsWarden,
       choose_pool: fn _, _ -> nil end,
-      add_new_pool: fn _, _, _ -> true end do
+      add_new_pool: fn _, _, _, _ -> true end do
       auth =
         Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
           {"authorization", "my_dummy_fcm_token"}

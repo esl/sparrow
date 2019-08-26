@@ -16,14 +16,10 @@ defmodule Sparrow do
   def start({raw_fcm_config, raw_apns_config}) do
     %{:enabled => is_enabled} = Application.get_env(:sparrow, Sparrow.PoolsWarden)
     children =
-      case is_enabled do
-        true ->
-          [Sparrow.PoolsWarden]
-        _ ->
-          []
-      end
-        |> maybe_append({Sparrow.FCM.V1.Supervisor, raw_fcm_config})
-        |> maybe_append({Sparrow.APNS.Supervisor, raw_apns_config})
+      is_enabled
+      |> maybe_start_pools_warden()
+      |> maybe_append({Sparrow.FCM.V1.Supervisor, raw_fcm_config})
+      |> maybe_append({Sparrow.APNS.Supervisor, raw_apns_config})
 
     opts = [strategy: :one_for_one]
     Supervisor.start_link(children, opts)
@@ -32,4 +28,7 @@ defmodule Sparrow do
   @spec maybe_append([any], {any, nil | list}) :: [any]
   defp maybe_append(list, {_, nil}), do: list
   defp maybe_append(list, elem), do: list ++ [elem]
+
+  defp maybe_start_pools_warden(true), do: [Sparrow.PoolsWarden]
+  defp maybe_start_pools_warden(false), do: []
 end

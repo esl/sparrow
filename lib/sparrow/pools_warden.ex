@@ -14,14 +14,16 @@ defmodule Sparrow.PoolsWarden do
   Function to "register" new workers pool, allows for `Sparrow.API.push/3` to automatically choose pool.
 
   ## Arguments
+      * `pid` - PID of pool process. Needed to unregister pool when its process is killed
       * `pool_type` - determine if pool is FCM or APNS dev or APNS
+      * `pool_name` - Name of the pool, chosen internally - for choosing specific pool use `tags`
       * `tags` - tags that allow to call a particular pool of subset of pools
   """
-  @spec add_new_pool(pool_type, atom, [any]) :: true
-  def add_new_pool(pool_type, pool_name, tags \\ []) do
+  @spec add_new_pool(pid(), pool_type, atom, [any]) :: true
+  def add_new_pool(pid, pool_type, pool_name, tags \\ []) do
     GenServer.call(
       __MODULE__,
-      {:add_pool, pool_type, pool_name, tags}
+      {:add_pool, pid, pool_type, pool_name, tags}
     )
   end
 
@@ -70,7 +72,7 @@ defmodule Sparrow.PoolsWarden do
     )
   end
 
-  @spec init(any) :: {:ok, :ok}
+  @impl GenServer
   def init(_) do
     @tab_name = :ets.new(@tab_name, [:bag, :protected, :named_table])
 
@@ -79,10 +81,10 @@ defmodule Sparrow.PoolsWarden do
         "worker=pools_warden, action=init, result=success"
       end)
 
-    {:ok, :ok}
+    {:ok, %{}}
   end
 
-  @spec terminate(any, :ok) :: :ok
+  @impl GenServer
   def terminate(reason, _state) do
     ets_del = :ets.delete(@tab_name)
 
@@ -94,23 +96,33 @@ defmodule Sparrow.PoolsWarden do
       end)
   end
 
-  @spec handle_info(any, :ok) :: {:noreply, :ok}
-  def handle_info(unknown, _state) do
+  @impl GenServer
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
+    [pool_type, pool_name, tags] = Map.get(state, pid)
+    :ets.delete_object(@tab_name, {pool_type, {pool_name, tags}})
+
+    _ =
+      Logger.info(fn ->
+        "worker=pools_warden, action=unregistering pool,
+        ets_table=#{inspect(:ets.info(@tab_name))},
+        pid=#{inspect(pid)}, reason=#{inspect(reason)}"
+      end)
+
+    {:noreply, Map.delete(state, pid)}
+  end
+
+  def handle_info(unknown, state) do
     _ =
       Logger.warn(fn ->
         "worker=pools_warden, Unknown info #{inspect(unknown)}"
       end)
 
-    {:noreply, :ok}
+    {:noreply, state}
   end
 
-  @spec handle_call(
-          {:add_pool, pool_type, atom, [any]},
-          GenServer.from(),
-          any
-        ) :: {:reply, atom, :ok}
-
-  def handle_call({:add_pool, pool_type, pool_name, tags}, _, _state) do
+  @impl GenServer
+  def handle_call({:add_pool, pid, pool_type, pool_name, tags}, _, state) do
+    Process.monitor(pid)
     :ets.insert(@tab_name, {pool_type, {pool_name, tags}})
 
     _ =
@@ -119,8 +131,7 @@ defmodule Sparrow.PoolsWarden do
           inspect(pool_type)
         }, pool_name=#{inspect(pool_name)}, pool_tags=#{inspect(tags)}"
       end)
-
-    {:reply, pool_name, :ok}
+    {:reply, pool_name, Map.merge(state, %{pid => [pool_type, pool_name, tags]})}
   end
 
   @spec get_pools(pool_type) :: [{atom, [any]}]
