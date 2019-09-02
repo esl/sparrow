@@ -29,6 +29,7 @@ defmodule Sparrow.FCM.V1.TokenBearerTest do
       id: Sparrow.FCM.V1.TokenBearer,
       start: {Sparrow.FCM.V1.TokenBearer, :start_link, [config]}
     })
+
     assert is_pid(pid)
   end
 end
