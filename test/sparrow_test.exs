@@ -37,7 +37,7 @@ defmodule SparrowTest do
   test "Sparrow starts correctly", context do
     # DON'T COPY THIS TOKEN GETTER
     with_mock Sparrow.FCM.V1, [:passthrough],
-      get_token_based_authentication: fn ->
+      get_token_based_authentication: fn _ ->
         getter = fn ->
           {"authorization", "bearer dummy_token"}
         end
@@ -50,6 +50,13 @@ defmodule SparrowTest do
           endpoint: "localhost",
           port: context[:port],
           tags: [:yippee_ki_yay],
+          worker_num: 3
+        ],
+        [
+          path_to_json: "sparrow_token2.json",
+          endpoint: "localhost",
+          port: context[:port],
+          tags: [:I, :am, :your, :father],
           worker_num: 3
         ]
       ]
@@ -155,7 +162,7 @@ defmodule SparrowTest do
   test "Sparrow starts correctly, FCM only", context do
     # DON'T COPY THIS TOKEN GETTER
     with_mock Sparrow.FCM.V1, [:passthrough],
-      get_token_based_authentication: fn ->
+      get_token_based_authentication: fn _ ->
         getter = fn ->
           {"authorization", "bearer dummy_token"}
         end
@@ -168,6 +175,12 @@ defmodule SparrowTest do
           endpoint: "localhost",
           port: context[:port],
           tags: [:yippee_ki_yay],
+          worker_num: 3
+        ],
+        [
+          path_to_json: "sparrow_token2.json",
+          endpoint: "localhost",
+          port: context[:port],
           worker_num: 3
         ]
       ]

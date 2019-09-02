@@ -106,7 +106,7 @@ defmodule Sparrow.PoolsWardenTest do
     assert :undefined == :ets.info(:sparrow_pools_warden_tab)
   end
 
-  test "choosing pool works correctly" do
+  test "choosing APNS pool works correctly" do
     {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
 
     pool_1_config =
@@ -166,6 +166,68 @@ defmodule Sparrow.PoolsWardenTest do
              Sparrow.PoolsWarden.choose_pool({:apns, :dev}, [:gamma, :beta])
 
     assert nil == Sparrow.PoolsWarden.choose_pool({:apns, :dev}, [:ksi])
+  end
+
+  test "choosing FCM pool works correctly" do
+    {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
+
+    pool_1_config =
+      Sparrow.FCM.V1.get_token_based_authentication(:token_id)
+      |> Sparrow.FCM.V1.get_h2worker_config()
+      |> Sparrow.H2Worker.Pool.Config.new()
+
+    pool_1_name = pool_1_config.pool_name
+
+    {:ok, _pid} =
+      Sparrow.H2Worker.Pool.start_link(pool_1_config, :fcm, [
+        :alpha,
+        :beta,
+        :gamma
+      ])
+
+    pool_2_config =
+      Sparrow.FCM.V1.get_token_based_authentication(:token_id)
+      |> Sparrow.FCM.V1.get_h2worker_config()
+      |> Sparrow.H2Worker.Pool.Config.new()
+
+    pool_2_name = pool_2_config.pool_name
+
+    {:ok, _pid} =
+      Sparrow.H2Worker.Pool.start_link(pool_2_config, :fcm, [
+        :beta,
+        :gamma,
+        :delta,
+        :lambda
+      ])
+
+    assert pool_1_name ==
+             Sparrow.PoolsWarden.choose_pool(:fcm, [:alpha])
+
+    assert pool_1_name ==
+             Sparrow.PoolsWarden.choose_pool(:fcm, [:alpha, :beta])
+
+    assert pool_1_name ==
+             Sparrow.PoolsWarden.choose_pool(:fcm, [:beta, :alpha])
+
+    assert pool_2_name ==
+             Sparrow.PoolsWarden.choose_pool(:fcm, [:lambda])
+
+    assert pool_2_name ==
+             Sparrow.PoolsWarden.choose_pool(:fcm, [:delta, :lambda])
+
+    assert pool_2_name ==
+             Sparrow.PoolsWarden.choose_pool(:fcm, [:lambda, :delta])
+
+    assert pool_1_name ==
+             Sparrow.PoolsWarden.choose_pool(:fcm, [:gamma])
+
+    assert pool_1_name ==
+             Sparrow.PoolsWarden.choose_pool(:fcm, [:beta, :gamma])
+
+    assert pool_1_name ==
+             Sparrow.PoolsWarden.choose_pool(:fcm, [:gamma, :beta])
+
+    assert nil == Sparrow.PoolsWarden.choose_pool(:fcm, [:ksi])
   end
 
   test "Pools are unregistered when their process is killed" do

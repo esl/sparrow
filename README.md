@@ -225,7 +225,7 @@ defp deps do
 
 Sparrow suports many pools in a single `:sparrow` instance.
 [Tags](#tags) are used to choose a pool when sending a notification.
-[](https://placehold.it/15/ff0000/ff0000?text=+) *`This feature is not yet implemented for FCM.`*
+
 
 ## Tags
 

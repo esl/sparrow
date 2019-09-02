@@ -8,7 +8,7 @@ defmodule Sparrow.FCM.V1.TokenBearerTest do
   @expires 1_234_567
   test "token bearer gets token" do
     with_mock Goth.Token,
-      for_scope: fn scope ->
+      for_scope: fn {_, scope} ->
         {:ok,
          %Goth.Token{
            expires: @expires,
@@ -18,12 +18,13 @@ defmodule Sparrow.FCM.V1.TokenBearerTest do
            type: "Bearer"
          }}
       end do
-      assert @token == Sparrow.FCM.V1.TokenBearer.get_token()
+      assert @token == Sparrow.FCM.V1.TokenBearer.get_token("")
     end
   end
 
-  test "" do
-    {:ok, pid} = Sparrow.FCM.V1.TokenBearer.start_link(@google_json_path)
+  test "token bearer starts" do
+    config = [[{:path_to_json, @google_json_path}]]
+    {:ok, pid} = Sparrow.FCM.V1.TokenBearer.start_link(config)
     assert is_pid(pid)
   end
 end
