@@ -1,5 +1,15 @@
 ExUnit.start(capture_log: true)
 
+defmodule TestHelper do
+  def restore_app_env() do
+    Application.stop(:sparrow)
+    Application.unload(:sparrow)
+    Application.load(:sparrow)
+    {:ok, _} = Application.ensure_all_started(:sparrow)
+    :ok
+  end
+end
+
 defmodule HelperMacros do
   defmacro __using__(_opts) do
     quote do

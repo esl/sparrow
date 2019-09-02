@@ -5,6 +5,7 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
   use Supervisor
 
   @fcm_default_endpoint "fcm.googleapis.com"
+  @account_key "client_email"
 
   @spec start_link(Keyword.t()) :: Supervisor.on_start()
   def start_link(arg) do
@@ -14,21 +15,27 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
   @spec init(Keyword.t()) ::
           {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}}
   def init(raw_config) do
-    {pool_config, pool_tags} = get_fcm_pool_config(raw_config)
+    pool_configs =
+      Enum.map(raw_config, fn single_config ->
+        {single_config[:path_to_json], get_fcm_pool_config(single_config)}
+      end)
 
-    Sparrow.FCM.V1.ProjectIdBearer.add_project_id(
-      raw_config[:path_to_json],
+    for {path_to_json, {pool_config, _pool_tags}} <- pool_configs do
+      Sparrow.FCM.V1.ProjectIdBearer.add_project_id(
+      path_to_json,
       pool_config.pool_name
     )
+    end
 
-    children = [
-      %{
-        id: Sparrow.H2Worker.Pool,
-        start:
-          {Sparrow.H2Worker.Pool, :start_link, [pool_config, :fcm, pool_tags]}
-      }
-    ]
-
+    children =
+      for {{_json, {pool_config, pool_tags}}, index} <- Enum.with_index(pool_configs) do
+        id = String.to_atom("Sparrow.Fcm.Pool.ID.#{index}")
+        %{
+          id: id,
+          start:
+            {Sparrow.H2Worker.Pool, :start_link, [pool_config, :fcm, pool_tags]}
+        }
+      end
     Supervisor.init(children, strategy: :one_for_one)
   end
 
@@ -41,13 +48,19 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
     ping_interval = Keyword.get(raw_pool_config, :ping_interval, 5000)
     reconnection_attempts = Keyword.get(raw_pool_config, :reconnect_attempts, 3)
 
+    pool_tags = Keyword.get(raw_pool_config, :tags, [])
     pool_name = Keyword.get(raw_pool_config, :pool_name)
     pool_size = Keyword.get(raw_pool_config, :worker_num, 3)
     pool_opts = Keyword.get(raw_pool_config, :raw_opts, [])
-    pool_tags = Keyword.get(raw_pool_config, :tags, [])
+
+    account =
+      Keyword.get(raw_pool_config, :path_to_json)
+      |> File.read!()
+      |> Jason.decode!()
+      |> Map.fetch!(@account_key)
 
     config =
-      Sparrow.FCM.V1.get_token_based_authentication()
+      Sparrow.FCM.V1.get_token_based_authentication(account)
       |> Sparrow.FCM.V1.get_h2worker_config(
         uri,
         port,

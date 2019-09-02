@@ -251,10 +251,11 @@ defmodule Sparrow.FCM.V1Test do
     end
   end
 
-  test "FCm token based config is biuld correctly" do
-    {:ok, _pid} = Sparrow.FCM.V1.TokenBearer.start_link("./sparrow_token.json")
+  test "FCM token based config is build correctly" do
+    config = [[{:path_to_json, "./sparrow_token.json"}]]
+    {:ok, _pid} = Sparrow.FCM.V1.TokenBearer.start_link(config)
 
-    auth = Sparrow.FCM.V1.get_token_based_authentication()
+    auth = Sparrow.FCM.V1.get_token_based_authentication("")
 
     config =
       auth
@@ -266,6 +267,65 @@ defmodule Sparrow.FCM.V1Test do
     assert config.ping_interval == 5000
     assert config.reconnect_attempts == 3
     assert config.authentication == auth
+  end
+
+  test "FCM accounts are passed correctly" do
+    with_mocks([
+      {Sparrow.FCM.V1.TokenBearer,
+      [:passthrough],
+      [get_token: fn account -> account end
+      ]},
+      {Sparrow.H2ClientAdapter.Chatterbox,
+      [:passthrough],
+      [post: fn _, _, _, _, _ -> {:error, 1} end,
+        open: fn _, _, _ -> {:ok, self()} end]}
+      ]) do
+
+        fcm = [
+          [
+            path_to_json: "sparrow_token.json",
+            endpoint: "localhost",
+            worker_num: 3,
+            tags: [:tag1]
+           ],
+          [
+            path_to_json: "sparrow_token2.json",
+            endpoint: "localhost",
+            worker_num: 3,
+            tags: [:tag2]
+          ]
+        ]
+
+        Application.stop(:sparrow)
+        Application.put_env(:sparrow, :fcm, fcm)
+        {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
+        :ok = Application.start(:sparrow)
+
+        account1 =
+          File.read!("./sparrow_token.json")
+          |> Jason.decode!()
+          |> Map.fetch!("client_email")
+          |> String.to_atom()
+
+        account2 =
+          File.read!("./sparrow_token2.json")
+          |> Jason.decode!()
+          |> Map.fetch!("client_email")
+          |> String.to_atom()
+
+        notification = test_notification()
+
+        pool_1 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag1])
+        pool_2 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag2])
+
+
+        Sparrow.FCM.V1.push(pool_1, notification)
+        assert called(Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account1)))
+
+        Sparrow.FCM.V1.push(pool_2, notification)
+        assert called(Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account2)))
+
+    end
   end
 
   test "process_response handle invalid_argument correctly" do

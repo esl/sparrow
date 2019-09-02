@@ -121,11 +121,11 @@ defmodule Sparrow.FCM.V1 do
   Function providing `Sparrow.H2Worker.Authentication.TokenBased` for FCM pools.
   Requres `Sparrow.FCM.TokenBearer` to be started.
   """
-  @spec get_token_based_authentication() ::
+  @spec get_token_based_authentication(String.t()) ::
           Sparrow.H2Worker.Authentication.TokenBased.t()
-  def get_token_based_authentication do
+  def get_token_based_authentication(account) do
     getter = fn ->
-      {"authorization", "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token()}"}
+      {"authorization", "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token(account)}"}
     end
 
     Sparrow.H2Worker.Authentication.TokenBased.new(getter)
