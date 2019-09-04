@@ -252,9 +252,6 @@ defmodule Sparrow.FCM.V1Test do
   end
 
   test "FCM token based config is build correctly" do
-    config = [[{:path_to_json, "./sparrow_token.json"}]]
-    {:ok, _pid} = Sparrow.FCM.V1.TokenBearer.start_link(config)
-
     auth = Sparrow.FCM.V1.get_token_based_authentication("")
 
     config =
