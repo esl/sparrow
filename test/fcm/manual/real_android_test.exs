@@ -40,6 +40,7 @@ defmodule Sparrow.FCM.Manual.RealAndroidTest do
       |> Notification.add_android(android)
 
     assert :ok == Sparrow.API.push(notification)
+    TestHelper.restore_app_env()
   end
 
   defp start_sparrow_with_fcm_config(config) do

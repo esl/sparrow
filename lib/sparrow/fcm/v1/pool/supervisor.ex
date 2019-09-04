@@ -54,13 +54,15 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
     pool_opts = Keyword.get(raw_pool_config, :raw_opts, [])
 
     account =
-      Keyword.get(raw_pool_config, :path_to_json)
+      raw_pool_config
+      |> Keyword.get(:path_to_json)
       |> File.read!()
       |> Jason.decode!()
       |> Map.fetch!(@account_key)
 
     config =
-      Sparrow.FCM.V1.get_token_based_authentication(account)
+      account
+      |> Sparrow.FCM.V1.get_token_based_authentication()
       |> Sparrow.FCM.V1.get_h2worker_config(
         uri,
         port,
