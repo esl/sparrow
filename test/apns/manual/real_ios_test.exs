@@ -68,6 +68,7 @@ defmodule Sparrow.APNS.Manual.RealIosTest do
       |> Notification.add_apns_topic(@apns_topic)
 
     assert :ok == Sparrow.API.push(notification)
+    TestHelper.restore_app_env()
   end
 
   defp start_sparrow_with_apns_config(config) do

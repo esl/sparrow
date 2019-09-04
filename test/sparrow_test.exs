@@ -44,6 +44,7 @@ defmodule SparrowTest do
 
         Sparrow.H2Worker.Authentication.TokenBased.new(getter)
       end do
+
       fcm = [
         [
           path_to_json: "sparrow_token.json",
@@ -156,6 +157,7 @@ defmodule SparrowTest do
                  :yippee_ki_yay,
                  :wrong_tag
                ])
+      TestHelper.restore_app_env()
     end
   end
 
@@ -209,6 +211,7 @@ defmodule SparrowTest do
                  :yippee_ki_yay,
                  :wrong_tag
                ])
+      TestHelper.restore_app_env()
     end
   end
 
@@ -284,5 +287,6 @@ defmodule SparrowTest do
              |> Sparrow.APNS.Notification.new(:dev)
              |> Sparrow.APNS.Notification.add_body("dummy body")
              |> Sparrow.API.push([:welele])
+    TestHelper.restore_app_env()
   end
 end

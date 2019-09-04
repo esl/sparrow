@@ -24,7 +24,11 @@ defmodule Sparrow.FCM.V1.TokenBearerTest do
 
   test "token bearer starts" do
     config = [[{:path_to_json, @google_json_path}]]
-    {:ok, pid} = Sparrow.FCM.V1.TokenBearer.start_link(config)
+    {:ok, pid} = start_supervised(
+      %{
+      id: Sparrow.FCM.V1.TokenBearer,
+      start: {Sparrow.FCM.V1.TokenBearer, :start_link, [config]}
+    })
     assert is_pid(pid)
   end
 end
