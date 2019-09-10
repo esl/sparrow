@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.Certs.Dev do
+defmodule Mix.Tasks.Sparrow.Certs.Dev do
   @moduledoc """
   Generate fake certs (placeholders) for `HTTPS` endpoint and `APNS` service.
 
@@ -44,7 +44,7 @@ defmodule Mix.Tasks.Certs.Dev do
     maybe_gen_cert(
       "priv/apns/dev_cert.pem",
       "priv/apns/dev_key.pem",
-      "mongoose-push-apns-dev"
+      "sparrow-apns-dev"
     )
   end
 
@@ -64,7 +64,7 @@ defmodule Mix.Tasks.Certs.Dev do
     maybe_gen_cert(
       "priv/apns/prod_cert.pem",
       "priv/apns/prod_key.pem",
-      "mongoose-push-apns-prod",
+      "sparrow-apns-prod",
       extensions
     )
   end
@@ -73,7 +73,7 @@ defmodule Mix.Tasks.Certs.Dev do
     maybe_gen_cert(
       "priv/ssl/fake_cert.pem",
       "priv/ssl/fake_key.pem",
-      "mongoose-push"
+      "sparrow"
     )
   end
 
