@@ -52,7 +52,7 @@ defmodule Sparrow.APNS.Pool.Supervisor do
           {Sparrow.H2Worker.Pool.Config.t(), [atom]}
   defp get_apns_pool_config(raw_pool_config, pool_type) do
     port = Keyword.get(raw_pool_config, :port, 443)
-    tls_opts = Keyword.get(raw_pool_config, :tls_opts, [])
+    tls_opts = Keyword.get(raw_pool_config, :tls_opts, setup_default_tls_options())
     ping_interval = Keyword.get(raw_pool_config, :ping_interval, 5000)
     reconnection_attempts = Keyword.get(raw_pool_config, :reconnect_attempts, 3)
 
@@ -95,5 +95,14 @@ defmodule Sparrow.APNS.Pool.Supervisor do
       )
 
     {pool_config, pool_tags}
+  end
+
+  defp setup_default_tls_options do
+    cacerts = :certifi.cacerts()
+    [
+      {:verify, :verify_peer},
+      {:depth, 99},
+      {:cacerts, cacerts}
+    ]
   end
 end
