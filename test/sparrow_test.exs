@@ -51,14 +51,16 @@ defmodule SparrowTest do
           endpoint: "localhost",
           port: context[:port],
           tags: [:yippee_ki_yay],
-          worker_num: 3
+          worker_num: 3,
+          tls_opts: []
         ],
         [
           path_to_json: "sparrow_token2.json",
           endpoint: "localhost",
           port: context[:port],
           tags: [:I, :am, :your, :father],
-          worker_num: 3
+          worker_num: 3,
+          tls_opts: []
         ]
       ]
 
@@ -71,7 +73,8 @@ defmodule SparrowTest do
             endpoint: "localhost",
             port: context[:port],
             worker_num: 2,
-            tags: [:wololo]
+            tags: [:wololo],
+            tls_opts: []
           ],
           [
             auth_type: :certificate_based,
@@ -80,7 +83,8 @@ defmodule SparrowTest do
             endpoint: "localhost",
             port: context[:port],
             worker_num: 2,
-            tags: [:walala]
+            tags: [:walala],
+            tls_opts: []
           ]
         ],
         prod: [
@@ -89,7 +93,8 @@ defmodule SparrowTest do
             token_id: :some_atom_id,
             endpoint: "localhost",
             port: context[:port],
-            worker_num: 4
+            worker_num: 4,
+            tls_opts: []
           ]
         ],
         tokens: [
@@ -177,13 +182,15 @@ defmodule SparrowTest do
           endpoint: "localhost",
           port: context[:port],
           tags: [:yippee_ki_yay],
-          worker_num: 3
+          worker_num: 3,
+          tls_opts: []
         ],
         [
           path_to_json: "sparrow_token2.json",
           endpoint: "localhost",
           port: context[:port],
-          worker_num: 3
+          worker_num: 3,
+          tls_opts: []
         ]
       ]
 
@@ -225,7 +232,8 @@ defmodule SparrowTest do
           endpoint: "localhost",
           port: context[:port],
           worker_num: 2,
-          tags: [:wololo]
+          tags: [:wololo],
+          tls_opts: []
         ],
         [
           auth_type: :certificate_based,
@@ -234,7 +242,8 @@ defmodule SparrowTest do
           endpoint: "localhost",
           port: context[:port],
           worker_num: 2,
-          tags: [:walala]
+          tags: [:walala],
+          tls_opts: []
         ]
       ],
       prod: [
@@ -243,7 +252,8 @@ defmodule SparrowTest do
           token_id: :some_atom_id,
           endpoint: "localhost",
           port: context[:port],
-          worker_num: 4
+          worker_num: 4,
+          tls_opts: []
         ]
       ],
       tokens: [
@@ -288,5 +298,65 @@ defmodule SparrowTest do
              |> Sparrow.APNS.Notification.add_body("dummy body")
              |> Sparrow.API.push([:welele])
     TestHelper.restore_app_env()
+  end
+
+  test "Sparrow checks TLS certificates by default", context do
+    with_mock(:ssl, [:passthrough],
+    connect: fn host, port, options ->
+      assert :verify_peer == options[:verify]
+      assert nil != options[:depth]
+      assert nil != options[:cacerts]
+      no_cert_options =
+        options
+        |> List.keydelete(:verify, 0)
+        |> List.keydelete(:depth, 0)
+        |> List.keydelete(:cacerts, 0)
+      :meck.passthrough([host, port, no_cert_options])
+    end) do
+      apns = [
+        dev: [
+          [
+            auth_type: :certificate_based,
+            cert: @cert_path,
+            key: @key_path,
+            endpoint: "localhost",
+            port: context[:port],
+            worker_num: 2,
+            tags: [:wololo]
+          ],
+          [
+            auth_type: :certificate_based,
+            cert: @cert_path,
+            key: @key_path,
+            endpoint: "localhost",
+            port: context[:port],
+            worker_num: 2,
+            tags: [:walala]
+          ]
+        ],
+        prod: [
+          [
+            auth_type: :token_based,
+            token_id: :some_atom_id,
+            endpoint: "localhost",
+            port: context[:port],
+            worker_num: 4
+          ]
+        ],
+        tokens: [
+          [
+            token_id: :some_atom_id,
+            key_id: "FAKE_KEY_ID",
+            team_id: "FAKE_TEAM_ID",
+            p8_file_path: "token.p8"
+          ]
+        ]
+      ]
+
+      Application.stop(:sparrow)
+      Application.put_env(:sparrow, :fcm, nil)
+      Application.put_env(:sparrow, :apns, apns)
+      :ok = Application.start(:sparrow)
+    end
   end
 end

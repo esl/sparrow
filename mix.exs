@@ -26,6 +26,7 @@ defmodule Sparrow.MixProject do
       {:dialyxir, "~> 0.4", runtime: false, only: [:dev, :test]},
       {:credo, "~> 0.10", runtime: false, only: :dev},
       {:chatterbox, github: "joedevivo/chatterbox", ref: "b737985"},
+      {:certifi, "~> 2.5.1"},
       {:excoveralls, "~> 0.5", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},
       {:uuid, "~> 1.1"},
