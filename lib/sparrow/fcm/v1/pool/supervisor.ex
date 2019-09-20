@@ -44,7 +44,7 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
   defp get_fcm_pool_config(raw_pool_config) do
     uri = Keyword.get(raw_pool_config, :endpoint, @fcm_default_endpoint)
     port = Keyword.get(raw_pool_config, :port, 443)
-    tls_opts = Keyword.get(raw_pool_config, :tls_opts, [])
+    tls_opts = Keyword.get(raw_pool_config, :tls_opts, setup_default_tls_options())
     ping_interval = Keyword.get(raw_pool_config, :ping_interval, 5000)
     reconnection_attempts = Keyword.get(raw_pool_config, :reconnect_attempts, 3)
 
@@ -73,5 +73,14 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
       |> Sparrow.H2Worker.Pool.Config.new(pool_name, pool_size, pool_opts)
 
     {config, pool_tags}
+  end
+
+  defp setup_default_tls_options do
+    cacerts = :certifi.cacerts()
+    [
+      {:verify, :verify_peer},
+      {:depth, 99},
+      {:cacerts, cacerts}
+    ]
   end
 end
