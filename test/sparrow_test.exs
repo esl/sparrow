@@ -301,7 +301,7 @@ defmodule SparrowTest do
   end
 
   test "Sparrow checks TLS certificates by default", context do
-    with_mock(:ssl, [:passthrough],
+    with_mock(:ssl, [:passthrough, :unstick],
     connect: fn host, port, options ->
       assert :verify_peer == options[:verify]
       assert nil != options[:depth]
@@ -311,6 +311,7 @@ defmodule SparrowTest do
         |> List.keydelete(:verify, 0)
         |> List.keydelete(:depth, 0)
         |> List.keydelete(:cacerts, 0)
+      IO.inspect(no_cert_options)
       :meck.passthrough([host, port, no_cert_options])
     end) do
       apns = [
