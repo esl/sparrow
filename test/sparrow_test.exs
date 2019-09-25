@@ -318,7 +318,7 @@ defmodule SparrowTest do
         |> List.keydelete(:depth, 0)
         |> List.keydelete(:cacerts, 0)
       IO.inspect([options, host, port, no_cert_options])
-      :meck.passthrough([host, port, no_cert_options])
+      :meck.passthrough([host, port, options])
     end) do
       apns = [
         dev: [
