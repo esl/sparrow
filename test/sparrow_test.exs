@@ -223,10 +223,6 @@ defmodule SparrowTest do
   end
 
   test "Sparrow starts correctly, APNS only", context do
-    with_mock(:ssl, [:passthrough, :unstick],
-    connect: fn host, port, options ->
-      :meck.passthrough()
-    end) do
     apns = [
       dev: [
         [
@@ -302,24 +298,9 @@ defmodule SparrowTest do
              |> Sparrow.APNS.Notification.add_body("dummy body")
              |> Sparrow.API.push([:welele])
     TestHelper.restore_app_env()
-    end
   end
 
   test "Sparrow checks TLS certificates by default", context do
-    with_mock(:ssl, [:passthrough, :unstick],
-    connect: fn host, port, options ->
-      assert :verify_peer == options[:verify]
-      assert nil != options[:depth]
-      assert nil != options[:cacerts]
-      no_cert_options =
-        options
-        |> List.keyreplace(:verify, 0, {:verify, :verify_none})
-        |> List.keydelete(:verify, 0)
-        |> List.keydelete(:depth, 0)
-        |> List.keydelete(:cacerts, 0)
-      IO.inspect([options, host, port, no_cert_options])
-      :meck.passthrough([host, port, options])
-    end) do
       apns = [
         dev: [
           [
@@ -365,6 +346,5 @@ defmodule SparrowTest do
       Application.put_env(:sparrow, :apns, apns)
       :ok = Application.start(:sparrow)
       TestHelper.restore_app_env()
-    end
   end
 end
