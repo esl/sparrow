@@ -364,6 +364,7 @@ defmodule SparrowTest do
       Application.put_env(:sparrow, :fcm, nil)
       Application.put_env(:sparrow, :apns, apns)
       :ok = Application.start(:sparrow)
+      TestHelper.restore_app_env()
     end
   end
 end
