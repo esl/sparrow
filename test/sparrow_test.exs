@@ -314,6 +314,7 @@ defmodule SparrowTest do
       no_cert_options =
         options
         |> List.keyreplace(:verify, 0, {:verify, :verify_none})
+        |> List.keydelete(:verify, 0)
         |> List.keydelete(:depth, 0)
         |> List.keydelete(:cacerts, 0)
       IO.inspect([options, host, port, no_cert_options])
