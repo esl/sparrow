@@ -225,8 +225,7 @@ defmodule SparrowTest do
   test "Sparrow starts correctly, APNS only", context do
     with_mock(:ssl, [:passthrough, :unstick],
     connect: fn host, port, options ->
-      IO.inspect([host, port, options])
-      :meck.passthrough([host, port, options])
+      :meck.passthrough()
     end) do
     apns = [
       dev: [
