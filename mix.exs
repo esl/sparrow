@@ -16,7 +16,9 @@ defmodule Sparrow.MixProject do
 
   def application do
     [
-      extra_applications: [:logger],
+      # Goth has to be set as `runtime: false` to prevent it from
+      # auto-starting, but we still need it in the release
+      extra_applications: [:logger, :goth],
       mod: {Sparrow, []}
     ]
   end
