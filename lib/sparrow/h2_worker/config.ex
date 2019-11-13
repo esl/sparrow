@@ -15,7 +15,10 @@ defmodule Sparrow.H2Worker.Config do
           authentication: authentication,
           tls_options: tls_options,
           ping_interval: time_in_miliseconds | nil,
-          reconnect_attempts: pos_integer
+          reconnect_attempts: pos_integer,
+          backoff_initial_delay: pos_integer,
+          backoff_max_delay: pos_integer,
+          backoff_base: pos_integer
         }
 
   defstruct [
@@ -24,7 +27,10 @@ defmodule Sparrow.H2Worker.Config do
     :authentication,
     :tls_options,
     :ping_interval,
-    :reconnect_attempts
+    :reconnect_attempts,
+    :backoff_initial_delay,
+    :backoff_max_delay,
+    :backoff_base
   ]
 
   @doc """
@@ -46,6 +52,9 @@ defmodule Sparrow.H2Worker.Config do
           port_num,
           tls_options,
           time_in_miliseconds,
+          pos_integer,
+          pos_integer,
+          pos_integer,
           pos_integer
         ) :: t
   def new(
@@ -54,7 +63,10 @@ defmodule Sparrow.H2Worker.Config do
         authentication,
         tls_options \\ [],
         ping_interval \\ 5_000,
-        reconnect_attempts \\ 3
+        reconnect_attempts \\ 3,
+        backoff_base \\ 2,
+        backoff_initial_delay \\ 100,
+        backoff_max_delay \\ 400
       ) do
     %__MODULE__{
       domain: domain,
@@ -62,7 +74,10 @@ defmodule Sparrow.H2Worker.Config do
       authentication: authentication,
       tls_options: tls_options,
       ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts
+      reconnect_attempts: reconnect_attempts,
+      backoff_initial_delay: backoff_initial_delay,
+      backoff_max_delay: backoff_max_delay,
+      backoff_base: backoff_base
     }
   end
 
