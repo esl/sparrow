@@ -40,6 +40,6 @@ defmodule Sparrow.APNS.Supervisor do
     team_id = Keyword.get(token_config, :team_id)
     key_id = Keyword.get(token_config, :key_id)
     p8_file_path = Keyword.get(token_config, :p8_file_path)
-    {token_id, Sparrow.APNS.Token.new(team_id, key_id, p8_file_path)}
+    {token_id, Sparrow.APNS.Token.new(key_id, team_id, p8_file_path)}
   end
 end
