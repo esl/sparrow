@@ -1,4 +1,5 @@
 defmodule H2Integration.CerificateRequiredTest do
+  alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
@@ -77,9 +78,12 @@ defmodule H2Integration.CerificateRequiredTest do
         10_000
       )
 
-    {:error, actual_reason} = GenServer.start(Sparrow.H2Worker, config)
+    worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+    ref = Process.monitor(worker_pid)
 
-    assert {:options, {:cacertfile, []}} == actual_reason
+    assert_receive {:DOWN, ^ref, :process, worker_pid, reason}
+
+    assert {:options, {:cacertfile, []}} == reason
   end
 
   defp assert_response_header(headers, expected_header) do
