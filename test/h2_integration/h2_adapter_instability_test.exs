@@ -1,4 +1,5 @@
 defmodule H2Integration.H2AdapterInstabilityTest do
+  alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
 
   import Mock
@@ -88,10 +89,11 @@ defmodule H2Integration.H2AdapterInstabilityTest do
       config =
         Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-      Process.flag(:trap_exit, true)
-      {error, reason} = GenServer.start_link(Sparrow.H2Worker, config)
-      assert :error == error
-      assert :my_custom_reason == reason
+      worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+      ref = Process.monitor(worker_pid)
+
+      :timer.sleep(1000)
+      assert_receive {:DOWN, ^ref, :process, worker_pid, {:bad_return_value, {:stop, :my_custom_reason}}}
     end
   end
 
