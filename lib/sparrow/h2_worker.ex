@@ -33,7 +33,7 @@ defmodule Sparrow.H2Worker do
     GenServer.start_link(__MODULE__, config)
   end
 
-  @spec init(config) :: {:ok, state, {:continue, term()}} | {:stop, reason}
+  @spec init(config) :: {:ok, state, {:continue, term()}}
   def init(config) do
     config =
       config
@@ -75,8 +75,8 @@ defmodule Sparrow.H2Worker do
   end
 
   @spec handle_continue(:start_conn_backoff, state) ::
-          {:noreply, state} | {:stop, any}
-  def handle_continue(:start_conn_backoff, %State{config: config}) do
+          {:noreply, state} | {:stop, reason, state}
+  def handle_continue(:start_conn_backoff, state = %State{config: config}) do
     %Config{
       backoff_base: base,
       backoff_max_delay: max_delay,
@@ -90,7 +90,7 @@ defmodule Sparrow.H2Worker do
       end)
 
     case start_conn_backoff(config, {:ok, 0}, delay_stream) do
-      {:error, reason} -> {:stop, reason}
+      {:error, reason} -> {:stop, reason, state}
       {:ok, new_state} -> {:noreply, new_state}
     end
   end
