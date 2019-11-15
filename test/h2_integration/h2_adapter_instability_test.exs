@@ -93,7 +93,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
       ref = Process.monitor(worker_pid)
 
       :timer.sleep(1000)
-      assert_receive {:DOWN, ^ref, :process, worker_pid, {:bad_return_value, {:stop, :my_custom_reason}}}
+      assert_receive {:DOWN, ^ref, :process, worker_pid, :my_custom_reason}
     end
   end
 

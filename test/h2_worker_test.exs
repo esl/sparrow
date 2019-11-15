@@ -1,6 +1,8 @@
 defmodule Sparrow.H2WorkerTest do
+  alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
   use Quixir
+  require Logger
 
   import Mock
 
@@ -429,7 +431,7 @@ defmodule Sparrow.H2WorkerTest do
         {:ok, pid} = GenServer.start(Sparrow.H2Worker, config)
         :erlang.trace(pid, true, [:receive])
 
-        :timer.sleep(ping_interval * 2)
+        :timer.sleep(ping_interval * 5)
         assert called H2Adapter.ping(context[:connection_ref])
 
         assert_receive {:trace, ^pid, :receive, {:PONG, _}}
@@ -462,7 +464,7 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        {:ok, _pid} = GenServer.start_link(Sparrow.H2Worker, config)
+        _worker_pid = start_supervised!(Tools.h2_worker_spec(config))
 
         assert not called(H2Adapter.ping(context[:connection_ref]))
       end
@@ -489,8 +491,9 @@ defmodule Sparrow.H2WorkerTest do
             context[:auth]
           )
 
-        {:ok, pid} = GenServer.start_link(Sparrow.H2Worker, config)
-        state = :sys.get_state(pid)
+        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+        :timer.sleep(100)
+        state = :sys.get_state(worker_pid)
 
         assert 5000 == state.config.ping_interval
       end
@@ -600,7 +603,9 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 123
 
       with_mock H2Adapter,
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end do
+         [open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+          ping: fn _ -> :ok end, 
+          close: fn _ -> :ok end] do
         config =
           Config.new(
             domain,
@@ -622,13 +627,15 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        assert {:ok,
-                Sparrow.H2Worker.State.new(
-                  context[:connection_ref],
-                  expected_config
-                )} == Sparrow.H2Worker.init(config)
+            worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+            assert Sparrow.H2Worker.State.new(
+              context[:connection_ref],
+              expected_config
+            ) == :sys.get_state(worker_pid, 100)
+            stop_supervised(worker_pid)
       end
     end
+
   end
 
   test "inits, succesfull connection with certificate, connection fails on send attempt",
@@ -676,7 +683,7 @@ defmodule Sparrow.H2WorkerTest do
           config: config
         }
 
-        {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
+        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
         Process.unlink(worker_pid)
         :sys.replace_state(worker_pid, fn _ -> new_state end)
 
@@ -754,9 +761,13 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        assert {:ok,
-                Sparrow.H2Worker.State.new(context[:connection_ref], config)} ==
-                 Sparrow.H2Worker.init(config)
+       worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+       assert Sparrow.H2Worker.State.new(
+         context[:connection_ref],
+         config
+       ) == :sys.get_state(worker_pid, 100)
+       stop_supervised(worker_pid)
+
       end
     end
   end
@@ -782,7 +793,11 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval
           )
 
-        assert {:stop, reason} == Sparrow.H2Worker.init(config)
+            worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+            ref = Process.monitor(worker_pid)
+            :timer.sleep(5000)
+            assert_receive {:DOWN, ref, :process, worker_pid, reason}
+
       end
     end
   end
