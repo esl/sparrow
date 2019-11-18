@@ -21,7 +21,7 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new("fcm.googleapis.com", 443, auth)
+        Sparrow.H2Worker.Config.new(%{domain: "fcm.googleapis.com", port: 443, authentication: auth})
         |> Sparrow.H2Worker.Pool.Config.new()
 
       pool_1_name = pool_1_config.pool_name
@@ -72,7 +72,7 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new("api.push.apple.com", 443, auth)
+        Sparrow.H2Worker.Config.new(%{domain: "api.push.apple.com", port: 443, authentication: auth})
         |> Sparrow.H2Worker.Pool.Config.new()
 
       pool_1_name = pool_1_config.pool_name
@@ -113,7 +113,7 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new("api.push.apple.com", 443, auth)
+        Sparrow.H2Worker.Config.new(%{domain: "api.push.apple.com", port: 443, authentication: auth})
         |> Sparrow.H2Worker.Pool.Config.new()
 
       pool_1_name = pool_1_config.pool_name
@@ -148,7 +148,7 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new("api.push.apple.com", 443, auth)
+        Sparrow.H2Worker.Config.new(%{domain: "api.push.apple.com", port: 443, authentication: auth})
         |> Sparrow.H2Worker.Pool.Config.new()
 
       {:ok, _pid} =
@@ -178,7 +178,7 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new("fcm.googleapis.com", 443, auth)
+        Sparrow.H2Worker.Config.new(%{domain: "fcm.googleapis.com", port: 443, authentication: auth})
         |> Sparrow.H2Worker.Pool.Config.new()
 
       {:ok, _pid} =
@@ -228,11 +228,11 @@ defmodule Sparrow.APITest do
       tags = [:alpha, :beta, :gamma]
 
       apns_pool_config =
-        Sparrow.H2Worker.Config.new("api.push.apple.com", 443, auth)
+        Sparrow.H2Worker.Config.new(%{domain: "api.push.apple.com", port: 443, authentication: auth})
         |> Sparrow.H2Worker.Pool.Config.new()
 
       fcm_pool_config =
-        Sparrow.H2Worker.Config.new("fcm.googleapis.com", 443, auth)
+        Sparrow.H2Worker.Config.new(%{domain: "fcm.googleapis.com", port: 443, authentication: auth})
         |> Sparrow.H2Worker.Pool.Config.new()
 
       apns_pool_name = apns_pool_config.pool_name

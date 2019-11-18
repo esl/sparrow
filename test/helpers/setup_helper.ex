@@ -30,10 +30,7 @@ defmodule Helpers.SetupHelper do
   def create_h2_worker_config(
         address \\ server_host(),
         port \\ 8080,
-        authentication \\ :certificate_based,
-        backoff_base \\ 2,
-        backoff_initial_delay \\ 100,
-        backoff_max_delay \\ 400
+        authentication \\ :certificate_based
       ) do
     auth =
       case authentication do
@@ -49,7 +46,7 @@ defmodule Helpers.SetupHelper do
           )
       end
 
-    Config.new(address, port, auth)
+        Config.new(%{domain: address, port: port, authentication: auth})
   end
 
   defp certificate_settings_list do
