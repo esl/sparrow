@@ -462,6 +462,12 @@ defmodule Sparrow.H2Worker do
         {:ok, state}
 
       {:error, reason} ->
+          _ = Logger.warn(
+            "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
+              inspect(config.port)
+            }, tls_options=#{inspect(config.tls_options)}, failed to connect"
+          )
+
         new_delay = Enum.fetch(delay_stream, 0)
         start_conn_backoff(
           config, new_delay,

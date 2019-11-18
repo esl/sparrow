@@ -491,7 +491,6 @@ defmodule Sparrow.H2WorkerTest do
           })
 
         worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-        :timer.sleep(100)
         state = :sys.get_state(worker_pid)
 
         assert 5000 == state.config.ping_interval
