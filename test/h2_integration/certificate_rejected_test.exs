@@ -1,4 +1,5 @@
 defmodule H2Integration.CerificateRejectedTest do
+  alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
@@ -27,11 +28,16 @@ defmodule H2Integration.CerificateRejectedTest do
   test "cowboy does not accept certificate", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-    {:error, actual_reason} = GenServer.start(Sparrow.H2Worker, config)
-    case actual_reason do
+    worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+    ref = Process.monitor(worker_pid)
+
+    assert_receive {:DOWN, ^ref, :process, worker_pid, reason}
+
+    case reason do
       {:tls_alert, 'bad certificate'} -> :ok
       {:tls_alert, {:bad_certificate, _}} -> :ok
-      _ -> flunk(actual_reason)
+      _ -> flunk(reason)
     end
+
   end
 end

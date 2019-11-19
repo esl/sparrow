@@ -6,6 +6,11 @@ defmodule Helpers.SetupHelper do
   @path_to_cert "priv/ssl/client_cert.pem"
   @path_to_key "priv/ssl/client_key.pem"
 
+  def h2_worker_spec(config) do
+    id = :crypto.strong_rand_bytes(8) |> Base.encode64
+    Supervisor.child_spec({Sparrow.H2Worker, config}, [id: id])
+  end
+
   def child_spec(opts) do
     args = opts[:args]
     name = opts[:name]
@@ -41,7 +46,7 @@ defmodule Helpers.SetupHelper do
           )
       end
 
-    Config.new(address, port, auth)
+        Config.new(%{domain: address, port: port, authentication: auth})
   end
 
   defp certificate_settings_list do

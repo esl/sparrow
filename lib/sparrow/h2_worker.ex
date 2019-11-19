@@ -29,7 +29,11 @@ defmodule Sparrow.H2Worker do
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
 
-  @spec init(config) :: {:ok, state} | {:stop, reason}
+  def start_link(config) do
+    GenServer.start_link(__MODULE__, config)
+  end
+
+  @spec init(config) :: {:ok, state, {:continue, term()}}
   def init(config) do
     config =
       config
@@ -46,11 +50,9 @@ defmodule Sparrow.H2Worker do
         :token_based ->
           config
       end
-
-    case start_conn(config, config.reconnect_attempts) do
-      {:error, reason} -> {:stop, reason}
-      {:ok, state} -> {:ok, state}
-    end
+    state = Sparrow.H2Worker.State.new(nil, config)
+    {:ok, state,
+     {:continue, :start_conn_backoff}}
   end
 
   @spec terminate(reason, state) :: :ok
@@ -70,6 +72,27 @@ defmodule Sparrow.H2Worker do
       Logger.info(fn ->
         "action=terminate, reason=#{inspect(reason)}, connection_ref!=nil"
       end)
+  end
+
+  @spec handle_continue(:start_conn_backoff, state) ::
+          {:noreply, state} | {:stop, reason, state}
+  def handle_continue(:start_conn_backoff, state = %State{config: config}) do
+    %Config{
+      backoff_base: base,
+      backoff_max_delay: max_delay,
+      backoff_initial_delay: initial_delay
+    } = config
+
+    delay_stream =
+      Stream.unfold(initial_delay, fn
+        e when e * base > max_delay -> nil
+        e -> {e, e * base}
+      end)
+
+    case start_conn_backoff(config, {:ok, 0}, delay_stream) do
+      {:error, reason} -> {:stop, reason, state}
+      {:ok, new_state} -> {:noreply, new_state}
+    end
   end
 
   @spec handle_info(incomming_message, state) :: {:noreply, state}
@@ -412,6 +435,45 @@ defmodule Sparrow.H2Worker do
       end)
 
     :ok
+  end
+
+  defp start_conn_backoff(config, :error, _delay_stream) do
+    case start_conn(config) do
+      {:ok, state} ->
+        {:ok, state}
+
+      {:error, reason} ->
+        _ =
+          Logger.error(
+            "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
+              inspect(config.port)
+            }, tls_options=#{inspect(config.tls_options)}, maximum delay reached"
+          )
+
+        {:error, reason}
+    end
+  end
+
+  defp start_conn_backoff(config, {:ok, delay}, delay_stream) do
+    :timer.sleep(delay)
+
+    case start_conn(config) do
+      {:ok, state} ->
+        {:ok, state}
+
+      {:error, reason} ->
+          _ = Logger.warn(
+            "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
+              inspect(config.port)
+            }, tls_options=#{inspect(config.tls_options)}, failed to connect"
+          )
+
+        new_delay = Enum.fetch(delay_stream, 0)
+        start_conn_backoff(
+          config, new_delay,
+          Stream.drop(delay_stream, 1)
+        )
+    end
   end
 
   defp start_conn(config, 0) do

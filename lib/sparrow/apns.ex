@@ -247,13 +247,13 @@ defmodule Sparrow.APNS do
         ping_interval \\ 5000,
         reconnect_attempts \\ 3
       ) do
-    Sparrow.H2Worker.Config.new(
-      uri,
-      port,
-      authentication,
-      tls_opts,
-      ping_interval,
-      reconnect_attempts
+    Sparrow.H2Worker.Config.new(%{
+      domain: uri,
+      port: port,
+      authentication: authentication,
+      tls_options: tls_opts,
+      ping_interval: ping_interval,
+      reconnect_attempts: reconnect_attempts}
     )
   end
 
@@ -276,13 +276,13 @@ defmodule Sparrow.APNS do
         ping_interval \\ 5000,
         reconnect_attempts \\ 3
       ) do
-    Sparrow.H2Worker.Config.new(
-      uri,
-      port,
-      authentication,
-      tls_opts,
-      ping_interval,
-      reconnect_attempts
+    Sparrow.H2Worker.Config.new(%{
+      domain: uri,
+      port: port,
+      authentication: authentication,
+      tls_options: tls_opts,
+      ping_interval: ping_interval,
+      reconnect_attempts: reconnect_attempts}
     )
   end
 

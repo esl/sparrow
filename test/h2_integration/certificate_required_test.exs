@@ -1,4 +1,5 @@
 defmodule H2Integration.CerificateRequiredTest do
+  alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
@@ -36,7 +37,7 @@ defmodule H2Integration.CerificateRequiredTest do
       )
 
     config =
-      Sparrow.H2Worker.Config.new(Setup.server_host(), context[:port], auth)
+      Sparrow.H2Worker.Config.new(%{domain: Setup.server_host(), port: context[:port], authentication: auth})
 
     headers = Setup.default_headers()
     body = "body"
@@ -67,19 +68,22 @@ defmodule H2Integration.CerificateRequiredTest do
       )
 
     config =
-      Sparrow.H2Worker.Config.new(
-        Setup.server_host(),
-        context[:port],
-        auth,
-        [
+      Sparrow.H2Worker.Config.new(%{
+        domain: Setup.server_host(),
+        port: context[:port],
+        authentication: auth,
+        tls_options: [
           {:verify, :verify_peer}
         ],
-        10_000
+        ping_interval: 10_000}
       )
 
-    {:error, actual_reason} = GenServer.start(Sparrow.H2Worker, config)
+    worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+    ref = Process.monitor(worker_pid)
 
-    assert {:options, {:cacertfile, []}} == actual_reason
+    assert_receive {:DOWN, ^ref, :process, worker_pid, reason}
+
+    assert {:options, {:cacertfile, []}} == reason
   end
 
   defp assert_response_header(headers, expected_header) do

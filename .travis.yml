@@ -21,8 +21,8 @@ branches:
         - master
 
 elixir:
-    - 1.6
-    - 1.7
+    - 1.9
+    - 1.8
 
 otp_release:
     - 21.2
@@ -31,15 +31,15 @@ matrix:
     include:
         - name: "Dialyzer"
           otp_release: 21.2
-          elixir: 1.6.6
+          elixir: 1.8.0
           env: PRESET=dialyzer
         - name: "Credo"
           otp_release: 21.2
-          elixir: 1.6.6
+          elixir: 1.8.0
           env: PRESET=credo
         - name: "Coveralls"
           otp_release: 21.2
-          elixir: 1.6.6
+          elixir: 1.8.0
           env: PRESET=test_with_coveralls
 
 cache:

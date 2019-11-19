@@ -15,7 +15,10 @@ defmodule Sparrow.H2Worker.Config do
           authentication: authentication,
           tls_options: tls_options,
           ping_interval: time_in_miliseconds | nil,
-          reconnect_attempts: pos_integer
+          reconnect_attempts: pos_integer,
+          backoff_initial_delay: pos_integer,
+          backoff_max_delay: pos_integer,
+          backoff_base: pos_integer
         }
 
   defstruct [
@@ -24,7 +27,10 @@ defmodule Sparrow.H2Worker.Config do
     :authentication,
     :tls_options,
     :ping_interval,
-    :reconnect_attempts
+    :reconnect_attempts,
+    :backoff_initial_delay,
+    :backoff_max_delay,
+    :backoff_base
   ]
 
   @doc """
@@ -41,31 +47,40 @@ defmodule Sparrow.H2Worker.Config do
 
   WARNING! If you use certificate based authentication do not add certfile and/or keyfile to `tls_options`, put them to `authentication`
   """
-  @spec new(
-          String.t(),
-          port_num,
-          tls_options,
-          time_in_miliseconds,
-          pos_integer
-        ) :: t
-  def new(
-        domain,
-        port,
-        authentication,
-        tls_options \\ [],
-        ping_interval \\ 5_000,
-        reconnect_attempts \\ 3
-      ) do
+  @spec new(map) :: t
+  def new(specific) do
+    %{domain: domain,
+      port: port,
+      authentication: authentication,
+      tls_options: tls_options,
+      ping_interval: ping_interval,
+      reconnect_attempts: reconnect_attempts,
+      backoff_initial_delay: backoff_initial_delay,
+      backoff_max_delay: backoff_max_delay,
+      backoff_base: backoff_base} = Map.merge(default, specific)
     %__MODULE__{
       domain: domain,
       port: port,
       authentication: authentication,
       tls_options: tls_options,
       ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts
+      reconnect_attempts: reconnect_attempts,
+      backoff_initial_delay: backoff_initial_delay,
+      backoff_max_delay: backoff_max_delay,
+      backoff_base: backoff_base
     }
   end
 
+  defp default do
+    %{
+      tls_options: [],
+      ping_interval: 5_000,
+      reconnect_attempts: 3,
+      backoff_base: 2,
+      backoff_initial_delay: 100,
+      backoff_max_delay: 400
+    }
+  end
   @spec get_authentication_type(__MODULE__.t()) ::
           :token_based | :certificate_based
   def get_authentication_type(config) do

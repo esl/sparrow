@@ -77,13 +77,13 @@ defmodule Sparrow.APNS.Pool.Supervisor do
     uri = Keyword.get(raw_pool_config, :endpoint, @apns_endpoint[pool_type])
 
     worker_config =
-      Sparrow.H2Worker.Config.new(
-        uri,
-        port,
-        auth,
-        tls_opts,
-        ping_interval,
-        reconnection_attempts
+      Sparrow.H2Worker.Config.new(%{
+        domain: uri,
+        port: port,
+        authentication: auth,
+        tls_options: tls_opts,
+        ping_interval: ping_interval,
+        reconnect_attempts: reconnection_attempts}
       )
 
     pool_config =
