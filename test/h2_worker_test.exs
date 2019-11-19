@@ -682,10 +682,10 @@ defmodule Sparrow.H2WorkerTest do
         }
 
         worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-        Process.unlink(worker_pid)
         :sys.replace_state(worker_pid, fn _ -> new_state end)
 
-        assert catch_exit(GenServer.call(worker_pid, {:send_request, request}))
+        reply = GenServer.call(worker_pid, {:send_request, request})
+        assert {:error, :unable_to_connect} == reply
       end
     end
   end
@@ -744,9 +744,14 @@ defmodule Sparrow.H2WorkerTest do
           ],
           repeat_for: @repeats do
       ping_interval = 123
+      ponger = pid()
 
       with_mock H2Adapter,
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end do
+              open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+              ping: fn _ ->
+                send(self(), {:PONG, ponger})
+                :ok end,
+              close: fn _ -> :ok end do
         auth =
           Sparrow.H2Worker.Authentication.TokenBased.new(fn -> "dummyToken" end)
 
@@ -760,6 +765,8 @@ defmodule Sparrow.H2WorkerTest do
           })
 
        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+          :timer.sleep(200)
+       state = :sys.get_state(worker_pid)
        assert Sparrow.H2Worker.State.new(
          context[:connection_ref],
          config
@@ -781,7 +788,8 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 123
 
       with_mock H2Adapter,
-        open: fn _, _, _ -> {:error, reason} end do
+        open: fn _, _, _ -> {:error, reason} end,
+        close: fn _ -> :ok end do
         config =
           Config.new(%{
             domain: domain,
@@ -791,10 +799,13 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval: ping_interval
           })
 
-            worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-            ref = Process.monitor(worker_pid)
-            :timer.sleep(5000)
-            assert_receive {:DOWN, ref, :process, worker_pid, reason}
+          worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+          :timer.sleep(400)
+
+          %State{connection_ref: connection, name: name} = :sys.get_state(worker_pid)
+
+          assert nil == connection
+          assert :disconnected == name
 
       end
     end

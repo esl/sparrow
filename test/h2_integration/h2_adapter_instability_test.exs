@@ -7,6 +7,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.H2Worker.State
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
@@ -90,10 +91,11 @@ defmodule H2Integration.H2AdapterInstabilityTest do
         Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
       worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-      ref = Process.monitor(worker_pid)
 
-      :timer.sleep(1000)
-      assert_receive {:DOWN, ^ref, :process, worker_pid, :my_custom_reason}
+        :timer.sleep(1000)
+        %State{connection_ref: connection, name: name} = :sys.get_state(worker_pid) 
+      assert nil == connection
+      assert :disconnected == name
     end
   end
 
