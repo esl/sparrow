@@ -4,7 +4,7 @@ defmodule Sparrow.H2Worker do
 
   require Logger
 
-  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
+  alias Sparrow.H2ClientAdapter
   alias Sparrow.H2Worker.Config
   alias Sparrow.H2Worker.RequestSet
   alias Sparrow.H2Worker.RequestState, as: InnerRequest
@@ -66,7 +66,7 @@ defmodule Sparrow.H2Worker do
   end
 
   def terminate(reason, state) do
-    H2Adapter.close(state.connection_ref)
+    H2ClientAdapter.close(state.connection_ref)
 
     _ =
       Logger.info(fn ->
@@ -90,7 +90,7 @@ defmodule Sparrow.H2Worker do
   def handle_info(:ping, state) do
     _ =
       if state.config.ping_interval do
-        H2Adapter.ping(state.connection_ref)
+        H2ClientAdapter.ping(state.connection_ref)
         schedule_message_after(:ping, state.config.ping_interval)
       end
 
@@ -124,7 +124,7 @@ defmodule Sparrow.H2Worker do
 
       {:ok, request} ->
         _ = cancel_timer(request)
-        response = H2Adapter.get_response(state.connection_ref, stream_id)
+        response = H2ClientAdapter.get_response(state.connection_ref, stream_id)
         send_response(request.from, response)
     end
 
@@ -304,7 +304,7 @@ defmodule Sparrow.H2Worker do
       end
 
     post_result =
-      H2Adapter.post(
+      H2ClientAdapter.post(
         state.connection_ref,
         state.config.domain,
         request.path,
@@ -481,7 +481,7 @@ defmodule Sparrow.H2Worker do
   end
 
   defp start_conn(config) do
-    case H2Adapter.open(config.domain, config.port, config.tls_options) do
+    case H2ClientAdapter.open(config.domain, config.port, config.tls_options) do
       {:ok, connection_ref} ->
         _ = schedule_message_after(:ping, config.ping_interval)
         _ = Logger.debug(fn -> "action=open_connection, result=succes" end)
