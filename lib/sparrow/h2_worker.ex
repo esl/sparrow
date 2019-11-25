@@ -183,7 +183,7 @@ defmodule Sparrow.H2Worker do
     end
   end
 
-  def handle_info({:start_conn, count, stream}, state = %State{config: config}) do
+  def handle_info({:start_conn, count, stream}, state = %State{connection_ref: nil, config: config}) do
     case start_conn(config) do
       {:ok, new_state} -> {:noreply, new_state}
       {:error, reason} ->
@@ -197,6 +197,10 @@ defmodule Sparrow.H2Worker do
           delay)
         {:noreply, state}
     end
+  end
+
+  def handle_info({:start_conn, _, _}, state) do
+    {:noreply, state}
   end
 
   def handle_info(unknown, state) do
