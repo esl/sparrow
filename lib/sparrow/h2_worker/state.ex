@@ -1,20 +1,17 @@
 defmodule Sparrow.H2Worker.State do
   @moduledoc false
   @type connection_ref :: pid
-  @type name :: :disconnected | :connected
   @type stream_id :: non_neg_integer
   @type requests :: %{required(stream_id) => %Sparrow.H2Worker.Request{}}
   @type config :: %Sparrow.H2Worker.Config{}
 
   @type t :: %__MODULE__{
-          name: name,
           connection_ref: connection_ref | nil,
           requests: requests,
           config: config
         }
 
   defstruct [
-    :name,
     :connection_ref,
     :requests,
     :config
@@ -28,7 +25,6 @@ defmodule Sparrow.H2Worker.State do
 
   def new(nil, requests, config) do
     %__MODULE__{
-      name: :disconnected,
       connection_ref: nil,
       requests: requests,
       config: config
@@ -37,7 +33,6 @@ defmodule Sparrow.H2Worker.State do
 
   def new(connection_ref, requests, config) do
     %__MODULE__{
-      name: :connected,
       connection_ref: connection_ref,
       requests: requests,
       config: config
@@ -50,7 +45,6 @@ defmodule Sparrow.H2Worker.State do
   @spec reset_requests_collection(t) :: t
   def reset_requests_collection(state) do
     %__MODULE__{
-      name: state.name,
       connection_ref: state.connection_ref,
       requests: %{},
       config: state.config
@@ -63,7 +57,6 @@ defmodule Sparrow.H2Worker.State do
   @spec reset_connection_ref(t) :: t
   def reset_connection_ref(state) do
     %__MODULE__{
-      name: :disconnected,
       connection_ref: nil,
       requests: state.requests,
       config: state.config

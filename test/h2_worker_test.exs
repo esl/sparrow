@@ -808,11 +808,9 @@ defmodule Sparrow.H2WorkerTest do
           worker_pid = start_supervised!(Tools.h2_worker_spec(config))
           :timer.sleep(400)
 
-          %State{connection_ref: connection, name: name} = :sys.get_state(worker_pid)
+          %State{connection_ref: connection} = :sys.get_state(worker_pid)
 
           assert nil == connection
-          assert :disconnected == name
-
       end
     end
   end
