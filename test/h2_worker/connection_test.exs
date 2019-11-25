@@ -43,9 +43,9 @@ defmodule Sparrow.H2Worker.ConnectionTest do
       me = self()
 
        Sparrow.H2ClientAdapter.Mock
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:first_connection_failure, Time.utc_now}); {:error, reason}) end)
+       |> expect(:open, 1, fn _, _, _ -> (send(me, {:first_connection_failure, :os.system_time(:millisecond)}); {:error, reason}) end)
        |> expect(:open, 4, fn _, _, _ -> {:error, reason} end)
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:first_connection_success, Time.utc_now}); {:ok, conn_pid}) end)
+       |> expect(:open, 1, fn _, _, _ -> (send(me, {:first_connection_success, :os.system_time(:millisecond)}); {:ok, conn_pid}) end)
        |> stub(:ping, fn _ -> :ok end)
        |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
        |> stub(:get_response, fn _, _ -> {:error, :something} end)
@@ -63,7 +63,9 @@ defmodule Sparrow.H2Worker.ConnectionTest do
 
        assert_receive {:first_connection_failure, f}, 200
        assert_receive {:first_connection_success, s}, 2_000
-       assert_in_delta 1800, 1900, Time.diff(s, f, :millisecond)
+
+       assert_in_delta f, s, 1900
+       refute_in_delta f, s, 1800
     end
   end
 
@@ -80,10 +82,10 @@ defmodule Sparrow.H2Worker.ConnectionTest do
       me = self()
 
        Sparrow.H2ClientAdapter.Mock
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:connection_success, Time.utc_now}); {:ok, conn_pid}) end)
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:reconnection_failure, Time.utc_now}); {:error, reason}) end)
+       |> expect(:open, 1, fn _, _, _ -> (send(me, {:connection_success, :os.system_time(:millisecond)}); {:ok, conn_pid}) end)
+       |> expect(:open, 1, fn _, _, _ -> (send(me, {:reconnection_failure, :os.system_time(:millisecond)}); {:error, reason}) end)
        |> expect(:open, 4, fn _, _, _ -> {:error, reason} end)
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:reconnection_success, Time.utc_now}); {:ok, new_conn_pid}) end)
+       |> expect(:open, 1, fn _, _, _ -> (send(me, {:reconnection_success, :os.system_time(:millisecond)}); {:ok, new_conn_pid}) end)
        |> stub(:ping, fn ref -> (send(self(), {:PONG, ref}); :ok) end)
        |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
        |> stub(:get_response, fn _, _ -> {:error, :something} end)
@@ -103,7 +105,9 @@ defmodule Sparrow.H2Worker.ConnectionTest do
 
        assert_receive {:reconnection_failure, f}, 200
        assert_receive {:reconnection_success, s}, 2_000
-       assert_in_delta 1800, 1900, Time.diff(s, f, :millisecond)
+
+       assert_in_delta f, s, 1900
+       refute_in_delta f, s, 1800
     end
   end
 
