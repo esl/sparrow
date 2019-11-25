@@ -31,7 +31,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
     {:ok, connection_ref: pid(), auth: auth, real_auth: real_auth}
   end
 
-  test "server receives connection backoff", context do
+  test "connection attempts with backoffs at server's startup", context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             port: int(min: 0, max: 65_535),
@@ -59,7 +59,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
             tls_options: tls_options
           })
 
-       pid = start_supervised(Tools.h2_worker_spec(config))
+       {:ok, _pid} = start_supervised(Tools.h2_worker_spec(config))
 
        assert_receive {:first_connection_failure, f}, 200
        assert_receive {:first_connection_success, s}, 2_000
@@ -67,6 +67,45 @@ defmodule Sparrow.H2Worker.ConnectionTest do
     end
   end
 
+  test "reconnection attempts with backoffs after the connection is closed", context do
+    ptest [
+            domain: string(min: 3, max: 10, chars: ?a..?z),
+            port: int(min: 0, max: 65_535),
+            reason: atom(min: 2, max: 5),
+            tls_options: list(of: atom(), min: 0, max: 3)
+          ],
+          repeat_for: @repeats do
+      conn_pid = pid()
+      new_conn_pid = pid()
+      me = self()
+
+       Sparrow.H2ClientAdapter.Mock
+       |> expect(:open, 1, fn _, _, _ -> (send(me, {:connection_success, Time.utc_now}); {:ok, conn_pid}) end)
+       |> expect(:open, 1, fn _, _, _ -> (send(me, {:reconnection_failure, Time.utc_now}); {:error, reason}) end)
+       |> expect(:open, 4, fn _, _, _ -> {:error, reason} end)
+       |> expect(:open, 1, fn _, _, _ -> (send(me, {:reconnection_success, Time.utc_now}); {:ok, new_conn_pid}) end)
+       |> stub(:ping, fn ref -> (send(self(), {:PONG, ref}); :ok) end)
+       |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
+       |> stub(:get_response, fn _, _ -> {:error, :not_ready} end)
+       |> stub(:close, fn _ -> :ok end)
+
+       config =
+          Config.new(%{
+            domain: domain,
+            port: port,
+            authentication: context[:auth],
+            tls_options: tls_options
+          })
+
+       {:ok, pid} = start_supervised(Tools.h2_worker_spec(config))
+       assert_receive {:connection_success, s}, 200
+       Process.exit(conn_pid, :custom_reason)
+
+       assert_receive {:reconnection_failure, f}, 200
+       assert_receive {:reconnection_success, s}, 2_000
+       assert_in_delta 1800, 1900, Time.diff(s, f, :millisecond)
+    end
+  end
   defp pid do
     spawn(fn -> :timer.sleep(5_000) end)
   end
