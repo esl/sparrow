@@ -1,8 +1,14 @@
 defmodule H2Integration.CerificateRejectedTest do
-  alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
 
+  import Mox
+  setup :set_mox_global
+  setup :verify_on_exit!
+
   alias Helpers.SetupHelper, as: Setup
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
 
   setup_all do
     {:ok, _cowboy_pid, cowboys_name} =
@@ -28,7 +34,7 @@ defmodule H2Integration.CerificateRejectedTest do
   test "cowboy does not accept certificate", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-    worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+    worker_pid = start_supervised!(Setup.h2_worker_spec(config))
     ref = Process.monitor(worker_pid)
 
     assert_receive {:DOWN, ^ref, :process, worker_pid, reason}

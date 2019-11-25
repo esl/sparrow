@@ -5,6 +5,9 @@ defmodule Sparrow.H2WorkerTest do
   require Logger
 
   import Mock
+  import Mox
+  setup :set_mox_global
+  setup :verify_on_exit!
 
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Config
@@ -12,6 +15,9 @@ defmodule Sparrow.H2WorkerTest do
   alias Sparrow.H2Worker.State
 
   @repeats 2
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
 
   setup do
     auth =

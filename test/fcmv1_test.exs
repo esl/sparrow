@@ -2,6 +2,9 @@ defmodule Sparrow.FCM.V1Test do
   use ExUnit.Case
 
   import Mock
+  import Mox
+  setup :set_mox_global
+  setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.FCM.V1.Notification
@@ -63,6 +66,10 @@ defmodule Sparrow.FCM.V1Test do
   @android_ttl 4321
 
   @pool_name :name
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
+
   setup do
     {:ok, _cowboy_pid, cowboys_name} =
       [

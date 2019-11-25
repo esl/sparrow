@@ -1,6 +1,13 @@
 defmodule Sparrow.PoolsWardenTest do
   use ExUnit.Case
   use HelperMacros
+  alias Helpers.SetupHelper, as: Tools
+  import Mox
+  setup :set_mox_global
+  setup :verify_on_exit!
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
 
   @pool_tags [:alpha, :beta, :gamma]
   test "initial pools colections are empty" do

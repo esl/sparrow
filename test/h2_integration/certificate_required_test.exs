@@ -7,6 +7,15 @@ defmodule H2Integration.CerificateRequiredTest do
 
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
+
+  import Mox
+  setup :set_mox_global
+  setup :verify_on_exit!
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
+
+
   setup do
     {:ok, _cowboy_pid, cowboys_name} =
       [

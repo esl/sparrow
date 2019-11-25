@@ -1,13 +1,18 @@
 defmodule H2Integration.H2AdapterInstabilityTest do
-  alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
 
   import Mock
+  import Mox
+  setup :set_mox_global
+  setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
   alias Sparrow.H2Worker.State
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
@@ -90,7 +95,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
       config =
         Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-      worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+      worker_pid = start_supervised!(Setup.h2_worker_spec(config))
 
         :timer.sleep(1000)
         %State{connection_ref: connection, name: name} = :sys.get_state(worker_pid) 

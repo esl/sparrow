@@ -1,11 +1,18 @@
 defmodule Sparrow.H2Worker.PoolTest do
   use ExUnit.Case
 
+  import Mox
+  setup :set_mox_global
+  setup :verify_on_exit!
+
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
   @pool_name :pool_name
   @body "test body"
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
