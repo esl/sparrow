@@ -16,9 +16,7 @@ defmodule Sparrow.FCM.V1.Supervisor do
     children = [
       %{
         id: Sparrow.FCM.V1.TokenBearer,
-        start:
-          {Sparrow.FCM.V1.TokenBearer, :start_link,
-           [raw_fcm_config]}
+        start: {Sparrow.FCM.V1.TokenBearer, :start_link, [raw_fcm_config]}
       },
       Sparrow.FCM.V1.ProjectIdBearer,
       {Sparrow.FCM.V1.Pool.Supervisor, raw_fcm_config}

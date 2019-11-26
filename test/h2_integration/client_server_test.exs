@@ -7,7 +7,6 @@ defmodule H2Integration.ClientServerTest do
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
-
   @body "test body"
   @pool_name :name
 
@@ -17,7 +16,6 @@ defmodule H2Integration.ClientServerTest do
 
   import Helpers.SetupHelper, only: [passthrough_h2: 1]
   setup :passthrough_h2
-
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =

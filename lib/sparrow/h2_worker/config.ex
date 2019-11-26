@@ -49,7 +49,8 @@ defmodule Sparrow.H2Worker.Config do
   """
   @spec new(map) :: t
   def new(specific) do
-    %{domain: domain,
+    %{
+      domain: domain,
       port: port,
       authentication: authentication,
       tls_options: tls_options,
@@ -57,7 +58,9 @@ defmodule Sparrow.H2Worker.Config do
       reconnect_attempts: reconnect_attempts,
       backoff_initial_delay: backoff_initial_delay,
       backoff_max_delay: backoff_max_delay,
-      backoff_base: backoff_base} = Map.merge(default, specific)
+      backoff_base: backoff_base
+    } = Map.merge(default, specific)
+
     %__MODULE__{
       domain: domain,
       port: port,
@@ -81,6 +84,7 @@ defmodule Sparrow.H2Worker.Config do
       backoff_max_delay: 400
     }
   end
+
   @spec get_authentication_type(__MODULE__.t()) ::
           :token_based | :certificate_based
   def get_authentication_type(config) do

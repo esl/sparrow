@@ -95,9 +95,10 @@ defmodule Sparrow.FCM.V1 do
     else
       status = get_status_from_headers(headers)
 
-      _ = Logger.debug(fn ->
-        "action=handle_push_response, result=fail, status=#{inspect(status)}"
-      end)
+      _ =
+        Logger.debug(fn ->
+          "action=handle_push_response, result=fail, status=#{inspect(status)}"
+        end)
 
       reason =
         body
@@ -125,7 +126,8 @@ defmodule Sparrow.FCM.V1 do
           Sparrow.H2Worker.Authentication.TokenBased.t()
   def get_token_based_authentication(account) do
     getter = fn ->
-      {"authorization", "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token(account)}"}
+      {"authorization",
+       "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token(account)}"}
     end
 
     Sparrow.H2Worker.Authentication.TokenBased.new(getter)
@@ -164,8 +166,8 @@ defmodule Sparrow.FCM.V1 do
       authentication: authentication,
       tls_options: tls_opts,
       ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts}
-    )
+      reconnect_attempts: reconnect_attempts
+    })
   end
 
   @spec make_body(Sparrow.FCM.V1.Notification.t()) :: map

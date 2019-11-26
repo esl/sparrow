@@ -15,7 +15,6 @@ defmodule H2Integration.CerificateRequiredTest do
   import Helpers.SetupHelper, only: [passthrough_h2: 1]
   setup :passthrough_h2
 
-
   setup do
     {:ok, _cowboy_pid, cowboys_name} =
       [
@@ -46,7 +45,11 @@ defmodule H2Integration.CerificateRequiredTest do
       )
 
     config =
-      Sparrow.H2Worker.Config.new(%{domain: Setup.server_host(), port: context[:port], authentication: auth})
+      Sparrow.H2Worker.Config.new(%{
+        domain: Setup.server_host(),
+        port: context[:port],
+        authentication: auth
+      })
 
     headers = Setup.default_headers()
     body = "body"
@@ -84,8 +87,8 @@ defmodule H2Integration.CerificateRequiredTest do
         tls_options: [
           {:verify, :verify_peer}
         ],
-        ping_interval: 10_000}
-      )
+        ping_interval: 10_000
+      })
 
     worker_pid = start_supervised!(Tools.h2_worker_spec(config))
     ref = Process.monitor(worker_pid)

@@ -120,6 +120,7 @@ defmodule Sparrow.H2WorkerTest do
             tls_options: tls_options,
             ping_interval: ping_interval
           })
+
         {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
 
         :erlang.send_after(1_000, worker_pid, {:END_STREAM, stream_id})
@@ -305,13 +306,13 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 200
 
       config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
+        Config.new(%{
+          domain: domain,
+          port: port,
+          authentication: context[:auth],
+          tls_options: tls_options,
+          ping_interval: ping_interval
+        })
 
       state = State.new(context[:connection_ref], config)
 
@@ -332,13 +333,13 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 200
 
       config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
+        Config.new(%{
+          domain: domain,
+          port: port,
+          authentication: context[:auth],
+          tls_options: tls_options,
+          ping_interval: ping_interval
+        })
 
       state = State.new(context[:connection_ref], config)
 
@@ -529,6 +530,7 @@ defmodule Sparrow.H2WorkerTest do
             authentication: context[:auth],
             tls_options: tls_options
           })
+
         message = {:DOWN, make_ref(), :process, not_conn_pid, reason}
 
         {:ok, pid} = GenServer.start(Sparrow.H2Worker, config)
@@ -606,9 +608,9 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 123
 
       with_mock H2Adapter,
-         [open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-          ping: fn _ -> :ok end,
-          close: fn _ -> :ok end] do
+        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        ping: fn _ -> :ok end,
+        close: fn _ -> :ok end do
         config =
           Config.new(%{
             domain: domain,
@@ -618,7 +620,6 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval: ping_interval
           })
 
-
         expected_config =
           Config.new(%{
             domain: domain,
@@ -627,19 +628,20 @@ defmodule Sparrow.H2WorkerTest do
             tls_options: [
               {:certfile, "test/priv/certs/Certificates1.pem"},
               {:keyfile, "test/priv/certs/key.pem"} | tls_options
-            ] ,
+            ],
             ping_interval: ping_interval
           })
 
-            worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-            assert Sparrow.H2Worker.State.new(
-              context[:connection_ref],
-              expected_config
-            ) == :sys.get_state(worker_pid, 100)
-            stop_supervised(worker_pid)
+        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+
+        assert Sparrow.H2Worker.State.new(
+                 context[:connection_ref],
+                 expected_config
+               ) == :sys.get_state(worker_pid, 100)
+
+        stop_supervised(worker_pid)
       end
     end
-
   end
 
   test "inits, succesfull connection with certificate, connection fails on send attempt",
@@ -753,11 +755,12 @@ defmodule Sparrow.H2WorkerTest do
       ponger = pid()
 
       with_mock H2Adapter,
-              open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-              ping: fn _ ->
-                send(self(), {:PONG, ponger})
-                :ok end,
-              close: fn _ -> :ok end do
+        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        ping: fn _ ->
+          send(self(), {:PONG, ponger})
+          :ok
+        end,
+        close: fn _ -> :ok end do
         auth =
           Sparrow.H2Worker.Authentication.TokenBased.new(fn -> "dummyToken" end)
 
@@ -770,14 +773,15 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval: ping_interval
           })
 
-       worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-       state = :sys.get_state(worker_pid)
-       assert Sparrow.H2Worker.State.new(
-         context[:connection_ref],
-         config
-       ) == :sys.get_state(worker_pid, 100)
-       stop_supervised(worker_pid)
+        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+        state = :sys.get_state(worker_pid)
 
+        assert Sparrow.H2Worker.State.new(
+                 context[:connection_ref],
+                 config
+               ) == :sys.get_state(worker_pid, 100)
+
+        stop_supervised(worker_pid)
       end
     end
   end
@@ -804,11 +808,11 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval: ping_interval
           })
 
-          worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
 
-          %State{connection_ref: connection} = :sys.get_state(worker_pid)
+        %State{connection_ref: connection} = :sys.get_state(worker_pid)
 
-          assert nil == connection
+        assert nil == connection
       end
     end
   end

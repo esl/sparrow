@@ -11,13 +11,14 @@ defmodule Helpers.SetupHelper do
 
   def passthrough_h2(state) do
     Sparrow.H2ClientAdapter.Mock
-      |> stub_with(Sparrow.H2ClientAdapter.Chatterbox)
+    |> stub_with(Sparrow.H2ClientAdapter.Chatterbox)
+
     state
   end
 
   def h2_worker_spec(config) do
-    id = :crypto.strong_rand_bytes(8) |> Base.encode64
-    Supervisor.child_spec({Sparrow.H2Worker, config}, [id: id])
+    id = :crypto.strong_rand_bytes(8) |> Base.encode64()
+    Supervisor.child_spec({Sparrow.H2Worker, config}, id: id)
   end
 
   def child_spec(opts) do
@@ -55,7 +56,7 @@ defmodule Helpers.SetupHelper do
           )
       end
 
-        Config.new(%{domain: address, port: port, authentication: auth})
+    Config.new(%{domain: address, port: port, authentication: auth})
   end
 
   defp certificate_settings_list do

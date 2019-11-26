@@ -44,6 +44,5 @@ defmodule H2Integration.CerificateRejectedTest do
       {:tls_alert, {:bad_certificate, _}} -> :ok
       _ -> flunk(reason)
     end
-
   end
 end

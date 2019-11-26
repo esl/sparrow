@@ -450,8 +450,7 @@ defmodule Sparrow.APNSTest do
         end
 
       {:ok, response} = Jason.decode(body)
-      expected_response =
-        "{\"aps\":
+      expected_response = "{\"aps\":
           {\"category\":\"GAME_INVITATION\"
           },
           \"gameID\" : \"192837\"

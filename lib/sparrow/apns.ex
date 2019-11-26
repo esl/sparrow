@@ -72,27 +72,27 @@ defmodule Sparrow.APNS do
           push_opts
         ) :: sync_push_result | :ok
   def push(h2_worker_pool, notification, opts \\ []) do
-      is_sync = Keyword.get(opts, :is_sync, true)
-      timeout = Keyword.get(opts, :timeout, 5_000)
-      strategy = Keyword.get(opts, :strategy, :random_worker)
-      path = @path <> notification.device_token
-      headers = notification.headers
-      json_body = notification |> make_body() |> Jason.encode!()
-      request = Request.new(headers, json_body, path, timeout)
+    is_sync = Keyword.get(opts, :is_sync, true)
+    timeout = Keyword.get(opts, :timeout, 5_000)
+    strategy = Keyword.get(opts, :strategy, :random_worker)
+    path = @path <> notification.device_token
+    headers = notification.headers
+    json_body = notification |> make_body() |> Jason.encode!()
+    request = Request.new(headers, json_body, path, timeout)
 
-      _ =
-        Logger.debug(fn ->
-          "action=push_apns_notification, request=#{inspect(request)}"
-        end)
+    _ =
+      Logger.debug(fn ->
+        "action=push_apns_notification, request=#{inspect(request)}"
+      end)
 
-      h2_worker_pool
-      |> Sparrow.H2Worker.Pool.send_request(
-        request,
-        is_sync,
-        timeout,
-        strategy
-      )
-      |> process_response()
+    h2_worker_pool
+    |> Sparrow.H2Worker.Pool.send_request(
+      request,
+      is_sync,
+      timeout,
+      strategy
+    )
+    |> process_response()
   end
 
   @doc """
@@ -253,8 +253,8 @@ defmodule Sparrow.APNS do
       authentication: authentication,
       tls_options: tls_opts,
       ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts}
-    )
+      reconnect_attempts: reconnect_attempts
+    })
   end
 
   @doc """
@@ -282,8 +282,8 @@ defmodule Sparrow.APNS do
       authentication: authentication,
       tls_options: tls_opts,
       ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts}
-    )
+      reconnect_attempts: reconnect_attempts
+    })
   end
 
   @spec notification_contains_title_or_body?(Sparrow.APNS.Notification.t()) ::

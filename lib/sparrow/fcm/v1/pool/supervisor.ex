@@ -22,20 +22,23 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
 
     for {path_to_json, {pool_config, _pool_tags}} <- pool_configs do
       Sparrow.FCM.V1.ProjectIdBearer.add_project_id(
-      path_to_json,
-      pool_config.pool_name
-    )
+        path_to_json,
+        pool_config.pool_name
+      )
     end
 
     children =
-      for {{_json, {pool_config, pool_tags}}, index} <- Enum.with_index(pool_configs) do
+      for {{_json, {pool_config, pool_tags}}, index} <-
+            Enum.with_index(pool_configs) do
         id = String.to_atom("Sparrow.Fcm.Pool.ID.#{index}")
+
         %{
           id: id,
           start:
             {Sparrow.H2Worker.Pool, :start_link, [pool_config, :fcm, pool_tags]}
         }
       end
+
     Supervisor.init(children, strategy: :one_for_one)
   end
 
@@ -44,7 +47,10 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
   defp get_fcm_pool_config(raw_pool_config) do
     uri = Keyword.get(raw_pool_config, :endpoint, @fcm_default_endpoint)
     port = Keyword.get(raw_pool_config, :port, 443)
-    tls_opts = Keyword.get(raw_pool_config, :tls_opts, setup_default_tls_options())
+
+    tls_opts =
+      Keyword.get(raw_pool_config, :tls_opts, setup_default_tls_options())
+
     ping_interval = Keyword.get(raw_pool_config, :ping_interval, 5000)
     reconnection_attempts = Keyword.get(raw_pool_config, :reconnect_attempts, 3)
 
@@ -77,6 +83,7 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
 
   defp setup_default_tls_options do
     cacerts = :certifi.cacerts()
+
     [
       {:verify, :verify_peer},
       {:depth, 99},
