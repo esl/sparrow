@@ -275,61 +275,64 @@ defmodule Sparrow.FCM.V1Test do
 
   test "FCM accounts are passed correctly" do
     with_mocks([
-      {Sparrow.FCM.V1.TokenBearer,
-      [:passthrough],
-      [get_token: fn account -> account end
-      ]},
-      {Sparrow.H2ClientAdapter.Chatterbox,
-      [:passthrough],
-      [post: fn _, _, _, _, _ -> {:error, 1} end,
-        open: fn _, _, _ -> {:ok, self()} end]}
-      ]) do
-
-        fcm = [
-          [
-            path_to_json: "sparrow_token.json",
-            endpoint: "localhost",
-            worker_num: 3,
-            tags: [:tag1]
-           ],
-          [
-            path_to_json: "sparrow_token2.json",
-            endpoint: "localhost",
-            worker_num: 3,
-            tags: [:tag2]
-          ]
+      {Sparrow.FCM.V1.TokenBearer, [:passthrough],
+       [get_token: fn account -> account end]},
+      {Sparrow.H2ClientAdapter.Chatterbox, [:passthrough],
+       [
+         post: fn _, _, _, _, _ -> {:error, 1} end,
+         open: fn _, _, _ -> {:ok, self()} end
+       ]}
+    ]) do
+      fcm = [
+        [
+          path_to_json: "sparrow_token.json",
+          endpoint: "localhost",
+          worker_num: 3,
+          tags: [:tag1]
+        ],
+        [
+          path_to_json: "sparrow_token2.json",
+          endpoint: "localhost",
+          worker_num: 3,
+          tags: [:tag2]
         ]
+      ]
 
-        Application.stop(:sparrow)
-        Application.put_env(:sparrow, :fcm, fcm)
-        {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
-        :ok = Application.start(:sparrow)
+      Application.stop(:sparrow)
+      Application.put_env(:sparrow, :fcm, fcm)
+      {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
+      :ok = Application.start(:sparrow)
 
-        account1 =
-          File.read!("./sparrow_token.json")
-          |> Jason.decode!()
-          |> Map.fetch!("client_email")
-          |> String.to_atom()
+      account1 =
+        File.read!("./sparrow_token.json")
+        |> Jason.decode!()
+        |> Map.fetch!("client_email")
+        |> String.to_atom()
 
-        account2 =
-          File.read!("./sparrow_token2.json")
-          |> Jason.decode!()
-          |> Map.fetch!("client_email")
-          |> String.to_atom()
+      account2 =
+        File.read!("./sparrow_token2.json")
+        |> Jason.decode!()
+        |> Map.fetch!("client_email")
+        |> String.to_atom()
 
-        notification = test_notification()
+      notification = test_notification()
 
-        pool_1 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag1])
-        pool_2 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag2])
+      pool_1 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag1])
+      pool_2 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag2])
 
+      Sparrow.FCM.V1.push(pool_1, notification)
 
-        Sparrow.FCM.V1.push(pool_1, notification)
-        assert called(Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account1)))
+      assert called(
+               Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account1))
+             )
 
-        Sparrow.FCM.V1.push(pool_2, notification)
-        assert called(Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account2)))
+      Sparrow.FCM.V1.push(pool_2, notification)
 
-        TestHelper.restore_app_env()
+      assert called(
+               Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account2))
+             )
+
+      TestHelper.restore_app_env()
     end
   end
 

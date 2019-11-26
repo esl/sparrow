@@ -50,7 +50,6 @@ defmodule SparrowTest do
 
         Sparrow.H2Worker.Authentication.TokenBased.new(getter)
       end do
-
       fcm = [
         [
           path_to_json: "sparrow_token.json",
@@ -168,6 +167,7 @@ defmodule SparrowTest do
                  :yippee_ki_yay,
                  :wrong_tag
                ])
+
       TestHelper.restore_app_env()
     end
   end
@@ -224,6 +224,7 @@ defmodule SparrowTest do
                  :yippee_ki_yay,
                  :wrong_tag
                ])
+
       TestHelper.restore_app_env()
     end
   end
@@ -303,22 +304,26 @@ defmodule SparrowTest do
              |> Sparrow.APNS.Notification.new(:dev)
              |> Sparrow.APNS.Notification.add_body("dummy body")
              |> Sparrow.API.push([:welele])
+
     TestHelper.restore_app_env()
   end
 
   test "Sparrow checks TLS certificates by default", context do
     with_mock(Sparrow.H2ClientAdapter.Chatterbox, [:passthrough],
-    open: fn domain, port, options ->
-      assert :verify_peer == options[:verify]
-      assert nil != options[:depth]
-      assert nil != options[:cacerts]
-      no_cert_options =
-        options
-        |> List.keydelete(:verify, 0)
-        |> List.keydelete(:depth, 0)
-        |> List.keydelete(:cacerts, 0)
-      :meck.passthrough([domain, port, no_cert_options])
-    end) do
+      open: fn domain, port, options ->
+        assert :verify_peer == options[:verify]
+        assert nil != options[:depth]
+        assert nil != options[:cacerts]
+
+        no_cert_options =
+          options
+          |> List.keydelete(:verify, 0)
+          |> List.keydelete(:depth, 0)
+          |> List.keydelete(:cacerts, 0)
+
+        :meck.passthrough([domain, port, no_cert_options])
+      end
+    ) do
       apns = [
         dev: [
           [

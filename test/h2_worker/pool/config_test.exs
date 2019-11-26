@@ -7,7 +7,13 @@ defmodule Sparrow.H2Worker.Pool.ConfigTest do
         {"authorization", "bearer dummy token"}
       end)
 
-    workers_config = Sparrow.H2Worker.Config.new(%{domain: "fake.url.com", port: 1234, authentication: auth})
+    workers_config =
+      Sparrow.H2Worker.Config.new(%{
+        domain: "fake.url.com",
+        port: 1234,
+        authentication: auth
+      })
+
     pool_name = :my_pool_name
     worker_num = 10
     raw_opts = []
@@ -32,7 +38,13 @@ defmodule Sparrow.H2Worker.Pool.ConfigTest do
         {"authorization", "bearer dummy token"}
       end)
 
-    workers_config = Sparrow.H2Worker.Config.new(%{domain: "fake.url.com", port: 1234, authentication: auth})
+    workers_config =
+      Sparrow.H2Worker.Config.new(%{
+        domain: "fake.url.com",
+        port: 1234,
+        authentication: auth
+      })
+
     config = Sparrow.H2Worker.Pool.Config.new(workers_config, nil)
     assert nil != config.pool_name
     assert is_atom(config.pool_name)

@@ -29,7 +29,11 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new(%{domain: "fcm.googleapis.com", port: 443, authentication: auth})
+        Sparrow.H2Worker.Config.new(%{
+          domain: "fcm.googleapis.com",
+          port: 443,
+          authentication: auth
+        })
         |> Sparrow.H2Worker.Pool.Config.new()
 
       pool_1_name = pool_1_config.pool_name
@@ -80,7 +84,11 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new(%{domain: "api.push.apple.com", port: 443, authentication: auth})
+        Sparrow.H2Worker.Config.new(%{
+          domain: "api.push.apple.com",
+          port: 443,
+          authentication: auth
+        })
         |> Sparrow.H2Worker.Pool.Config.new()
 
       pool_1_name = pool_1_config.pool_name
@@ -121,7 +129,11 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new(%{domain: "api.push.apple.com", port: 443, authentication: auth})
+        Sparrow.H2Worker.Config.new(%{
+          domain: "api.push.apple.com",
+          port: 443,
+          authentication: auth
+        })
         |> Sparrow.H2Worker.Pool.Config.new()
 
       pool_1_name = pool_1_config.pool_name
@@ -156,7 +168,11 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new(%{domain: "api.push.apple.com", port: 443, authentication: auth})
+        Sparrow.H2Worker.Config.new(%{
+          domain: "api.push.apple.com",
+          port: 443,
+          authentication: auth
+        })
         |> Sparrow.H2Worker.Pool.Config.new()
 
       {:ok, _pid} =
@@ -186,7 +202,11 @@ defmodule Sparrow.APITest do
         end)
 
       pool_1_config =
-        Sparrow.H2Worker.Config.new(%{domain: "fcm.googleapis.com", port: 443, authentication: auth})
+        Sparrow.H2Worker.Config.new(%{
+          domain: "fcm.googleapis.com",
+          port: 443,
+          authentication: auth
+        })
         |> Sparrow.H2Worker.Pool.Config.new()
 
       {:ok, _pid} =
@@ -212,18 +232,20 @@ defmodule Sparrow.APITest do
 
   test "sending APNS and FCM notifications to pools with the same tags" do
     with_mocks([
-      {Sparrow.FCM.V1,
-      [:passthrough],
-      [push: fn _, n, _ ->
-        assert n.project_id == @project_id
-        :ok
-      end,
-      process_response: fn _ -> :ok end]},
-      {Sparrow.APNS,
-      [:passthrough],
-      [push: fn _, _, _ -> :ok end,
-      push: fn _, _ -> :ok end,
-      process_response: fn _ -> :ok end]}
+      {Sparrow.FCM.V1, [:passthrough],
+       [
+         push: fn _, n, _ ->
+           assert n.project_id == @project_id
+           :ok
+         end,
+         process_response: fn _ -> :ok end
+       ]},
+      {Sparrow.APNS, [:passthrough],
+       [
+         push: fn _, _, _ -> :ok end,
+         push: fn _, _ -> :ok end,
+         process_response: fn _ -> :ok end
+       ]}
     ]) do
       Sparrow.PoolsWarden.start_link()
       Sparrow.FCM.V1.ProjectIdBearer.start_link()
@@ -236,11 +258,19 @@ defmodule Sparrow.APITest do
       tags = [:alpha, :beta, :gamma]
 
       apns_pool_config =
-        Sparrow.H2Worker.Config.new(%{domain: "api.push.apple.com", port: 443, authentication: auth})
+        Sparrow.H2Worker.Config.new(%{
+          domain: "api.push.apple.com",
+          port: 443,
+          authentication: auth
+        })
         |> Sparrow.H2Worker.Pool.Config.new()
 
       fcm_pool_config =
-        Sparrow.H2Worker.Config.new(%{domain: "fcm.googleapis.com", port: 443, authentication: auth})
+        Sparrow.H2Worker.Config.new(%{
+          domain: "fcm.googleapis.com",
+          port: 443,
+          authentication: auth
+        })
         |> Sparrow.H2Worker.Pool.Config.new()
 
       apns_pool_name = apns_pool_config.pool_name
@@ -255,7 +285,7 @@ defmodule Sparrow.APITest do
       Sparrow.FCM.V1.ProjectIdBearer.add_project_id(
         @path_to_fake_fcm_json,
         fcm_pool_name
-        )
+      )
 
       apns_notification =
         Sparrow.APNS.Notification.new("dummy token", :dev)
@@ -271,11 +301,11 @@ defmodule Sparrow.APITest do
         Sparrow.FCM.V1.Notification.new(:topic, "news")
         |> Sparrow.FCM.V1.Notification.add_android(android_notification)
 
-
       assert :ok == Sparrow.API.push(apns_notification, tags)
       assert :ok == Sparrow.API.push(fcm_notification, tags)
 
       assert called Sparrow.APNS.push(apns_pool_name, apns_notification, [])
+
       assert called Sparrow.FCM.V1.push(
                       fcm_pool_name,
                       %{fcm_notification | project_id: @project_id},

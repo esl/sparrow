@@ -11,7 +11,7 @@ defmodule Sparrow.PoolsWardenTest do
 
   @pool_tags [:alpha, :beta, :gamma]
   test "initial pools colections are empty" do
-     {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
+    {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
     assert nil == Sparrow.PoolsWarden.choose_pool(:fcm)
     assert nil == Sparrow.PoolsWarden.choose_pool({:apns, :dev})
     assert nil == Sparrow.PoolsWarden.choose_pool({:apns, :prod})
@@ -19,7 +19,10 @@ defmodule Sparrow.PoolsWardenTest do
 
   test "fcm pool is added correctly" do
     {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
-    pool_name = Sparrow.PoolsWarden.add_new_pool(self(), :fcm, :name, @pool_tags)
+
+    pool_name =
+      Sparrow.PoolsWarden.add_new_pool(self(), :fcm, :name, @pool_tags)
+
     assert pool_name == Sparrow.PoolsWarden.choose_pool(:fcm)
 
     assert nil == Sparrow.PoolsWarden.choose_pool({:apns, :dev})
@@ -41,7 +44,12 @@ defmodule Sparrow.PoolsWardenTest do
     {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
 
     pool_name =
-      Sparrow.PoolsWarden.add_new_pool(self(), {:apns, :prod}, :name, @pool_tags)
+      Sparrow.PoolsWarden.add_new_pool(
+        self(),
+        {:apns, :prod},
+        :name,
+        @pool_tags
+      )
 
     assert pool_name == Sparrow.PoolsWarden.choose_pool({:apns, :prod})
     assert nil == Sparrow.PoolsWarden.choose_pool(:fcm)
@@ -52,7 +60,8 @@ defmodule Sparrow.PoolsWardenTest do
     name = :pools_cool_name
     {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
 
-    ^name = Sparrow.PoolsWarden.add_new_pool(self(), {:apns, :prod}, name, @pool_tags)
+    ^name =
+      Sparrow.PoolsWarden.add_new_pool(self(), {:apns, :prod}, name, @pool_tags)
 
     assert name == Sparrow.PoolsWarden.choose_pool({:apns, :prod})
     assert nil == Sparrow.PoolsWarden.choose_pool(:fcm)
@@ -71,22 +80,50 @@ defmodule Sparrow.PoolsWardenTest do
     fcm_2_tags = [:fcm_2 | @pool_tags]
 
     apns_prod_1_pool_name =
-      Sparrow.PoolsWarden.add_new_pool(self(), {:apns, :prod}, :a, apns_prod_1_tags)
+      Sparrow.PoolsWarden.add_new_pool(
+        self(),
+        {:apns, :prod},
+        :a,
+        apns_prod_1_tags
+      )
 
     _apns_prod_2_pool_name =
-      Sparrow.PoolsWarden.add_new_pool(self(), {:apns, :prod}, :b, apns_prod_2_tags)
+      Sparrow.PoolsWarden.add_new_pool(
+        self(),
+        {:apns, :prod},
+        :b,
+        apns_prod_2_tags
+      )
 
     apns_dev_1_pool_name =
-      Sparrow.PoolsWarden.add_new_pool(self(), {:apns, :dev}, :c, apns_dev_1_tags)
+      Sparrow.PoolsWarden.add_new_pool(
+        self(),
+        {:apns, :dev},
+        :c,
+        apns_dev_1_tags
+      )
 
     _apns_dev_2_pool_name =
-      Sparrow.PoolsWarden.add_new_pool(self(), {:apns, :dev}, :d, apns_dev_2_tags)
+      Sparrow.PoolsWarden.add_new_pool(
+        self(),
+        {:apns, :dev},
+        :d,
+        apns_dev_2_tags
+      )
 
     _apns_dev_3_pool_name =
-      Sparrow.PoolsWarden.add_new_pool(self(), {:apns, :dev}, :e, apns_dev_3_tags)
+      Sparrow.PoolsWarden.add_new_pool(
+        self(),
+        {:apns, :dev},
+        :e,
+        apns_dev_3_tags
+      )
 
-    fcm_1_pool_name = Sparrow.PoolsWarden.add_new_pool(self(), :fcm, :f, fcm_1_tags)
-    _fcm_2_pool_name = Sparrow.PoolsWarden.add_new_pool(self(), :fcm, :g, fcm_2_tags)
+    fcm_1_pool_name =
+      Sparrow.PoolsWarden.add_new_pool(self(), :fcm, :f, fcm_1_tags)
+
+    _fcm_2_pool_name =
+      Sparrow.PoolsWarden.add_new_pool(self(), :fcm, :g, fcm_2_tags)
 
     apns_dev_pools = Sparrow.PoolsWarden.choose_pool({:apns, :dev})
     apns_prod_pools = Sparrow.PoolsWarden.choose_pool({:apns, :prod})
@@ -239,11 +276,17 @@ defmodule Sparrow.PoolsWardenTest do
 
   test "Pools are unregistered when their process is killed" do
     {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
-    fake_pool_pid = Process.spawn(fn -> receive do
-      :exit ->
-        :ok
-    end
-     end, [:link])
+
+    fake_pool_pid =
+      Process.spawn(
+        fn ->
+          receive do
+            :exit ->
+              :ok
+          end
+        end,
+        [:link]
+      )
 
     name = Sparrow.PoolsWarden.add_new_pool(fake_pool_pid, :fcm, :a, [:alpha])
 
@@ -252,7 +295,10 @@ defmodule Sparrow.PoolsWardenTest do
 
     send(fake_pool_pid, :exit)
 
-    assert eventually 0 == Keyword.get(:ets.info(:sparrow_pools_warden_tab), :size)
+    assert eventually(
+             0 == Keyword.get(:ets.info(:sparrow_pools_warden_tab), :size)
+           )
+
     assert nil == Sparrow.PoolsWarden.choose_pool(:fcm)
   end
 end

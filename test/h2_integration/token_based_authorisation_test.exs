@@ -4,7 +4,6 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
   setup :set_mox_global
   setup :verify_on_exit!
 
-
   alias H2Integration.Helpers.TokenHelper
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest

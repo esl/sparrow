@@ -131,7 +131,9 @@ defmodule Sparrow.PoolsWarden do
           inspect(pool_type)
         }, pool_name=#{inspect(pool_name)}, pool_tags=#{inspect(tags)}"
       end)
-    {:reply, pool_name, Map.merge(state, %{pid => [pool_type, pool_name, tags]})}
+
+    {:reply, pool_name,
+     Map.merge(state, %{pid => [pool_type, pool_name, tags]})}
   end
 
   @spec get_pools(pool_type) :: [{atom, [any]}]

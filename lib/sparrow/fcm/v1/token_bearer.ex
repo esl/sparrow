@@ -8,7 +8,9 @@ defmodule Sparrow.FCM.V1.TokenBearer do
   @spec get_token(String.t()) :: String.t() | nil
   def get_token(account) do
     {:ok, token_map} =
-      Goth.Token.for_scope({account, "https://www.googleapis.com/auth/firebase.messaging"})
+      Goth.Token.for_scope(
+        {account, "https://www.googleapis.com/auth/firebase.messaging"}
+      )
 
     _ =
       Logger.debug(fn ->
