@@ -14,9 +14,6 @@ defmodule Sparrow.H2Worker.ConnectionTest do
   @repeats 2
 
   setup do
-    :set_mox_from_context
-    :verify_on_exit!
-
     auth =
       Sparrow.H2Worker.Authentication.CertificateBased.new(
         "path/to/exampleName.pem",
@@ -40,7 +37,6 @@ defmodule Sparrow.H2Worker.ConnectionTest do
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
           repeat_for: @repeats do
-      conn_pid = pid()
       me = self()
 
       Sparrow.H2ClientAdapter.Mock
@@ -51,7 +47,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
       |> expect(:open, 4, fn _, _, _ -> {:error, reason} end)
       |> expect(:open, 1, fn _, _, _ ->
         send(me, {:first_connection_success, :os.system_time(:millisecond)})
-        {:ok, conn_pid}
+        {:ok, context[:connection_ref]}
       end)
       |> stub(:ping, fn _ -> :ok end)
       |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
@@ -86,7 +82,6 @@ defmodule Sparrow.H2Worker.ConnectionTest do
           ],
           repeat_for: @repeats do
       conn_pid = pid()
-      new_conn_pid = pid()
       me = self()
 
       Sparrow.H2ClientAdapter.Mock
@@ -101,7 +96,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
       |> expect(:open, 4, fn _, _, _ -> {:error, reason} end)
       |> expect(:open, 1, fn _, _, _ ->
         send(me, {:reconnection_success, :os.system_time(:millisecond)})
-        {:ok, new_conn_pid}
+        {:ok, context[:connection_ref]}
       end)
       |> stub(:ping, fn ref ->
         send(self(), {:PONG, ref})
@@ -121,7 +116,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
 
       {:ok, _pid} = start_supervised(Tools.h2_worker_spec(config))
       assert_receive {:connection_success, s}, 200
-      Process.exit(conn_pid, :custom_reason)
+      send(conn_pid, :exit)
 
       assert_receive {:reconnection_failure, f}, 200
       assert_receive {:reconnection_success, s}, 2_000
@@ -144,7 +139,6 @@ defmodule Sparrow.H2Worker.ConnectionTest do
             path: string(min: 3, max: 7, chars: :ascii)
           ],
           repeat_for: @repeats do
-      conn_pid = pid()
       me = self()
       request_timeout = 300
       headers = List.zip([headersA, headersB])
@@ -161,7 +155,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
       end)
       |> expect(:open, 1, fn _, _, _ ->
         send(me, :connection_success)
-        {:ok, conn_pid}
+        {:ok, context[:connection_ref]}
       end)
       |> stub(:ping, fn ref ->
         send(self(), {:PONG, ref})
@@ -197,6 +191,12 @@ defmodule Sparrow.H2Worker.ConnectionTest do
   end
 
   defp pid do
-    spawn(fn -> :timer.sleep(5_000) end)
+    spawn(fn -> do_nothing end)
+  end
+
+  defp do_nothing do
+    receive do
+      :exit -> exit(:reason)
+    end
   end
 end

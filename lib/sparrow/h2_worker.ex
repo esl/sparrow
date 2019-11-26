@@ -78,7 +78,7 @@ defmodule Sparrow.H2Worker do
           {:noreply, state} | {:stop, reason, state}
   def handle_continue(:start_conn_backoff, state = %State{config: config}) do
     stream = backoff_stream(config)
-    Process.send(self(), {:start_conn, 0, stream}, [:noconnect])
+    send(self(), {:start_conn, 0, stream})
     {:noreply, state}
   end
 
