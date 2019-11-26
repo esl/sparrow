@@ -39,22 +39,22 @@ defmodule Sparrow.H2ClientAdapter do
   @callback ping(connection_ref) :: :ok
 
   def open(domain, port, opts \\ []) do
-    adapter = Application.fetch_env!(:sparrow, __MODULE__)[:adapter]
+    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
     adapter.open(domain, port, opts)
   end
 
   def close(conn) do
-    adapter = Application.fetch_env!(:sparrow, __MODULE__)[:adapter]
+    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
     adapter.close(conn)
   end
 
   def post(conn, domain, path, headers, body) do
-    adapter = Application.fetch_env!(:sparrow, __MODULE__)[:adapter]
+    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
     adapter.post(conn, domain, path, headers, body)
   end
 
   def get_response(conn, stream_id) do
-    adapter = Application.fetch_env!(:sparrow, __MODULE__)[:adapter]
+    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
     adapter.get_response(conn, stream_id)
   end
 
