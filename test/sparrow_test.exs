@@ -2,9 +2,6 @@ defmodule SparrowTest do
   use ExUnit.Case, async: false
 
   import Mock
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
 
@@ -12,9 +9,6 @@ defmodule SparrowTest do
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
   @project_id "sparrow-test-id"
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =

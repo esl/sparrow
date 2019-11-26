@@ -1,15 +1,6 @@
 defmodule Sparrow.APNS.ResponseProcessingTest do
   use ExUnit.Case
 
-  alias Helpers.SetupHelper, as: Tools
-  import Mock
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
-
   test "push response is handled correctly with single header" do
     headers = [{":status", "200"}]
     body = ""

@@ -1,20 +1,11 @@
 defmodule Sparrow.APNS.TokenBearerTest do
   use ExUnit.Case
-  alias Helpers.SetupHelper, as: Tools
-
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
 
   @key_id "KEYID"
   @team_id "TEAMID"
   @p8_file_path "token.p8"
   @refresh_time 100
   @token_id :token_id
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
-
   setup do
     config = %{
       @token_id =>

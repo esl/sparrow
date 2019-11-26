@@ -3,19 +3,12 @@ defmodule H2ClientAdapter.ChatterboxTest do
   use Quixir
 
   import Mock
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
 
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
-  alias Helpers.SetupHelper, as: Tools
 
   doctest H2Adapter
 
   @repeats 10
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
 
   test "open connection" do
     with_mock :h2_client, start_link: fn _, _, _, _ -> {:ok, self()} end do

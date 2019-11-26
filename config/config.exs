@@ -28,6 +28,4 @@ use Mix.Config
 #
 config :sparrow, Sparrow.PoolsWarden,
 %{enabled: true}
-config :sparrow, Sparrow.H2ClientAdapter,
-%{adapter: Sparrow.H2ClientAdapter.Chatterbox}
 import_config "#{Mix.env()}.exs"

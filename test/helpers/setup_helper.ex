@@ -1,19 +1,10 @@
 defmodule Helpers.SetupHelper do
   @moduledoc false
 
-  import Mox
-
-  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Config
 
   @path_to_cert "priv/ssl/client_cert.pem"
   @path_to_key "priv/ssl/client_key.pem"
-
-  def passthrough_h2(state) do
-    Sparrow.H2ClientAdapter.Mock
-      |> stub_with(Sparrow.H2ClientAdapter.Chatterbox)
-    state
-  end
 
   def h2_worker_spec(config) do
     id = :crypto.strong_rand_bytes(8) |> Base.encode64

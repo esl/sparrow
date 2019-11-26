@@ -1,6 +1,4 @@
 defmodule Sparrow.H2ClientAdapter.Chatterbox do
-  @behaviour Sparrow.H2ClientAdapter
-
   @moduledoc false
   require Logger
 
@@ -15,7 +13,6 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   """
   @spec open(String.t(), non_neg_integer, [any]) ::
           {:ok, connection_ref} | {:error, :ignore} | {:error, any}
-  @impl true
   def open(domain, port, opts \\ []) do
     _ =
       Logger.debug(fn ->
@@ -51,7 +48,6 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
     Closes the connection.
   """
   @spec close(connection_ref) :: :ok
-  @impl true
   def close(conn) do
     :h2_client.stop(conn)
   end
@@ -62,7 +58,6 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   """
   @spec post(connection_ref, String.t(), String.t(), headers, body) ::
           {:error, byte()} | {:ok, stream_id}
-  @impl true
   def post(conn, domain, path, headers, body) do
     headers = make_headers(:post, domain, path, headers, body)
     :h2_client.send_request(conn, headers, body)
@@ -73,7 +68,6 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   """
   @spec get_response(connection_ref, stream_id) ::
           {:ok, {headers, body}} | {:error, :not_ready}
-  @impl true
   def get_response(conn, stream_id) do
     case :h2_connection.get_response(conn, stream_id) do
       {:ok, {headers, body}} ->
@@ -88,7 +82,6 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
     Sends ping to given connection.
   """
   @spec ping(connection_ref) :: :ok
-  @impl true
   def ping(conn) do
     :h2_client.send_ping(conn)
   end
