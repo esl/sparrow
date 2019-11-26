@@ -21,7 +21,6 @@ defmodule Sparrow.PoolsWarden do
   """
   @spec add_new_pool(pid(), pool_type, atom, [any]) :: true
   def add_new_pool(pid, pool_type, pool_name, tags \\ []) do
-    IO.inspect {pool_type, pool_name, tags}
     GenServer.call(
       __MODULE__,
       {:add_pool, pid, pool_type, pool_name, tags}
