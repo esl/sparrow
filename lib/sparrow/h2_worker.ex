@@ -371,7 +371,7 @@ defmodule Sparrow.H2Worker do
        """
   @spec send_response(
           :noreply | {pid(), any},
-          {:error, :not_ready | byte() | {:request_timeout, non_neg_integer()}}
+          {:error, :not_ready | byte() | {:request_timeout, non_neg_integer()} | :unable_to_connect}
           | {:ok, {[any()], binary()}}
         ) :: :ok
   defp send_response(:noreply, response) do
