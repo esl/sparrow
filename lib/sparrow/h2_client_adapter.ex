@@ -1,6 +1,8 @@
 defmodule Sparrow.H2ClientAdapter do
   @moduledoc false
 
+  @default %{adapter: Sparrow.H2ClientAdapter.Chatterbox}
+
   @type connection_ref :: pid
   @type stream_id :: non_neg_integer
   @type headers :: [{String.t(), String.t()}]
@@ -57,7 +59,7 @@ defmodule Sparrow.H2ClientAdapter do
   end
 
   def ping(conn) do
-    adapter = Application.fetch_env!(:sparrow, __MODULE__)[:adapter]
+    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
     adapter.ping(conn)
   end
 end
