@@ -16,6 +16,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
   setup do
     :set_mox_from_context
     :verify_on_exit!
+
     auth =
       Sparrow.H2Worker.Authentication.CertificateBased.new(
         "path/to/exampleName.pem",
@@ -42,34 +43,41 @@ defmodule Sparrow.H2Worker.ConnectionTest do
       conn_pid = pid()
       me = self()
 
-       Sparrow.H2ClientAdapter.Mock
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:first_connection_failure, :os.system_time(:millisecond)}); {:error, reason}) end)
-       |> expect(:open, 4, fn _, _, _ -> {:error, reason} end)
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:first_connection_success, :os.system_time(:millisecond)}); {:ok, conn_pid}) end)
-       |> stub(:ping, fn _ -> :ok end)
-       |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
-       |> stub(:get_response, fn _, _ -> {:error, :something} end)
-       |> stub(:close, fn _ -> :ok end)
+      Sparrow.H2ClientAdapter.Mock
+      |> expect(:open, 1, fn _, _, _ ->
+        send(me, {:first_connection_failure, :os.system_time(:millisecond)})
+        {:error, reason}
+      end)
+      |> expect(:open, 4, fn _, _, _ -> {:error, reason} end)
+      |> expect(:open, 1, fn _, _, _ ->
+        send(me, {:first_connection_success, :os.system_time(:millisecond)})
+        {:ok, conn_pid}
+      end)
+      |> stub(:ping, fn _ -> :ok end)
+      |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
+      |> stub(:get_response, fn _, _ -> {:error, :something} end)
+      |> stub(:close, fn _ -> :ok end)
 
-       config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options
-          })
+      config =
+        Config.new(%{
+          domain: domain,
+          port: port,
+          authentication: context[:auth],
+          tls_options: tls_options
+        })
 
-       {:ok, _pid} = start_supervised(Tools.h2_worker_spec(config))
+      {:ok, _pid} = start_supervised(Tools.h2_worker_spec(config))
 
-       assert_receive {:first_connection_failure, f}, 200
-       assert_receive {:first_connection_success, s}, 2_000
+      assert_receive {:first_connection_failure, f}, 200
+      assert_receive {:first_connection_success, s}, 2_000
 
-       assert_in_delta f, s, 1900
-       refute_in_delta f, s, 1800
+      assert_in_delta f, s, 1900
+      refute_in_delta f, s, 1800
     end
   end
 
-  test "reconnection attempts with backoffs after the connection is closed", context do
+  test "reconnection attempts with backoffs after the connection is closed",
+       context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             port: int(min: 0, max: 65_535),
@@ -81,37 +89,50 @@ defmodule Sparrow.H2Worker.ConnectionTest do
       new_conn_pid = pid()
       me = self()
 
-       Sparrow.H2ClientAdapter.Mock
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:connection_success, :os.system_time(:millisecond)}); {:ok, conn_pid}) end)
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:reconnection_failure, :os.system_time(:millisecond)}); {:error, reason}) end)
-       |> expect(:open, 4, fn _, _, _ -> {:error, reason} end)
-       |> expect(:open, 1, fn _, _, _ -> (send(me, {:reconnection_success, :os.system_time(:millisecond)}); {:ok, new_conn_pid}) end)
-       |> stub(:ping, fn ref -> (send(self(), {:PONG, ref}); :ok) end)
-       |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
-       |> stub(:get_response, fn _, _ -> {:error, :something} end)
-       |> stub(:close, fn _ -> :ok end)
+      Sparrow.H2ClientAdapter.Mock
+      |> expect(:open, 1, fn _, _, _ ->
+        send(me, {:connection_success, :os.system_time(:millisecond)})
+        {:ok, conn_pid}
+      end)
+      |> expect(:open, 1, fn _, _, _ ->
+        send(me, {:reconnection_failure, :os.system_time(:millisecond)})
+        {:error, reason}
+      end)
+      |> expect(:open, 4, fn _, _, _ -> {:error, reason} end)
+      |> expect(:open, 1, fn _, _, _ ->
+        send(me, {:reconnection_success, :os.system_time(:millisecond)})
+        {:ok, new_conn_pid}
+      end)
+      |> stub(:ping, fn ref ->
+        send(self(), {:PONG, ref})
+        :ok
+      end)
+      |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
+      |> stub(:get_response, fn _, _ -> {:error, :something} end)
+      |> stub(:close, fn _ -> :ok end)
 
-       config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options
-          })
+      config =
+        Config.new(%{
+          domain: domain,
+          port: port,
+          authentication: context[:auth],
+          tls_options: tls_options
+        })
 
-       {:ok, _pid} = start_supervised(Tools.h2_worker_spec(config))
-       assert_receive {:connection_success, s}, 200
-       Process.exit(conn_pid, :custom_reason)
+      {:ok, _pid} = start_supervised(Tools.h2_worker_spec(config))
+      assert_receive {:connection_success, s}, 200
+      Process.exit(conn_pid, :custom_reason)
 
-       assert_receive {:reconnection_failure, f}, 200
-       assert_receive {:reconnection_success, s}, 2_000
+      assert_receive {:reconnection_failure, f}, 200
+      assert_receive {:reconnection_success, s}, 2_000
 
-       assert_in_delta f, s, 1900
-       refute_in_delta f, s, 1800
+      assert_in_delta f, s, 1900
+      refute_in_delta f, s, 1800
     end
   end
 
-  test "reconnection attempts with backoffs after the request is sent", context do
+  test "reconnection attempts with backoffs after the request is sent",
+       context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
             port: int(min: 0, max: 65_535),
@@ -128,38 +149,50 @@ defmodule Sparrow.H2Worker.ConnectionTest do
       request_timeout = 300
       headers = List.zip([headersA, headersB])
 
-       Sparrow.H2ClientAdapter.Mock
-       |> expect(:open, 1, fn _, _, _ -> (send(me, :connection_failure); {:error, reason}) end)
-       |> expect(:open, 3, fn _, _, _ -> {:error, reason} end)
-       |> expect(:open, 1, fn _, _, _ -> (send(me, :connection_failure); {:error, reason}) end)
-       |> expect(:open, 1, fn _, _, _ -> (send(me, :connection_success); {:ok, conn_pid}) end)
-       |> stub(:ping, fn ref -> (send(self(), {:PONG, ref}); :ok) end)
-       |> stub(:post, fn _, _, _, _, _ -> {:error, :unable_to_connect} end)
-       |> stub(:get_response, fn _, _ -> {:error, :something} end)
-       |> stub(:close, fn _ -> :ok end)
+      Sparrow.H2ClientAdapter.Mock
+      |> expect(:open, 1, fn _, _, _ ->
+        send(me, :connection_failure)
+        {:error, reason}
+      end)
+      |> expect(:open, 3, fn _, _, _ -> {:error, reason} end)
+      |> expect(:open, 1, fn _, _, _ ->
+        send(me, :connection_failure)
+        {:error, reason}
+      end)
+      |> expect(:open, 1, fn _, _, _ ->
+        send(me, :connection_success)
+        {:ok, conn_pid}
+      end)
+      |> stub(:ping, fn ref ->
+        send(self(), {:PONG, ref})
+        :ok
+      end)
+      |> stub(:post, fn _, _, _, _, _ -> {:error, :unable_to_connect} end)
+      |> stub(:get_response, fn _, _ -> {:error, :something} end)
+      |> stub(:close, fn _ -> :ok end)
 
-       config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            backoff_base: 200,
-            backoff_initial_delay: 10,
-            backoff_max_delay: 2_000
-          })
+      config =
+        Config.new(%{
+          domain: domain,
+          port: port,
+          authentication: context[:auth],
+          tls_options: tls_options,
+          backoff_base: 200,
+          backoff_initial_delay: 10,
+          backoff_max_delay: 2_000
+        })
 
-       request = OuterRequest.new(headers, body, path, request_timeout)
+      request = OuterRequest.new(headers, body, path, request_timeout)
 
-       {:ok, pid} = start_supervised(Tools.h2_worker_spec(config))
+      {:ok, pid} = start_supervised(Tools.h2_worker_spec(config))
 
-       assert_receive :connection_failure, 100
+      assert_receive :connection_failure, 100
 
-       assert {:error, :unable_to_connect} ==
-                 GenServer.call(pid, {:send_request, request})
+      assert {:error, :unable_to_connect} ==
+               GenServer.call(pid, {:send_request, request})
 
-       assert_receive :connection_failure, 100
-       assert_receive :connection_success, 2_000
+      assert_receive :connection_failure, 100
+      assert_receive :connection_success, 2_000
     end
   end
 

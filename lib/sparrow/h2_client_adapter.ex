@@ -11,7 +11,7 @@ defmodule Sparrow.H2ClientAdapter do
   Starts a new connection.
   """
   @callback open(String.t(), non_neg_integer, [any]) ::
-          {:ok, connection_ref} | {:error, :ignore} | {:error, reason}
+              {:ok, connection_ref} | {:error, :ignore} | {:error, reason}
 
   @doc """
     Closes the connection.
@@ -23,13 +23,13 @@ defmodule Sparrow.H2ClientAdapter do
     DONT PASS PSEUDO HEADERS IN `headers`!!!
   """
   @callback post(connection_ref, String.t(), String.t(), headers, body) ::
-          {:error, byte()} | {:ok, stream_id}
+              {:error, byte()} | {:ok, stream_id}
 
   @doc """
     Allows to read answer to notification.
   """
   @callback get_response(connection_ref, stream_id) ::
-          {:ok, {headers, body}} | {:error, :not_ready}
+              {:ok, {headers, body}} | {:error, :not_ready}
 
   @doc """
     Sends ping to given connection.

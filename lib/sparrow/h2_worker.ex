@@ -50,9 +50,9 @@ defmodule Sparrow.H2Worker do
         :token_based ->
           config
       end
+
     state = Sparrow.H2Worker.State.new(nil, config)
-    {:ok, state,
-     {:continue, :start_conn_backoff}}
+    {:ok, state, {:continue, :start_conn_backoff}}
   end
 
   @spec terminate(reason, state) :: :ok
@@ -169,7 +169,8 @@ defmodule Sparrow.H2Worker do
             }"
           end)
 
-        {:noreply, connection_closed_action(state), {:continue, :start_conn_backoff}}
+        {:noreply, connection_closed_action(state),
+         {:continue, :start_conn_backoff}}
 
       _ ->
         _ =
@@ -183,18 +184,30 @@ defmodule Sparrow.H2Worker do
     end
   end
 
-  def handle_info({:start_conn, count, stream}, state = %State{connection_ref: nil, config: config}) do
+  def handle_info(
+        {:start_conn, count, stream},
+        state = %State{connection_ref: nil, config: config}
+      ) do
     case start_conn(config) do
-      {:ok, new_state} -> {:noreply, new_state}
+      {:ok, new_state} ->
+        {:noreply, new_state}
+
       {:error, reason} ->
-        _ = Logger.warn(
-          "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
-            inspect(config.port)
-          }, tls_options=#{inspect(config.tls_options)}, failed to connect")
+        _ =
+          Logger.warn(
+            "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
+              inspect(config.port)
+            }, tls_options=#{inspect(config.tls_options)}, failed to connect"
+          )
+
         {:ok, delay} = Enum.fetch(stream, count)
-        Process.send_after(self(),
+
+        Process.send_after(
+          self(),
           {:start_conn, count + 1, stream},
-          delay)
+          delay
+        )
+
         {:noreply, state}
     end
   end
@@ -251,7 +264,7 @@ defmodule Sparrow.H2Worker do
   end
 
   @spec try_handle(request, from | :noreply, state) ::
-  {:stop, reason, state} | {:noreply, state}
+          {:stop, reason, state} | {:noreply, state}
   defp try_handle(request, from, state = %State{connection_ref: nil}) do
     _ =
       Logger.info(fn ->
@@ -266,8 +279,10 @@ defmodule Sparrow.H2Worker do
               inspect(reason)
             }, request=#{inspect(request)}"
           )
+
         send_response(from, {:error, :unable_to_connect})
         {:noreply, state, {:continue, :start_conn_backoff}}
+
       {:ok, state} ->
         _ =
           Logger.info(fn ->
@@ -371,7 +386,11 @@ defmodule Sparrow.H2Worker do
        """
   @spec send_response(
           :noreply | {pid(), any},
-          {:error, :not_ready | byte() | {:request_timeout, non_neg_integer()} | :unable_to_connect}
+          {:error,
+           :not_ready
+           | byte()
+           | {:request_timeout, non_neg_integer()}
+           | :unable_to_connect}
           | {:ok, {[any()], binary()}}
         ) :: :ok
   defp send_response(:noreply, response) do
@@ -504,11 +523,14 @@ defmodule Sparrow.H2Worker do
     end
   end
 
-  defp backoff_stream(%Config{backoff_base: base,
-                              backoff_max_delay: max_delay,
-                              backoff_initial_delay: initial_delay}) do
-     Stream.unfold(initial_delay * base, fn
-       e when e * base > max_delay -> {max_delay, max_delay}
-       e -> {e, e * base} end)
+  defp backoff_stream(%Config{
+         backoff_base: base,
+         backoff_max_delay: max_delay,
+         backoff_initial_delay: initial_delay
+       }) do
+    Stream.unfold(initial_delay * base, fn
+      e when e * base > max_delay -> {max_delay, max_delay}
+      e -> {e, e * base}
+    end)
   end
 end
