@@ -1,11 +1,19 @@
 defmodule Sparrow.FCM.V1.TokenBearerTest do
   use ExUnit.Case
+  alias Helpers.SetupHelper, as: Tools
   import Mock
+  import Mox
+  setup :set_mox_global
+  setup :verify_on_exit!
 
   @google_json_path "./sparrow_token.json"
 
   @token "dummy token"
   @expires 1_234_567
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
+
   test "token bearer gets token" do
     with_mock Goth.Token,
       for_scope: fn {_, scope} ->

@@ -2,6 +2,10 @@ defmodule Sparrow.APNSTest do
   use ExUnit.Case
 
   import Mock
+  import Mox
+
+  setup :set_mox_global
+  setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.APNS.Notification
@@ -13,6 +17,9 @@ defmodule Sparrow.APNSTest do
   @subtitle "test subtitle"
   @body "test body"
   @pool_name :apns_pool_name
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
 
   setup do
     {:ok, _cowboy_pid, cowboys_name} =

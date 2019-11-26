@@ -33,6 +33,7 @@ defmodule Sparrow.MixProject do
       {:jason, "~> 1.1"},
       {:joken, "~> 2.0-rc0"},
       {:poison, "~> 3.1"},
+      {:mox, "~> 0.5", only: :test},
       {:mock, "~> 0.3.0", only: :test},
       {:meck, github: "eproxus/meck", override: true},
       {:cowboy, "~> 2.4.0", only: :test},

@@ -21,7 +21,17 @@ defmodule Sparrow.H2Worker.State do
   Creates new empty `Sparrow.H2Worker.State`.
   """
   @spec new(connection_ref | nil, requests, config) :: t
-  def new(connection_ref, requests \\ %{}, config) do
+  def new(connection_ref, requests \\ %{}, config)
+
+  def new(nil, requests, config) do
+    %__MODULE__{
+      connection_ref: nil,
+      requests: requests,
+      config: config
+    }
+  end
+
+  def new(connection_ref, requests, config) do
     %__MODULE__{
       connection_ref: connection_ref,
       requests: requests,

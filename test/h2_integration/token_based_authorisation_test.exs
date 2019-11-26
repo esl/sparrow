@@ -1,5 +1,9 @@
 defmodule H2Integration.TokenBasedAuthorisationTest do
   use ExUnit.Case
+  import Mox
+  setup :set_mox_global
+  setup :verify_on_exit!
+
 
   alias H2Integration.Helpers.TokenHelper
   alias Helpers.SetupHelper, as: Setup
@@ -7,6 +11,10 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
 
   @path "/AuthenticateHandler"
   @pool_name :wname
+
+  import Helpers.SetupHelper, only: [passthrough_h2: 1]
+  setup :passthrough_h2
+
   setup do
     {:ok, cowboy_pid, cowboys_name} =
       [
