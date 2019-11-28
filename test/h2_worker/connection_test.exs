@@ -9,7 +9,6 @@ defmodule Sparrow.H2Worker.ConnectionTest do
 
   alias Sparrow.H2Worker.Config
   alias Sparrow.H2Worker.Request, as: OuterRequest
-  alias Sparrow.H2Worker.State
 
   @repeats 2
 
@@ -191,7 +190,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
   end
 
   defp pid do
-    spawn(fn -> do_nothing end)
+    spawn(fn -> do_nothing() end)
   end
 
   defp do_nothing do

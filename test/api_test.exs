@@ -1,6 +1,5 @@
 defmodule Sparrow.APITest do
   use ExUnit.Case
-  alias Helpers.SetupHelper, as: Tools
 
   import Mock
 
@@ -13,7 +12,7 @@ defmodule Sparrow.APITest do
 
   test "FCM notification is send correctly" do
     with_mock Sparrow.FCM.V1,
-      push: fn _, n, _ ->
+      push: fn _, _, _ ->
         :ok
       end,
       process_response: fn _ -> :ok end do
@@ -225,7 +224,7 @@ defmodule Sparrow.APITest do
     with_mocks([
       {Sparrow.FCM.V1, [:passthrough],
        [
-         push: fn _, n, _ ->
+         push: fn _, _, _ ->
            :ok
          end,
          process_response: fn _ -> :ok end

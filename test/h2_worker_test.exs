@@ -774,7 +774,7 @@ defmodule Sparrow.H2WorkerTest do
           })
 
         worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-        state = :sys.get_state(worker_pid)
+        _state = :sys.get_state(worker_pid)
 
         assert Sparrow.H2Worker.State.new(
                  context[:connection_ref],
