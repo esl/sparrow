@@ -78,11 +78,6 @@ defmodule Sparrow.API do
   end
 
   defp do_push(pool_name, notification = %Sparrow.FCM.V1.Notification{}, opts) do
-    project_id = Sparrow.FCM.V1.ProjectIdBearer.get_project_id(pool_name)
-
-    notification =
-      Sparrow.FCM.V1.Notification.add_project_id(notification, project_id)
-
     Sparrow.FCM.V1.push(pool_name, notification, opts)
   end
 end

@@ -45,6 +45,11 @@ defmodule Sparrow.FCM.V1 do
           push_opts
         ) :: sync_push_result | :ok
   def push(h2_worker_pool, notification, opts \\ []) do
+    # Prep FCM's ProjectId
+    project_id = Sparrow.FCM.V1.ProjectIdBearer.get_project_id(h2_worker_pool)
+    notification =
+      Sparrow.FCM.V1.Notification.add_project_id(notification, project_id)
+
     is_sync = Keyword.get(opts, :is_sync, true)
     timeout = Keyword.get(opts, :timeout, 5_000)
     strategy = Keyword.get(opts, :strategy, :random_worker)
