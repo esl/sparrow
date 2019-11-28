@@ -47,6 +47,7 @@ defmodule Sparrow.FCM.V1 do
   def push(h2_worker_pool, notification, opts \\ []) do
     # Prep FCM's ProjectId
     project_id = Sparrow.FCM.V1.ProjectIdBearer.get_project_id(h2_worker_pool)
+
     notification =
       Sparrow.FCM.V1.Notification.add_project_id(notification, project_id)
 
