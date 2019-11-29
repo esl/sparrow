@@ -1,8 +1,6 @@
 defmodule Sparrow.APNS.ResponseProcessingTest do
   use ExUnit.Case
 
-  alias Helpers.SetupHelper, as: Tools
-  import Mock
   import Mox
   setup :set_mox_global
   setup :verify_on_exit!

@@ -1,10 +1,7 @@
 defmodule Sparrow.APITest do
   use ExUnit.Case
-  alias Helpers.SetupHelper, as: Tools
 
   import Mock
-  @project_id "sparrow-test-id"
-  @path_to_fake_fcm_json "sparrow_token.json"
 
   import Mox
   setup :set_mox_global
@@ -15,13 +12,11 @@ defmodule Sparrow.APITest do
 
   test "FCM notification is send correctly" do
     with_mock Sparrow.FCM.V1,
-      push: fn _, n, _ ->
-        assert n.project_id == @project_id
+      push: fn _, _, _ ->
         :ok
       end,
       process_response: fn _ -> :ok end do
       Sparrow.PoolsWarden.start_link()
-      Sparrow.FCM.V1.ProjectIdBearer.start_link()
 
       auth =
         Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
@@ -45,11 +40,6 @@ defmodule Sparrow.APITest do
           :gamma
         ])
 
-      Sparrow.FCM.V1.ProjectIdBearer.add_project_id(
-        @path_to_fake_fcm_json,
-        pool_1_name
-      )
-
       android_notification =
         Sparrow.FCM.V1.Android.new()
         |> Sparrow.FCM.V1.Android.add_title("title")
@@ -63,7 +53,7 @@ defmodule Sparrow.APITest do
 
       assert called Sparrow.FCM.V1.push(
                       pool_1_name,
-                      %{fcm_notification | project_id: @project_id},
+                      fcm_notification,
                       []
                     )
 
@@ -234,8 +224,7 @@ defmodule Sparrow.APITest do
     with_mocks([
       {Sparrow.FCM.V1, [:passthrough],
        [
-         push: fn _, n, _ ->
-           assert n.project_id == @project_id
+         push: fn _, _, _ ->
            :ok
          end,
          process_response: fn _ -> :ok end
@@ -248,7 +237,6 @@ defmodule Sparrow.APITest do
        ]}
     ]) do
       Sparrow.PoolsWarden.start_link()
-      Sparrow.FCM.V1.ProjectIdBearer.start_link()
 
       auth =
         Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
@@ -282,11 +270,6 @@ defmodule Sparrow.APITest do
       {:ok, _pid} =
         Sparrow.H2Worker.Pool.start_link(fcm_pool_config, :fcm, tags)
 
-      Sparrow.FCM.V1.ProjectIdBearer.add_project_id(
-        @path_to_fake_fcm_json,
-        fcm_pool_name
-      )
-
       apns_notification =
         Sparrow.APNS.Notification.new("dummy token", :dev)
         |> Sparrow.APNS.Notification.add_title("title")
@@ -308,7 +291,7 @@ defmodule Sparrow.APITest do
 
       assert called Sparrow.FCM.V1.push(
                       fcm_pool_name,
-                      %{fcm_notification | project_id: @project_id},
+                      fcm_notification,
                       []
                     )
     end

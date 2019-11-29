@@ -8,7 +8,6 @@ defmodule H2ClientAdapter.ChatterboxTest do
   setup :verify_on_exit!
 
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
-  alias Helpers.SetupHelper, as: Tools
 
   doctest H2Adapter
 

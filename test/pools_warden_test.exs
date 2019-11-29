@@ -1,7 +1,7 @@
 defmodule Sparrow.PoolsWardenTest do
   use ExUnit.Case
   use HelperMacros
-  alias Helpers.SetupHelper, as: Tools
+
   import Mox
   setup :set_mox_global
   setup :verify_on_exit!
