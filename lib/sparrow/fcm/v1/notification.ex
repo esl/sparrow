@@ -114,4 +114,23 @@ defmodule Sparrow.FCM.V1.Notification do
   def add_project_id(notification, project_id) do
     %{notification | project_id: project_id}
   end
+
+  @spec verify(t) :: t | {:error, :invalid_notification}
+  def verify(notification) do
+    data = Enum.map(notification.data, &verify_value/1)
+
+    case Enum.all?(data) do
+      false ->
+        {:error, :invalid_notification}
+
+      true ->
+        %{notification | data: Map.new(data)}
+    end
+  end
+
+  defp verify_value({k, v}) do
+    {k, to_string(v)}
+  rescue
+    _ -> false
+  end
 end

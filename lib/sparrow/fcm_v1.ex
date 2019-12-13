@@ -45,6 +45,21 @@ defmodule Sparrow.FCM.V1 do
           push_opts
         ) :: sync_push_result | :ok
   def push(h2_worker_pool, notification, opts \\ []) do
+    case Sparrow.FCM.V1.Notification.verify(notification) do
+      {:error, reason} ->
+        {:error, reason}
+
+      notification ->
+        do_push(h2_worker_pool, notification, opts)
+    end
+  end
+
+  @spec do_push(
+          atom,
+          Sparrow.FCM.V1.Notification.t(),
+          push_opts
+        ) :: sync_push_result | :ok
+  def do_push(h2_worker_pool, notification, opts) do
     # Prep FCM's ProjectId
     project_id = Sparrow.FCM.V1.ProjectIdBearer.get_project_id(h2_worker_pool)
 
