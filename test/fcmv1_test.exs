@@ -18,7 +18,9 @@ defmodule Sparrow.FCM.V1Test do
   @notification_body "fcm notification body"
   @notification_target_type :token
   @notification_target "target"
-  @notification_data %{"notification" => "some_value", "key" => "other_value"}
+
+  @notification_data_recv %{"notification" => 1, "key" => "other_value"}
+  @notification_data_sent %{"notification" => "1", "key" => "other_value"}
 
   @apns_title "test apns title"
   @apns_body "test apns body"
@@ -136,7 +138,7 @@ defmodule Sparrow.FCM.V1Test do
           |> Jason.decode!()
           |> Map.get("message")
 
-        assert @notification_data ==
+        assert @notification_data_sent ==
                  Map.get(actual_decoded_notification, "data")
       end
     end
@@ -434,7 +436,7 @@ defmodule Sparrow.FCM.V1Test do
       @notification_target,
       @notification_title,
       @notification_body,
-      @notification_data
+      @notification_data_recv
     )
   end
 
