@@ -18,7 +18,10 @@ defmodule Sparrow.FCM.V1Test do
   @notification_body "fcm notification body"
   @notification_target_type :token
   @notification_target "target"
-  @notification_data %{"notification" => "some_value", "key" => "other_value"}
+
+  @notification_data_recv %{"notification" => 1, "key" => "other_value"}
+  @notification_data_sent %{"notification" => "1", "key" => "other_value"}
+  @invalid_notification_data %{"notification" => %{}, "key" => "other_value"}
 
   @apns_title "test apns title"
   @apns_body "test apns body"
@@ -136,8 +139,22 @@ defmodule Sparrow.FCM.V1Test do
           |> Jason.decode!()
           |> Map.get("message")
 
-        assert @notification_data ==
+        assert @notification_data_sent ==
                  Map.get(actual_decoded_notification, "data")
+      end
+    end
+
+    test "invalid notification error is received as expected" do
+      with_mock Sparrow.H2Worker.Pool,
+        send_request: fn _, r, _, _, _ ->
+          headers = [{":status", "200"} | r.headers]
+          send(self(), {:ok, {headers, r.body}})
+          {:ok, {headers, r.body}}
+        end do
+        notification = invalid_test_notification()
+
+        assert {:error, :invalid_notification} ==
+                 Sparrow.FCM.V1.push(@pool_name, notification)
       end
     end
 
@@ -434,7 +451,7 @@ defmodule Sparrow.FCM.V1Test do
       @notification_target,
       @notification_title,
       @notification_body,
-      @notification_data
+      @notification_data_recv
     )
   end
 
@@ -442,6 +459,16 @@ defmodule Sparrow.FCM.V1Test do
     Notification.new(
       @notification_target_type,
       @notification_target
+    )
+  end
+
+  defp invalid_test_notification() do
+    Notification.new(
+      @notification_target_type,
+      @notification_target,
+      @notification_title,
+      @notification_body,
+      @invalid_notification_data
     )
   end
 
