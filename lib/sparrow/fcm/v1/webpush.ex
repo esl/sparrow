@@ -224,4 +224,25 @@ defmodule Sparrow.FCM.V1.Webpush do
 
     %{webpush | web_notification: updated_web_notification}
   end
+
+  @spec verify(t | nil) :: t | nil | {:error, :invalid_notification}
+
+  def verify(nil), do: nil
+
+  def verify(notification) do
+    data = Enum.map(notification.data, &verify_value/1)
+
+    case Enum.all?(data) do
+      false ->
+        {:error, :invalid_notification}
+
+      true ->
+        %{notification | data: Map.new(data)}
+    end
+  end
+
+  defp verify_value({k, v}) when is_number(v), do: {k, to_string(v)}
+  defp verify_value({k, v}) when is_boolean(v), do: {k, to_string(v)}
+  defp verify_value({k, v}) when is_bitstring(v), do: {k, v}
+  defp verify_value(_), do: false
 end

@@ -128,15 +128,15 @@ defmodule Sparrow.FCM.V1.Notification do
     end
   end
 
-  def verify_android({:error, _} = error), do: error
+  def verify(error = {:error, _}, _), do: error
 
-  def verify_android(notification) do
-    case Sparrow.FCM.V1.Android.verify(notification.android) do
+  def verify(notification, type) do
+    case Sparrow.FCM.V1.Android.verify(Map.get(notification, type)) do
       {:error, reason} ->
         {:error, reason}
 
-      android_data ->
-        %{notification | android: android_data}
+      verified ->
+        Map.put(notification, type, verified)
     end
   end
 

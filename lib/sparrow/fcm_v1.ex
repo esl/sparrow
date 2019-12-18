@@ -48,7 +48,8 @@ defmodule Sparrow.FCM.V1 do
     verified_notification =
       notification
       |> Sparrow.FCM.V1.Notification.verify()
-      |> Sparrow.FCM.V1.Notification.verify_android()
+      |> Sparrow.FCM.V1.Notification.verify(:android)
+      |> Sparrow.FCM.V1.Notification.verify(:webpush)
 
     case verified_notification do
       {:error, reason} ->
@@ -68,8 +69,7 @@ defmodule Sparrow.FCM.V1 do
     # Prep FCM's ProjectId
     project_id = Sparrow.FCM.V1.ProjectIdBearer.get_project_id(h2_worker_pool)
 
-    notification =
-      Sparrow.FCM.V1.Notification.add_project_id(notification, project_id)
+    notification = Sparrow.FCM.V1.Notification.add_project_id(notification, project_id)
 
     is_sync = Keyword.get(opts, :is_sync, true)
     timeout = Keyword.get(opts, :timeout, 5_000)
@@ -133,9 +133,7 @@ defmodule Sparrow.FCM.V1 do
 
       _ =
         Logger.warn(fn ->
-          "action=handle_push_response, result=fail, response_body=#{
-            inspect(body)
-          }"
+          "action=handle_push_response, result=fail, response_body=#{inspect(body)}"
         end)
 
       {:error, reason}
@@ -152,8 +150,7 @@ defmodule Sparrow.FCM.V1 do
           Sparrow.H2Worker.Authentication.TokenBased.t()
   def get_token_based_authentication(account) do
     getter = fn ->
-      {"authorization",
-       "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token(account)}"}
+      {"authorization", "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token(account)}"}
     end
 
     Sparrow.H2Worker.Authentication.TokenBased.new(getter)
