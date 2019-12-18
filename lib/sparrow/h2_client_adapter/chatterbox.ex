@@ -24,6 +24,8 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
         }"
       end)
 
+    Process.flag(:trap_exit, true)
+
     case :h2_client.start_link(:https, to_charlist(domain), port, opts) do
       :ignore ->
         _ = Logger.debug(fn -> "action=open_conn, response=#{:ignore}" end)
@@ -34,6 +36,9 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
           Logger.debug(fn ->
             "action=open_conn, response=#{inspect({:ok, connection_ref})}"
           end)
+
+        Process.unlink(connection_ref)
+        Process.flag(:trap_exit, false)
 
         {:ok, connection_ref}
 
