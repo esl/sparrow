@@ -296,4 +296,27 @@ defmodule Sparrow.FCM.V1.Android do
   defp add(android, key, value) do
     %{android | fields: [{key, value} | android.fields]}
   end
+
+  @spec verify(t | nil) ::
+          t | nil | {:error, :invalid_notification}
+  def verify(nil), do: nil
+
+  def verify(%{fields: [data: data]} = notification) when is_map(data) do
+    data = Enum.map(data, &verify_value/1)
+
+    case Enum.all?(data) do
+      false ->
+        {:error, :invalid_notification}
+
+      true ->
+        %{notification | fields: [{:data, Map.new(data)} | notification.fields]}
+    end
+  end
+
+  def verify(notification), do: notification
+
+  defp verify_value({k, v}) when is_number(v), do: {k, to_string(v)}
+  defp verify_value({k, v}) when is_boolean(v), do: {k, to_string(v)}
+  defp verify_value({k, v}) when is_bitstring(v), do: {k, v}
+  defp verify_value(_), do: false
 end

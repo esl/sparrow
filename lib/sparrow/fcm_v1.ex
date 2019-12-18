@@ -45,7 +45,12 @@ defmodule Sparrow.FCM.V1 do
           push_opts
         ) :: sync_push_result | :ok
   def push(h2_worker_pool, notification, opts \\ []) do
-    case Sparrow.FCM.V1.Notification.verify(notification) do
+    verified_notification =
+      notification
+      |> Sparrow.FCM.V1.Notification.verify()
+      |> Sparrow.FCM.V1.Notification.verify_android()
+
+    case verified_notification do
       {:error, reason} ->
         {:error, reason}
 
