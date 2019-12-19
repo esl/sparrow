@@ -45,15 +45,11 @@ defmodule Sparrow.FCM.V1 do
           push_opts
         ) :: sync_push_result | :ok
   def push(h2_worker_pool, notification, opts \\ []) do
-    verified_notification =
-      notification
-      |> Sparrow.FCM.V1.Notification.verify()
-
-    case verified_notification do
+    case Sparrow.FCM.V1.Notification.normalize(notification) do
       {:error, reason} ->
         {:error, reason}
 
-      notification ->
+      {:ok, notification} ->
         do_push(h2_worker_pool, notification, opts)
     end
   end

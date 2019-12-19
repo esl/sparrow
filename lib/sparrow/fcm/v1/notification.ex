@@ -115,44 +115,33 @@ defmodule Sparrow.FCM.V1.Notification do
     %{notification | project_id: project_id}
   end
 
-  @spec verify(t) :: t | {:error, :invalid_notification}
-  def verify(notification) do
-    data = Enum.map(notification.data, &verify_value/1)
+  @spec normalize(t) :: {:ok, t} | {:error, :invalid_notification}
+  def normalize(notification) do
+    with {:ok, notification} <- do_normalize(notification),
+         {:ok, android} <-
+           Sparrow.FCM.V1.Android.normalize(notification.android),
+         {:ok, webpush} <-
+           Sparrow.FCM.V1.Webpush.normalize(notification.webpush) do
+      {:ok, Map.merge(notification, %{android: android, webpush: webpush})}
+    end
+  end
+
+  @spec do_normalize(t) :: {:ok, t} | {:error, :invalid_notification}
+  def do_normalize(notification) do
+    data = Enum.map(notification.data, &normalize_value/1)
 
     case Enum.all?(data) do
       false ->
         {:error, :invalid_notification}
 
       true ->
-        v1 = %{notification | data: Map.new(data)}
-        v2 = verify(v1, :android)
-        verify(v2, :webpush)
+        {:ok, %{notification | data: Map.new(data)}}
     end
   end
 
-  def verify(error = {:error, _}, _), do: error
-
-  def verify(notification, type) do
-    case do_verify(Map.get(notification, type), type) do
-      {:error, reason} ->
-        {:error, reason}
-
-      verified ->
-        Map.put(notification, type, verified)
-    end
-  end
-
-  def do_verify(notification, :webpush) do
-    Sparrow.FCM.V1.Webpush.verify(notification)
-  end
-
-  def do_verify(notification, :android) do
-    Sparrow.FCM.V1.Android.verify(notification)
-  end
-
-  defp verify_value({k, v}) do
+  defp normalize_value({k, v}) do
     {k, to_string(v)}
   rescue
-    _ -> false
+    Protocol.UndefinedError -> false
   end
 end

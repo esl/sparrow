@@ -296,34 +296,35 @@ defmodule Sparrow.FCM.V1.Android do
     %{android | fields: [{key, value} | android.fields]}
   end
 
-  @spec verify(t | nil) ::
-          t | nil | {:error, :invalid_notification}
-  def verify(nil), do: nil
+  @spec normalize(t | nil) ::
+          {:ok, t | nil} | {:error, :invalid_notification}
+  def normalize(nil), do: {:ok, nil}
 
-  def verify(notification) do
+  def normalize(notification) do
     case Keyword.get(notification.fields, :data) do
       nil ->
-        notification
+        {:ok, notification}
 
       data ->
-        data = Enum.map(data, &verify_value/1)
+        data = Enum.map(data, &normalize_value/1)
 
         case Enum.all?(data) do
           false ->
             {:error, :invalid_notification}
 
           true ->
-            %{
-              notification
-              | fields: Keyword.put(notification.fields, :data, Map.new(data))
-            }
+            {:ok,
+             %{
+               notification
+               | fields: Keyword.put(notification.fields, :data, Map.new(data))
+             }}
         end
     end
   end
 
-  defp verify_value({k, v}) do
+  defp normalize_value({k, v}) do
     {k, to_string(v)}
   rescue
-    _ -> false
+    Protocol.UndefinedError -> false
   end
 end

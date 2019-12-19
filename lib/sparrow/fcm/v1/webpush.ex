@@ -225,25 +225,25 @@ defmodule Sparrow.FCM.V1.Webpush do
     %{webpush | web_notification: updated_web_notification}
   end
 
-  @spec verify(t | nil) :: t | nil | {:error, :invalid_notification}
+  @spec normalize(t | nil) :: {:ok, t | nil} | {:error, :invalid_notification}
 
-  def verify(nil), do: nil
+  def normalize(nil), do: {:ok, nil}
 
-  def verify(notification) do
-    data = Enum.map(notification.data, &verify_value/1)
+  def normalize(notification) do
+    data = Enum.map(notification.data, &normalize_value/1)
 
     case Enum.all?(data) do
       false ->
         {:error, :invalid_notification}
 
       true ->
-        %{notification | data: Map.new(data)}
+        {:ok, %{notification | data: Map.new(data)}}
     end
   end
 
-  defp verify_value({k, v}) do
+  defp normalize_value({k, v}) do
     {k, to_string(v)}
   rescue
-    _ -> false
+    Protocol.UndefinedError -> false
   end
 end
