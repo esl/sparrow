@@ -43,8 +43,7 @@ defmodule Sparrow.FCM.V1.Android do
   """
   @spec to_map(t) :: map
   def to_map(android) do
-    notification =
-      Sparrow.FCM.V1.Android.Notification.to_map(android.notification)
+    notification = Sparrow.FCM.V1.Android.Notification.to_map(android.notification)
 
     android.fields
     |> Map.new()
@@ -295,5 +294,37 @@ defmodule Sparrow.FCM.V1.Android do
   @spec add(__MODULE__.t(), key, value) :: __MODULE__.t()
   defp add(android, key, value) do
     %{android | fields: [{key, value} | android.fields]}
+  end
+
+  @spec normalize(t | nil) ::
+          {:ok, t | nil} | {:error, :invalid_notification}
+  def normalize(nil), do: {:ok, nil}
+
+  def normalize(notification) do
+    case Keyword.get(notification.fields, :data) do
+      nil ->
+        {:ok, notification}
+
+      data ->
+        data = Enum.map(data, &normalize_value/1)
+
+        case Enum.all?(data) do
+          false ->
+            {:error, :invalid_notification}
+
+          true ->
+            {:ok,
+             %{
+               notification
+               | fields: Keyword.put(notification.fields, :data, Map.new(data))
+             }}
+        end
+    end
+  end
+
+  defp normalize_value({k, v}) do
+    {k, to_string(v)}
+  rescue
+    Protocol.UndefinedError -> false
   end
 end

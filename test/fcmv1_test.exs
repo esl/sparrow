@@ -32,6 +32,7 @@ defmodule Sparrow.FCM.V1Test do
 
   @webpush_link "webpush test link"
   @webpush_data %{"webpush" => "data", "test" => "value"}
+  @invalid_webpush_data %{"webpush" => %{"data" => 1}, "test" => "value"}
   @webpush_actions "webpush test actions"
   @webpush_badge "webpush test badge"
   @webpush_body "webpush test body"
@@ -58,6 +59,7 @@ defmodule Sparrow.FCM.V1Test do
   @android_collapse_key "android test collapse_key"
   @android_color "android test color"
   @android_data %{"android" => "is_key", "test" => "data"}
+  @invalid_android_data %{"android" => %{}, "test" => "data"}
   @android_icon "android test icon"
   @android_priority :HIGH
   @android_restricted_package_name "android test restricted_package_name"
@@ -80,8 +82,8 @@ defmodule Sparrow.FCM.V1Test do
       [
         {":_",
          [
-           {"/v1/projects/EchoBodyHandler/messages:send",
-            Helpers.CowboyHandlers.EchoBodyHandler, []},
+           {"/v1/projects/EchoBodyHandler/messages:send", Helpers.CowboyHandlers.EchoBodyHandler,
+            []},
            {"/v1/projects/HeaderToBodyEchoHandler/messages:send",
             Helpers.CowboyHandlers.HeaderToBodyEchoHandler, []}
          ]}
@@ -144,7 +146,7 @@ defmodule Sparrow.FCM.V1Test do
       end
     end
 
-    test "invalid notification error is received as expected" do
+    test "invalid notification error is reported" do
       with_mock Sparrow.H2Worker.Pool,
         send_request: fn _, r, _, _, _ ->
           headers = [{":status", "200"} | r.headers]
@@ -152,6 +154,38 @@ defmodule Sparrow.FCM.V1Test do
           {:ok, {headers, r.body}}
         end do
         notification = invalid_test_notification()
+
+        assert {:error, :invalid_notification} ==
+                 Sparrow.FCM.V1.push(@pool_name, notification)
+      end
+    end
+
+    test "invalid android notification error is reported" do
+      with_mock Sparrow.H2Worker.Pool,
+        send_request: fn _, r, _, _, _ ->
+          headers = [{":status", "200"} | r.headers]
+          send(self(), {:ok, {headers, r.body, r.path}})
+          {:ok, {headers, r.body}}
+        end do
+        notification =
+          test_notification()
+          |> Notification.add_android(invalid_test_android())
+
+        assert {:error, :invalid_notification} ==
+                 Sparrow.FCM.V1.push(@pool_name, notification)
+      end
+    end
+
+    test "invalid webpush notification is reported" do
+      with_mock Sparrow.H2Worker.Pool,
+        send_request: fn _, r, _, _, _ ->
+          headers = [{":status", "200"} | r.headers]
+          send(self(), {:ok, {headers, r.body}})
+          {:ok, {headers, r.body}}
+        end do
+        notification =
+          test_notification()
+          |> Notification.add_webpush(invalid_test_webpush())
 
         assert {:error, :invalid_notification} ==
                  Sparrow.FCM.V1.push(@pool_name, notification)
@@ -186,8 +220,7 @@ defmodule Sparrow.FCM.V1Test do
           |> Map.get("message")
           |> Map.get("android")
 
-        actual_decoded_android_notification =
-          Map.get(actual_decoded_android, "notification")
+        actual_decoded_android_notification = Map.get(actual_decoded_android, "notification")
 
         assert actual_decoded_android != nil
         assert @android_data == Map.get(actual_decoded_android, "data")
@@ -232,8 +265,7 @@ defmodule Sparrow.FCM.V1Test do
           |> Map.get("message")
           |> Map.get("webpush")
 
-        actual_decoded_webpush_notification =
-          Map.get(actual_decoded_webpush, "notification")
+        actual_decoded_webpush_notification = Map.get(actual_decoded_webpush, "notification")
 
         assert actual_decoded_webpush != nil
         assert @webpush_data == Map.get(actual_decoded_webpush, "data")
@@ -384,8 +416,7 @@ defmodule Sparrow.FCM.V1Test do
 
   test "FCM accounts are passed correctly" do
     with_mocks([
-      {Sparrow.FCM.V1.TokenBearer, [:passthrough],
-       [get_token: fn account -> account end]},
+      {Sparrow.FCM.V1.TokenBearer, [:passthrough], [get_token: fn account -> account end]},
       {Sparrow.H2ClientAdapter.Chatterbox, [:passthrough],
        [
          post: fn _, _, _, _, _ -> {:error, 1} end,
@@ -431,15 +462,11 @@ defmodule Sparrow.FCM.V1Test do
 
       Sparrow.FCM.V1.push(pool_1, notification)
 
-      assert called(
-               Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account1))
-             )
+      assert called(Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account1)))
 
       Sparrow.FCM.V1.push(pool_2, notification)
 
-      assert called(
-               Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account2))
-             )
+      assert called(Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account2)))
 
       TestHelper.restore_app_env()
     end
@@ -492,6 +519,26 @@ defmodule Sparrow.FCM.V1Test do
     |> Android.add_ttl(@android_ttl)
   end
 
+  defp invalid_test_android do
+    Android.new()
+    |> Android.add_body(@android_body)
+    |> Android.add_body_loc_args(@android_body_loc_args)
+    |> Android.add_body_loc_key(@android_body_loc_key)
+    |> Android.add_click_action(@android_click_action)
+    |> Android.add_collapse_key(@android_collapse_key)
+    |> Android.add_color(@android_color)
+    |> Android.add_data(@invalid_android_data)
+    |> Android.add_icon(@android_icon)
+    |> Android.add_priority(@android_priority)
+    |> Android.add_restricted_package_name(@android_restricted_package_name)
+    |> Android.add_sound(@android_sound)
+    |> Android.add_tag(@android_tag)
+    |> Android.add_title(@android_title)
+    |> Android.add_title_loc_args(@android_title_loc_args)
+    |> Android.add_title_loc_key(@android_title_loc_key)
+    |> Android.add_ttl(@android_ttl)
+  end
+
   defp test_webpush do
     Webpush.new(@webpush_link, @webpush_data)
     |> Webpush.add_actions(@webpush_actions)
@@ -511,6 +558,10 @@ defmodule Sparrow.FCM.V1Test do
     |> Webpush.add_title(@webpush_title)
     |> Webpush.add_vibrate(@webpush_vibrate)
     |> Webpush.add_web_notification_data(@webpush_web_notification_data)
+  end
+
+  defp invalid_test_webpush do
+    Webpush.new(@webpush_link, @invalid_webpush_data)
   end
 
   defp test_apns do
