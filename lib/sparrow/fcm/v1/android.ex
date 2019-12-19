@@ -43,8 +43,7 @@ defmodule Sparrow.FCM.V1.Android do
   """
   @spec to_map(t) :: map
   def to_map(android) do
-    notification =
-      Sparrow.FCM.V1.Android.Notification.to_map(android.notification)
+    notification = Sparrow.FCM.V1.Android.Notification.to_map(android.notification)
 
     android.fields
     |> Map.new()
@@ -301,22 +300,30 @@ defmodule Sparrow.FCM.V1.Android do
           t | nil | {:error, :invalid_notification}
   def verify(nil), do: nil
 
-  def verify(%{fields: [data: data]} = notification) when is_map(data) do
-    data = Enum.map(data, &verify_value/1)
+  def verify(notification) do
+    case Keyword.get(notification.fields, :data) do
+      nil ->
+        notification
 
-    case Enum.all?(data) do
-      false ->
-        {:error, :invalid_notification}
+      data ->
+        data = Enum.map(data, &verify_value/1)
 
-      true ->
-        %{notification | fields: [{:data, Map.new(data)} | notification.fields]}
+        case Enum.all?(data) do
+          false ->
+            {:error, :invalid_notification}
+
+          true ->
+            %{
+              notification
+              | fields: Keyword.put(notification.fields, :data, Map.new(data))
+            }
+        end
     end
   end
 
-  def verify(notification), do: notification
-
-  defp verify_value({k, v}) when is_number(v), do: {k, to_string(v)}
-  defp verify_value({k, v}) when is_boolean(v), do: {k, to_string(v)}
-  defp verify_value({k, v}) when is_bitstring(v), do: {k, v}
-  defp verify_value(_), do: false
+  defp verify_value({k, v}) do
+    {k, to_string(v)}
+  rescue
+    _ -> false
+  end
 end

@@ -124,14 +124,16 @@ defmodule Sparrow.FCM.V1.Notification do
         {:error, :invalid_notification}
 
       true ->
-        %{notification | data: Map.new(data)}
+        v1 = %{notification | data: Map.new(data)}
+        v2 = verify(v1, :android)
+        verify(v2, :webpush)
     end
   end
 
   def verify(error = {:error, _}, _), do: error
 
   def verify(notification, type) do
-    case Sparrow.FCM.V1.Android.verify(Map.get(notification, type)) do
+    case do_verify(Map.get(notification, type), type) do
       {:error, reason} ->
         {:error, reason}
 
@@ -140,8 +142,17 @@ defmodule Sparrow.FCM.V1.Notification do
     end
   end
 
-  defp verify_value({k, v}) when is_number(v), do: {k, to_string(v)}
-  defp verify_value({k, v}) when is_boolean(v), do: {k, to_string(v)}
-  defp verify_value({k, v}) when is_bitstring(v), do: {k, v}
-  defp verify_value(_), do: false
+  def do_verify(notification, :webpush) do
+    Sparrow.FCM.V1.Webpush.verify(notification)
+  end
+
+  def do_verify(notification, :android) do
+    Sparrow.FCM.V1.Android.verify(notification)
+  end
+
+  defp verify_value({k, v}) do
+    {k, to_string(v)}
+  rescue
+    _ -> false
+  end
 end

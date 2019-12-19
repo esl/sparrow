@@ -241,8 +241,9 @@ defmodule Sparrow.FCM.V1.Webpush do
     end
   end
 
-  defp verify_value({k, v}) when is_number(v), do: {k, to_string(v)}
-  defp verify_value({k, v}) when is_boolean(v), do: {k, to_string(v)}
-  defp verify_value({k, v}) when is_bitstring(v), do: {k, v}
-  defp verify_value(_), do: false
+  defp verify_value({k, v}) do
+    {k, to_string(v)}
+  rescue
+    _ -> false
+  end
 end
