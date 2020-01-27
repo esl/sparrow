@@ -35,7 +35,6 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
           end)
 
         Process.unlink(connection_ref)
-        Process.flag(:trap_exit, false)
 
         {:ok, connection_ref}
 
