@@ -1,9 +1,9 @@
 defmodule H2Integration.CerificateRequiredTest do
-  alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.APNS.Notification
 
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
@@ -90,10 +90,16 @@ defmodule H2Integration.CerificateRequiredTest do
         ping_interval: 10_000
       })
 
-    worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-    ref = Process.monitor(worker_pid)
+    notification =
+      "OkResponseHandler"
+      |> Notification.new(:dev)
+      |> Notification.add_title(@title)
+      |> Notification.add_body("")
 
-    assert_receive {:DOWN, ^ref, :process, worker_pid, reason}
+    worker_pid = start_supervised!(Setup.h2_worker_spec(config))
+
+    assert {:error, {:unable_to_connect, reason}} =
+             GenServer.call(worker_pid, {:send_request, notification})
 
     assert {:options, {:cacertfile, []}} == reason
   end

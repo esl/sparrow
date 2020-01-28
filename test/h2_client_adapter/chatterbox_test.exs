@@ -18,10 +18,10 @@ defmodule H2ClientAdapter.ChatterboxTest do
   setup :passthrough_h2
 
   test "open connection" do
-    with_mock :h2_client, start_link: fn _, _, _, _ -> {:ok, self()} end do
+    with_mock :h2_client, start: fn _, _, _, _ -> {:ok, self()} end do
       assert {:ok, self()} === H2Adapter.open("my.domain.at.domain", 1234, [])
 
-      assert called :h2_client.start_link(
+      assert called :h2_client.start(
                       :https,
                       'my.domain.at.domain',
                       1234,
@@ -31,7 +31,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
   end
 
   test "open connection different domain adreses and ports and extra options succesfully" do
-    with_mock :h2_client, start_link: fn _, _, _, _ -> {:ok, self()} end do
+    with_mock :h2_client, start: fn _, _, _, _ -> {:ok, self()} end do
       ptest [
               domain: string(min: 5, max: 20, chars: ?a..?z),
               port: int(min: 0, max: 65_535),
@@ -40,7 +40,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
             repeat_for: @repeats do
         assert {:ok, self()} === H2Adapter.open(domain, port, options)
 
-        assert called :h2_client.start_link(
+        assert called :h2_client.start(
                         :https,
                         to_charlist(domain),
                         port,
@@ -51,7 +51,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
   end
 
   test "open connection different domain adreses and ports and extra option returning ignore" do
-    with_mock :h2_client, start_link: fn _, _, _, _ -> :ignore end do
+    with_mock :h2_client, start: fn _, _, _, _ -> :ignore end do
       ptest [
               domain: string(min: 5, max: 20, chars: ?a..?z),
               port: int(min: 0, max: 65_535),
@@ -60,7 +60,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
             repeat_for: @repeats do
         assert {:error, :ignore} === H2Adapter.open(domain, port, options)
 
-        assert called :h2_client.start_link(
+        assert called :h2_client.start(
                         :https,
                         to_charlist(domain),
                         port,
@@ -78,10 +78,10 @@ defmodule H2ClientAdapter.ChatterboxTest do
             options: list(of: atom(), min: 2, max: 10)
           ],
           repeat_for: @repeats do
-      with_mock :h2_client, start_link: fn _, _, _, _ -> {:error, reason} end do
+      with_mock :h2_client, start: fn _, _, _, _ -> {:error, reason} end do
         assert {:error, reason} === H2Adapter.open(domain, port, options)
 
-        assert called :h2_client.start_link(
+        assert called :h2_client.start(
                         :https,
                         to_charlist(domain),
                         port,
@@ -207,15 +207,5 @@ defmodule H2ClientAdapter.ChatterboxTest do
 
   defp pid(string) when is_binary(string) do
     :erlang.list_to_pid('<#{string}>')
-  end
-
-  test "Worker stays alive after unlinking" do
-    with_mock :h2_client,
-      start_link: fn _, _, _, _ -> {:ok, spawn_link(fn -> Process.sleep(100000) end)} end do
-        {:ok, conn_ref} = H2Adapter.open("my.domain.at.domain", 1234)
-        Process.exit(conn_ref, :dunno)
-        eventually(assert false == Process.alive?(conn_ref))
-        assert Process.alive?(self())
-      end
   end
 end

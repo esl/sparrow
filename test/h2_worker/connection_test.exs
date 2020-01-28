@@ -58,7 +58,10 @@ defmodule Sparrow.H2Worker.ConnectionTest do
           domain: domain,
           port: port,
           authentication: context[:auth],
-          tls_options: tls_options
+          tls_options: tls_options,
+          backoff_base: 2,
+          backoff_initial_delay: 100,
+          backoff_max_delay: 400
         })
 
       {:ok, _pid} = start_supervised(Tools.h2_worker_spec(config))
@@ -110,7 +113,10 @@ defmodule Sparrow.H2Worker.ConnectionTest do
           domain: domain,
           port: port,
           authentication: context[:auth],
-          tls_options: tls_options
+          tls_options: tls_options,
+          backoff_base: 2,
+          backoff_initial_delay: 100,
+          backoff_max_delay: 400
         })
 
       {:ok, _pid} = start_supervised(Tools.h2_worker_spec(config))
@@ -160,7 +166,9 @@ defmodule Sparrow.H2Worker.ConnectionTest do
         send(self(), {:PONG, ref})
         :ok
       end)
-      |> stub(:post, fn _, _, _, _, _ -> {:error, :unable_to_connect} end)
+      |> stub(:post, fn _, _, _, _, _ ->
+      {:error, {:unable_to_connect, :some_reason}}
+      end)
       |> stub(:get_response, fn _, _ -> {:error, :something} end)
       |> stub(:close, fn _ -> :ok end)
 
@@ -170,8 +178,8 @@ defmodule Sparrow.H2Worker.ConnectionTest do
           port: port,
           authentication: context[:auth],
           tls_options: tls_options,
-          backoff_base: 200,
-          backoff_initial_delay: 10,
+          backoff_base: 2,
+          backoff_initial_delay: 2_000,
           backoff_max_delay: 2_000
         })
 
@@ -181,11 +189,11 @@ defmodule Sparrow.H2Worker.ConnectionTest do
 
       assert_receive :connection_failure, 100
 
-      assert {:error, :unable_to_connect} ==
+      assert {:error, {:unable_to_connect, _}} =
                GenServer.call(pid, {:send_request, request})
 
-      assert_receive :connection_failure, 100
-      assert_receive :connection_success, 2_000
+      assert_receive :connection_failure, 2_000
+      assert_receive :connection_success, 5_000
     end
   end
 

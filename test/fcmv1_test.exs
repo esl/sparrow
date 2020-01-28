@@ -82,8 +82,8 @@ defmodule Sparrow.FCM.V1Test do
       [
         {":_",
          [
-           {"/v1/projects/EchoBodyHandler/messages:send", Helpers.CowboyHandlers.EchoBodyHandler,
-            []},
+           {"/v1/projects/EchoBodyHandler/messages:send",
+            Helpers.CowboyHandlers.EchoBodyHandler, []},
            {"/v1/projects/HeaderToBodyEchoHandler/messages:send",
             Helpers.CowboyHandlers.HeaderToBodyEchoHandler, []}
          ]}
@@ -220,7 +220,8 @@ defmodule Sparrow.FCM.V1Test do
           |> Map.get("message")
           |> Map.get("android")
 
-        actual_decoded_android_notification = Map.get(actual_decoded_android, "notification")
+        actual_decoded_android_notification =
+          Map.get(actual_decoded_android, "notification")
 
         assert actual_decoded_android != nil
         assert @android_data == Map.get(actual_decoded_android, "data")
@@ -265,7 +266,8 @@ defmodule Sparrow.FCM.V1Test do
           |> Map.get("message")
           |> Map.get("webpush")
 
-        actual_decoded_webpush_notification = Map.get(actual_decoded_webpush, "notification")
+        actual_decoded_webpush_notification =
+          Map.get(actual_decoded_webpush, "notification")
 
         assert actual_decoded_webpush != nil
         assert @webpush_data == Map.get(actual_decoded_webpush, "data")
@@ -416,7 +418,8 @@ defmodule Sparrow.FCM.V1Test do
 
   test "FCM accounts are passed correctly" do
     with_mocks([
-      {Sparrow.FCM.V1.TokenBearer, [:passthrough], [get_token: fn account -> account end]},
+      {Sparrow.FCM.V1.TokenBearer, [:passthrough],
+       [get_token: fn account -> account end]},
       {Sparrow.H2ClientAdapter.Chatterbox, [:passthrough],
        [
          post: fn _, _, _, _, _ -> {:error, 1} end,
@@ -462,11 +465,15 @@ defmodule Sparrow.FCM.V1Test do
 
       Sparrow.FCM.V1.push(pool_1, notification)
 
-      assert called(Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account1)))
+      assert called(
+               Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account1))
+             )
 
       Sparrow.FCM.V1.push(pool_2, notification)
 
-      assert called(Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account2)))
+      assert called(
+               Sparrow.FCM.V1.TokenBearer.get_token(Atom.to_string(account2))
+             )
 
       TestHelper.restore_app_env()
     end

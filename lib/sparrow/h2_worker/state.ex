@@ -8,13 +8,15 @@ defmodule Sparrow.H2Worker.State do
   @type t :: %__MODULE__{
           connection_ref: connection_ref | nil,
           requests: requests,
-          config: config
+          config: config,
+          restart_connection_timer: term() | nil
         }
 
   defstruct [
     :connection_ref,
     :requests,
-    :config
+    :config,
+    :restart_connection_timer
   ]
 
   @doc """
@@ -27,7 +29,8 @@ defmodule Sparrow.H2Worker.State do
     %__MODULE__{
       connection_ref: nil,
       requests: requests,
-      config: config
+      config: config,
+      restart_connection_timer: nil
     }
   end
 
@@ -35,7 +38,8 @@ defmodule Sparrow.H2Worker.State do
     %__MODULE__{
       connection_ref: connection_ref,
       requests: requests,
-      config: config
+      config: config,
+      restart_connection_timer: nil
     }
   end
 
@@ -47,7 +51,8 @@ defmodule Sparrow.H2Worker.State do
     %__MODULE__{
       connection_ref: state.connection_ref,
       requests: %{},
-      config: state.config
+      config: state.config,
+      restart_connection_timer: state.restart_connection_timer
     }
   end
 
@@ -59,7 +64,8 @@ defmodule Sparrow.H2Worker.State do
     %__MODULE__{
       connection_ref: nil,
       requests: state.requests,
-      config: state.config
+      config: state.config,
+      restart_connection_timer: state.restart_connection_timer
     }
   end
 end
