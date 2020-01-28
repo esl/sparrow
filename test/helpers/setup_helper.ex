@@ -56,7 +56,14 @@ defmodule Helpers.SetupHelper do
           )
       end
 
-    Config.new(%{domain: address, port: port, authentication: auth})
+    Config.new(%{
+      domain: address,
+      port: port,
+      authentication: auth,
+      backoff_base: 2,
+      backoff_initial_delay: 100,
+      backoff_max_delay: 400
+    })
   end
 
   defp certificate_settings_list do

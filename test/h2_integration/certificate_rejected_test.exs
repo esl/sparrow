@@ -6,6 +6,7 @@ defmodule H2Integration.CerificateRejectedTest do
   setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
+  alias Sparrow.APNS.Notification
 
   import Helpers.SetupHelper, only: [passthrough_h2: 1]
   setup :passthrough_h2
@@ -34,15 +35,21 @@ defmodule H2Integration.CerificateRejectedTest do
   test "cowboy does not accept certificate", context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
-    worker_pid = start_supervised!(Setup.h2_worker_spec(config))
-    ref = Process.monitor(worker_pid)
+    notification =
+      "OkResponseHandler"
+      |> Notification.new(:dev)
+      |> Notification.add_title(@title)
+      |> Notification.add_body("")
 
-    assert_receive {:DOWN, ^ref, :process, worker_pid, reason}
+    worker_pid = start_supervised!(Setup.h2_worker_spec(config))
+
+    assert {:error, {:unable_to_connect, reason}} =
+             GenServer.call(worker_pid, {:send_request, notification})
 
     case reason do
       {:tls_alert, 'bad certificate'} -> :ok
       {:tls_alert, {:bad_certificate, _}} -> :ok
-      _ -> flunk(reason)
+      _ -> flunk("Wrong error code: #{inspect(reason)}")
     end
   end
 end

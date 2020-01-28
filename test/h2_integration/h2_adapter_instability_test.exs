@@ -1,5 +1,6 @@
 defmodule H2Integration.H2AdapterInstabilityTest do
   use ExUnit.Case
+  use AssertEventually
 
   import Mock
   import Mox
@@ -43,6 +44,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
     body = "sound of silence, test body"
 
     {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
+    eventually(assert :sys.get_state(worker_pid).connection_ref != nil)
     conn_ref = :sys.get_state(worker_pid).connection_ref
 
     request = OuterRequest.new(headers, body, "/LostConnHandler", 3_000)
@@ -63,6 +65,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
     body = "message, test body"
 
     {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
+    eventually(assert :sys.get_state(worker_pid).connection_ref != nil)
     conn_ref = :sys.get_state(worker_pid).connection_ref
 
     request = OuterRequest.new(headers, body, "/LostConnHandler", 3_000)

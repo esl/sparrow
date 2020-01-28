@@ -2,6 +2,7 @@ defmodule Sparrow.H2WorkerTest do
   alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
   use Quixir
+  use AssertEventually
   require Logger
 
   import Mock
@@ -634,10 +635,12 @@ defmodule Sparrow.H2WorkerTest do
 
         worker_pid = start_supervised!(Tools.h2_worker_spec(config))
 
-        assert Sparrow.H2Worker.State.new(
-                 context[:connection_ref],
-                 expected_config
-               ) == :sys.get_state(worker_pid, 100)
+        eventually(
+          assert Sparrow.H2Worker.State.new(
+                   context[:connection_ref],
+                   expected_config
+                 ) == :sys.get_state(worker_pid, 100)
+        )
 
         stop_supervised(worker_pid)
       end
@@ -693,7 +696,7 @@ defmodule Sparrow.H2WorkerTest do
         :sys.replace_state(worker_pid, fn _ -> new_state end)
 
         reply = GenServer.call(worker_pid, {:send_request, request})
-        assert {:error, :unable_to_connect} == reply
+        assert {:error, {:unable_to_connect, _}} = reply
       end
     end
   end
@@ -774,12 +777,13 @@ defmodule Sparrow.H2WorkerTest do
           })
 
         worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-        _state = :sys.get_state(worker_pid)
 
-        assert Sparrow.H2Worker.State.new(
-                 context[:connection_ref],
-                 config
-               ) == :sys.get_state(worker_pid, 100)
+        eventually(
+          assert Sparrow.H2Worker.State.new(
+                   context[:connection_ref],
+                   config
+                 ) == :sys.get_state(worker_pid, 100)
+        )
 
         stop_supervised(worker_pid)
       end

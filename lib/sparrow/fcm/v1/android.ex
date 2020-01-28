@@ -43,7 +43,8 @@ defmodule Sparrow.FCM.V1.Android do
   """
   @spec to_map(t) :: map
   def to_map(android) do
-    notification = Sparrow.FCM.V1.Android.Notification.to_map(android.notification)
+    notification =
+      Sparrow.FCM.V1.Android.Notification.to_map(android.notification)
 
     android.fields
     |> Map.new()

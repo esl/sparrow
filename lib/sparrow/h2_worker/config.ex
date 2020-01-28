@@ -81,7 +81,7 @@ defmodule Sparrow.H2Worker.Config do
       reconnect_attempts: 3,
       backoff_base: 2,
       backoff_initial_delay: 100,
-      backoff_max_delay: 400
+      backoff_max_delay: 5000
     }
   end
 

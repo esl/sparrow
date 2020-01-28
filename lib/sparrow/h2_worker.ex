@@ -78,8 +78,15 @@ defmodule Sparrow.H2Worker do
           {:noreply, state} | {:stop, reason, state}
   def handle_continue(:start_conn_backoff, state = %State{config: config}) do
     stream = backoff_stream(config)
-    send(self(), {:start_conn, 0, stream})
-    {:noreply, state}
+
+    case state.restart_connection_timer do
+      nil ->
+        {:noreply, try_start_conn(state, 0, stream)}
+
+      _ ->
+        # Backoff already in progress
+        {:noreply, state}
+    end
   end
 
   @spec handle_info(incomming_message, state) :: {:noreply, state}
@@ -185,35 +192,14 @@ defmodule Sparrow.H2Worker do
   end
 
   def handle_info(
-        {:start_conn, count, stream},
-        state = %State{connection_ref: nil, config: config}
+        {:start_conn, try_count, delay_stream},
+        state = %State{connection_ref: nil}
       ) do
-    case start_conn(config) do
-      {:ok, new_state} ->
-        {:noreply, new_state}
-
-      {:error, reason} ->
-        _ =
-          Logger.warn(
-            "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
-              inspect(config.port)
-            }, tls_options=#{inspect(config.tls_options)}, failed to connect"
-          )
-
-        {:ok, delay} = Enum.fetch(stream, count)
-
-        Process.send_after(
-          self(),
-          {:start_conn, count + 1, stream},
-          delay
-        )
-
-        {:noreply, state}
-    end
+    {:noreply, try_start_conn(state, try_count, delay_stream)}
   end
 
   def handle_info({:start_conn, _, _}, state) do
-    {:noreply, state}
+    {:noreply, %State{state | restart_connection_timer: nil}}
   end
 
   def handle_info(unknown, state) do
@@ -280,7 +266,7 @@ defmodule Sparrow.H2Worker do
             }, request=#{inspect(request)}"
           )
 
-        send_response(from, {:error, :unable_to_connect})
+        send_response(from, {:error, {:unable_to_connect, reason}})
         {:noreply, state, {:continue, :start_conn_backoff}}
 
       {:ok, state} ->
@@ -378,7 +364,7 @@ defmodule Sparrow.H2Worker do
         "action=schedule, message=#{inspect(message)}, after=#{inspect(time)}"
       end)
 
-    :erlang.send_after(time, self(), message)
+    :erlang.send_after(floor(time), self(), message)
   end
 
   @doc !"""
@@ -390,7 +376,7 @@ defmodule Sparrow.H2Worker do
            :not_ready
            | byte()
            | {:request_timeout, non_neg_integer()}
-           | :unable_to_connect}
+           | {:unable_to_connect, term()}}
           | {:ok, {[any()], binary()}}
         ) :: :ok
   defp send_response(:noreply, response) do
@@ -437,7 +423,7 @@ defmodule Sparrow.H2Worker do
         _ =
           Logger.error(
             "action=send, item=request_response, status=error, reason=#{
-              other_reason
+              inspect(other_reason)
             }"
           )
 
@@ -460,6 +446,33 @@ defmodule Sparrow.H2Worker do
       end)
 
     :ok
+  end
+
+  defp try_start_conn(state = %State{config: config}, try_count, delay_stream) do
+    case start_conn(config) do
+      {:ok, new_state} ->
+        %State{new_state | restart_connection_timer: nil}
+
+      {:error, reason} ->
+        {:ok, delay} = Enum.fetch(delay_stream, try_count)
+
+        _ =
+          Logger.warn(
+            "action=starting_connection, status=failed, domain=#{
+              inspect(config.domain)
+            }, port=#{inspect(config.port)}, reason=#{inspect(reason)}, next_try_in=#{
+              delay
+            }, tls_options=#{inspect(config.tls_options)}"
+          )
+
+        timer =
+          schedule_message_after(
+            {:start_conn, try_count + 1, delay_stream},
+            delay
+          )
+
+        %State{state | restart_connection_timer: timer}
+    end
   end
 
   defp start_conn(config, 0) do
@@ -509,7 +522,6 @@ defmodule Sparrow.H2Worker do
         _ = schedule_message_after(:ping, config.ping_interval)
         _ = Logger.debug(fn -> "action=open_connection, result=succes" end)
         Process.monitor(connection_ref)
-        Process.unlink(connection_ref)
         _ = Logger.debug(fn -> "action=starting_monitor" end)
         {:ok, State.new(connection_ref, config)}
 
