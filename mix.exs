@@ -42,7 +42,8 @@ defmodule Sparrow.MixProject do
       {:plug, "1.6.1", only: :test},
       {:goth, "~> 1.1.0", runtime: false},
       {:httpoison, "~> 0.11 or ~> 1.0"},
-      {:worker_pool, "== 4.0.1"}
+      {:worker_pool, "== 4.0.1"},
+      {:assert_eventually, "~> 0.2.0", only: [:test]}
     ]
   end
 
