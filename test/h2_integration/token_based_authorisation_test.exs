@@ -41,7 +41,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
     body = "message, test body"
 
     Sparrow.H2Worker.Pool.Config.new(config, @pool_name, 4, [])
-    |> Sparrow.H2Worker.Pool.start_link()
+    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
 
     success_request =
       OuterRequest.new(
@@ -81,7 +81,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
     body = "message, test body"
 
     Sparrow.H2Worker.Pool.Config.new(config, @pool_name, 4, [])
-    |> Sparrow.H2Worker.Pool.start_link()
+    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
 
     fail_request =
       OuterRequest.new(

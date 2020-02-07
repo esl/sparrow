@@ -2,6 +2,7 @@ defmodule Sparrow.API do
   @moduledoc """
   Sparrow main API.
   """
+  use Sparrow.Telemetry.Timer
   require Logger
 
   @type notification ::
@@ -23,9 +24,10 @@ defmodule Sparrow.API do
         * `:timeout` - works only if `:is_sync` is `true`, after set `:timeout` miliseconds request is timeouted
         * `:strategy` - strategy of choosing worker in pool strategy
   """
+  @timed event_name: :api_push
   @spec push(notification, [any], Keyword.t()) ::
           :ok | sync_push_result | {:error, :configuration_error}
-  def push(notification, tags \\ [], opts \\ []) do
+  def push(notification, tags, opts) do
     pool_type = get_pool_type(notification)
 
     case Sparrow.PoolsWarden.choose_pool(pool_type, tags) do
@@ -43,6 +45,9 @@ defmodule Sparrow.API do
         do_push(pool, notification, opts)
     end
   end
+
+  def push(notification, tags), do: push(notification, tags, [])
+  def push(notification), do: push(notification, [], [])
 
   @doc """
   Function to FCM and APNS push notifications. Pushes notifcation and returns `:ok` without waiting for response.

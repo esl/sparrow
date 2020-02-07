@@ -18,7 +18,10 @@ defmodule Sparrow.H2Worker.Config do
           reconnect_attempts: pos_integer,
           backoff_initial_delay: pos_integer,
           backoff_max_delay: pos_integer,
-          backoff_base: pos_integer
+          backoff_base: pos_integer,
+          pool_type: Sparrow.PoolsWarden.pool_type(),
+          pool_name: atom,
+          pool_tags: [atom]
         }
 
   defstruct [
@@ -30,7 +33,10 @@ defmodule Sparrow.H2Worker.Config do
     :reconnect_attempts,
     :backoff_initial_delay,
     :backoff_max_delay,
-    :backoff_base
+    :backoff_base,
+    :pool_type,
+    :pool_name,
+    :pool_tags
   ]
 
   @doc """

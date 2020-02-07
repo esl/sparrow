@@ -1,6 +1,7 @@
 defmodule Sparrow.H2Worker do
   @moduledoc false
   use GenServer
+  use Sparrow.Telemetry.Timer
 
   require Logger
 
@@ -52,15 +53,30 @@ defmodule Sparrow.H2Worker do
       end
 
     state = Sparrow.H2Worker.State.new(nil, config)
+
+    :telemetry.execute(
+      [:sparrow, :h2_worker, :init],
+      %{},
+      extract_worker_info(state)
+    )
+
     {:ok, state, {:continue, :start_conn_backoff}}
   end
 
   @spec terminate(reason, state) :: :ok
-  def terminate(reason, %State{connection_ref: nil}) do
+  def terminate(reason, state = %State{connection_ref: nil}) do
     _ =
       Logger.info(fn ->
         "action=terminate, reason=#{inspect(reason)}, connection_ref=nil"
       end)
+
+    :telemetry.execute(
+      [:sparrow, :h2_worker, :terminate],
+      %{},
+      state
+      |> extract_worker_info()
+      |> Map.put(:reason, reason)
+    )
 
     :ok
   end
@@ -72,6 +88,16 @@ defmodule Sparrow.H2Worker do
       Logger.info(fn ->
         "action=terminate, reason=#{inspect(reason)}, connection_ref!=nil"
       end)
+
+    :telemetry.execute(
+      [:sparrow, :h2_worker, :terminate],
+      %{},
+      state
+      |> extract_worker_info()
+      |> Map.put(:reason, reason)
+    )
+
+    :ok
   end
 
   @spec handle_continue(:start_conn_backoff, state) ::
@@ -175,6 +201,14 @@ defmodule Sparrow.H2Worker do
               inspect(reason)
             }"
           end)
+
+        :telemetry.execute(
+          [:sparrow, :h2_worker, :conn_lost],
+          %{},
+          state
+          |> extract_worker_info()
+          |> Map.put(:reason, reason)
+        )
 
         {:noreply, connection_closed_action(state),
          {:continue, :start_conn_backoff}}
@@ -288,6 +322,7 @@ defmodule Sparrow.H2Worker do
   @doc !"""
        Tries to send request, schedulates timeout for it and adds it to state.
        """
+  @timed event_name: :h2_worker_handle
   @spec handle(request, from | :noreply, state) :: {:noreply, state}
   defp handle(request, from, state) do
     headers =
@@ -318,15 +353,24 @@ defmodule Sparrow.H2Worker do
       )
 
     case post_result do
-      {:error, code} ->
+      {:error, return_code} ->
         _ =
           Logger.warn(fn ->
             "action=send, item=request, request=#{inspect(request)}, status=error, reason=#{
-              code
+              return_code
             }"
           end)
 
-        send_response(from, {:error, code})
+        :telemetry.execute(
+          [:sparrow, :h2_worker, :request_error],
+          %{},
+          state
+          |> extract_worker_info()
+          |> Map.put(:from, from)
+          |> Map.put(:return_code, return_code)
+        )
+
+        send_response(from, {:error, return_code})
         {:noreply, state}
 
       {:ok, stream_id} ->
@@ -340,12 +384,20 @@ defmodule Sparrow.H2Worker do
             request_timeout_ref
           )
 
-        {:noreply,
-         State.new(
-           state.connection_ref,
-           RequestSet.add(state.requests, stream_id, new_request),
-           state.config
-         )}
+        new_state =
+          State.new(
+            state.connection_ref,
+            RequestSet.add(state.requests, stream_id, new_request),
+            state.config
+          )
+
+        :telemetry.execute(
+          [:sparrow, :h2_worker, :request_success],
+          %{},
+          extract_worker_info(state)
+        )
+
+        {:noreply, new_state}
     end
   end
 
@@ -451,10 +503,30 @@ defmodule Sparrow.H2Worker do
   defp try_start_conn(state = %State{config: config}, try_count, delay_stream) do
     case start_conn(config) do
       {:ok, new_state} ->
+        {:ok, delay} = Enum.fetch(delay_stream, try_count)
+
+        :telemetry.execute(
+          [:sparrow, :h2_worker, :conn_success],
+          %{
+            count: try_count,
+            timer: delay
+          },
+          extract_worker_info(state)
+        )
+
         %State{new_state | restart_connection_timer: nil}
 
       {:error, reason} ->
         {:ok, delay} = Enum.fetch(delay_stream, try_count)
+
+        :telemetry.execute(
+          [:sparrow, :h2_worker, :conn_fail],
+          %{
+            count: try_count,
+            timer: delay
+          },
+          extract_worker_info(state)
+        )
 
         _ =
           Logger.warn(
@@ -544,5 +616,17 @@ defmodule Sparrow.H2Worker do
       e when e * base > max_delay -> {max_delay, max_delay}
       e -> {e, e * base}
     end)
+  end
+
+  defp extract_worker_info(worker_state) do
+    config = worker_state.config
+
+    %{
+      domain: config.domain,
+      port: config.port,
+      pool_type: config.pool_type,
+      pool_name: config.pool_name,
+      pool_tags: config.pool_tags
+    }
   end
 end

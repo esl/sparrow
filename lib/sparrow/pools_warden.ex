@@ -4,6 +4,7 @@ defmodule Sparrow.PoolsWarden do
   """
 
   use GenServer
+  use Sparrow.Telemetry.Timer
   require Logger
 
   @type pool_type :: :fcm | {:apns, :dev} | {:apns, :prod}
@@ -19,6 +20,7 @@ defmodule Sparrow.PoolsWarden do
       * `pool_name` - Name of the pool, chosen internally - for choosing specific pool use `tags`
       * `tags` - tags that allow to call a particular pool of subset of pools
   """
+
   @spec add_new_pool(pid(), pool_type, atom, [any]) :: true
   def add_new_pool(pid, pool_type, pool_name, tags \\ []) do
     GenServer.call(
@@ -55,7 +57,19 @@ defmodule Sparrow.PoolsWarden do
         }"
       end)
 
-    List.first(result)
+    chosen_pool = List.first(result)
+
+    :telemetry.execute(
+      [:sparrow, :pools_warden, :choose_pool],
+      %{},
+      %{
+        pool_name: chosen_pool,
+        pool_type: pool_type,
+        pool_tags: tags
+      }
+    )
+
+    chosen_pool
   end
 
   @spec start_link(any) :: GenServer.on_start()
@@ -81,6 +95,12 @@ defmodule Sparrow.PoolsWarden do
         "worker=pools_warden, action=init, result=success"
       end)
 
+    :telemetry.execute(
+      [:sparrow, :pools_warden, :init],
+      %{},
+      %{}
+    )
+
     {:ok, %{}}
   end
 
@@ -94,6 +114,12 @@ defmodule Sparrow.PoolsWarden do
           inspect(ets_del)
         }"
       end)
+
+    :telemetry.execute(
+      [:sparrow, :pools_warden, :terminate],
+      %{},
+      %{reason: reason}
+    )
   end
 
   @impl GenServer
@@ -108,7 +134,20 @@ defmodule Sparrow.PoolsWarden do
         pid=#{inspect(pid)}, reason=#{inspect(reason)}"
       end)
 
-    {:noreply, Map.delete(state, pid)}
+    new_state = Map.delete(state, pid)
+
+    :telemetry.execute(
+      [:sparrow, :pools_warden, :pool_down],
+      %{},
+      %{
+        pool_name: pool_name,
+        pool_type: pool_type,
+        pool_tags: tags,
+        reason: reason
+      }
+    )
+
+    {:noreply, new_state}
   end
 
   def handle_info(unknown, state) do
@@ -132,8 +171,19 @@ defmodule Sparrow.PoolsWarden do
         }, pool_name=#{inspect(pool_name)}, pool_tags=#{inspect(tags)}"
       end)
 
-    {:reply, pool_name,
-     Map.merge(state, %{pid => [pool_type, pool_name, tags]})}
+    new_state = Map.merge(state, %{pid => [pool_type, pool_name, tags]})
+
+    :telemetry.execute(
+      [:sparrow, :pools_warden, :add_pool],
+      %{},
+      %{
+        pool_name: pool_name,
+        pool_type: pool_type,
+        pool_tags: tags
+      }
+    )
+
+    {:reply, pool_name, new_state}
   end
 
   @spec get_pools(pool_type) :: [{atom, [any]}]

@@ -43,7 +43,8 @@ defmodule Sparrow.MixProject do
       {:goth, "~> 1.1.0", runtime: false},
       {:httpoison, "~> 0.11 or ~> 1.0"},
       {:worker_pool, "== 4.0.1"},
-      {:assert_eventually, "~> 0.2.0", only: [:test]}
+      {:assert_eventually, "~> 0.2.0", only: [:test]},
+      {:telemetry, "~>0.4.1"}
     ]
   end
 
