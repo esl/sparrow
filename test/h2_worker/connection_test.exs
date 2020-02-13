@@ -167,7 +167,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
         :ok
       end)
       |> stub(:post, fn _, _, _, _, _ ->
-      {:error, {:unable_to_connect, :some_reason}}
+        {:error, {:unable_to_connect, :some_reason}}
       end)
       |> stub(:get_response, fn _, _ -> {:error, :something} end)
       |> stub(:close, fn _ -> :ok end)

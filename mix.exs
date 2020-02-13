@@ -4,7 +4,7 @@ defmodule Sparrow.MixProject do
   def project do
     [
       app: :sparrow,
-      version: "1.0.0",
+      version: "1.0.1",
       elixir: "~> 1.6",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -25,7 +25,7 @@ defmodule Sparrow.MixProject do
     [
       {:dialyxir, "~> 0.4", runtime: false, only: [:dev, :test]},
       {:credo, "~> 0.10", runtime: false, only: :dev},
-      {:chatterbox, github: "rslota/chatterbox", ref: "fe7236a"},
+      {:chatterbox, github: "joedevivo/chatterbox", ref: "1f4ce4f"},
       {:certifi, "~> 2.5.1"},
       {:excoveralls, "~> 0.5", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},
