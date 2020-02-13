@@ -65,7 +65,21 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   @impl true
   def post(conn, domain, path, headers, body) do
     headers = make_headers(:post, domain, path, headers, body)
-    :h2_client.send_request(conn, headers, body)
+
+    try do
+      :h2_client.send_request(conn, headers, body)
+    catch
+      # We may loose connection mid-request
+      :exit, reason ->
+        _ =
+          Logger.debug(fn ->
+            "action=http_send, item=post, headers=#{inspect(headers)}, body=#{
+              inspect(body)
+            }, status=error, reason=#{inspect(reason)}"
+          end)
+
+        {:error, :connection_lost}
+    end
   end
 
   @doc """
@@ -91,6 +105,15 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   @impl true
   def ping(conn) do
     :h2_client.send_ping(conn)
+  catch
+    # We may loose connection mid-request
+    :exit, reason ->
+      _ =
+        Logger.debug(fn ->
+          "action=http_send, item=ping, status=error, reason=#{inspect(reason)}"
+        end)
+
+      {:error, :connection_lost}
   end
 
   @spec make_headers(:post, String.t(), String.t(), headers, body) :: headers
