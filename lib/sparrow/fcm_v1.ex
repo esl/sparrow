@@ -269,6 +269,24 @@ defmodule Sparrow.FCM.V1 do
 
   @spec get_reason_from_body(String.t()) :: String.t() | nil
   defp get_reason_from_body(body) do
-    body |> Jason.decode!() |> Map.get("error") |> Map.get("status")
+    error =
+      body
+      |> Jason.decode!()
+      |> Map.get("error")
+
+    fcm_error =
+      Enum.find(error["details"] || [], fn detail ->
+        Map.get(detail, "@type") ==
+          "type.googleapis.com/google.firebase.fcm.v1.FcmError"
+      end)
+
+    case fcm_error do
+      %{"errorCode" => ec} ->
+        ec
+
+      _ ->
+        # If there are no details, return the status
+        error["status"]
+    end
   end
 end
