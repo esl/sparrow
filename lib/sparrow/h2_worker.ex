@@ -115,18 +115,25 @@ defmodule Sparrow.H2Worker do
     end
   end
 
-  @spec handle_info(incomming_message, state) :: {:noreply, state}
-  def handle_info(:ping, state = %State{connection_ref: nil}) do
-    {:noreply, state}
-  end
-
-  def handle_info(:ping, state) do
+  def handle_info(
+        {:ping, connection_ref},
+        state = %State{connection_ref: connection_ref}
+      ) do
     _ =
       if state.config.ping_interval do
         H2ClientAdapter.ping(state.connection_ref)
-        schedule_message_after(:ping, state.config.ping_interval)
+
+        schedule_message_after(
+          {:ping, connection_ref},
+          state.config.ping_interval
+        )
       end
 
+    {:noreply, state}
+  end
+
+  @spec handle_info(incomming_message, state) :: {:noreply, state}
+  def handle_info({:ping, _}, state) do
     {:noreply, state}
   end
 
@@ -591,7 +598,9 @@ defmodule Sparrow.H2Worker do
   defp start_conn(config) do
     case H2ClientAdapter.open(config.domain, config.port, config.tls_options) do
       {:ok, connection_ref} ->
-        _ = schedule_message_after(:ping, config.ping_interval)
+        _ =
+          schedule_message_after({:ping, connection_ref}, config.ping_interval)
+
         _ = Logger.debug(fn -> "action=open_connection, result=succes" end)
         Process.monitor(connection_ref)
         _ = Logger.debug(fn -> "action=starting_monitor" end)

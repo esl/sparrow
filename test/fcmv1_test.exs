@@ -404,6 +404,30 @@ defmodule Sparrow.FCM.V1Test do
                Sparrow.FCM.V1.process_response({:ok, {headers, body}})
     end
 
+    test "process_response handles fcm errors correctly" do
+      headers = [
+        {":status", "404"},
+        {"vary", "X-Origin"}
+      ]
+
+      body = "{
+        \"error\": {
+          \"code\": 404,
+          \"message\": \"Requested entity was not found.\",
+          \"status\": \"NOT_FOUND\",
+          \"details\": [
+            {
+              \"@type\": \"type.googleapis.com/google.firebase.fcm.v1.FcmError\",
+              \"errorCode\": \"UNREGISTERED\"
+            }
+          ]
+        }
+      }"
+
+      assert {:error, :UNREGISTERED} ==
+               Sparrow.FCM.V1.process_response({:ok, {headers, body}})
+    end
+
     test "process_response handle success correctly" do
       headers = [
         {":status", "200"},
