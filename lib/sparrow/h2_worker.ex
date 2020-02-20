@@ -329,7 +329,7 @@ defmodule Sparrow.H2Worker do
   @doc !"""
        Tries to send request, schedulates timeout for it and adds it to state.
        """
-  @timed event_name: :h2_worker_handle
+  @timed event_tags: [:h2_worker, :handle]
   @spec handle(request, from | :noreply, state) :: {:noreply, state}
   defp handle(request, from, state) do
     headers =

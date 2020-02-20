@@ -24,7 +24,7 @@ defmodule Sparrow.API do
         * `:timeout` - works only if `:is_sync` is `true`, after set `:timeout` miliseconds request is timeouted
         * `:strategy` - strategy of choosing worker in pool strategy
   """
-  @timed event_name: :api_push
+  @timed event_tags: [:push, :api]
   @spec push(notification, [any], Keyword.t()) ::
           :ok | sync_push_result | {:error, :configuration_error}
   def push(notification, tags, opts) do

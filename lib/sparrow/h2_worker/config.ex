@@ -64,8 +64,11 @@ defmodule Sparrow.H2Worker.Config do
       reconnect_attempts: reconnect_attempts,
       backoff_initial_delay: backoff_initial_delay,
       backoff_max_delay: backoff_max_delay,
-      backoff_base: backoff_base
-    } = Map.merge(default, specific)
+      backoff_base: backoff_base,
+      pool_type: pool_type,
+      pool_name: pool_name,
+      pool_tags: pool_tags
+    } = Map.merge(default(), specific)
 
     %__MODULE__{
       domain: domain,
@@ -76,7 +79,10 @@ defmodule Sparrow.H2Worker.Config do
       reconnect_attempts: reconnect_attempts,
       backoff_initial_delay: backoff_initial_delay,
       backoff_max_delay: backoff_max_delay,
-      backoff_base: backoff_base
+      backoff_base: backoff_base,
+      pool_type: pool_type,
+      pool_name: pool_name,
+      pool_tags: pool_tags
     }
   end
 
@@ -87,7 +93,10 @@ defmodule Sparrow.H2Worker.Config do
       reconnect_attempts: 3,
       backoff_base: 2,
       backoff_initial_delay: 100,
-      backoff_max_delay: 5000
+      backoff_max_delay: 5000,
+      pool_type: nil,
+      pool_name: nil,
+      pool_tags: []
     }
   end
 

@@ -40,7 +40,7 @@ defmodule Sparrow.FCM.V1 do
       * `{:error, :reason}` when error with other reason occures.
     * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
   """
-  @timed event_name: :fcm_push
+  @timed event_tags: [:push, :fcm]
   @spec push(
           atom,
           Sparrow.FCM.V1.Notification.t(),
@@ -192,7 +192,8 @@ defmodule Sparrow.FCM.V1 do
       authentication: authentication,
       tls_options: tls_opts,
       ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts
+      reconnect_attempts: reconnect_attempts,
+      pool_type: :fcm
     })
   end
 

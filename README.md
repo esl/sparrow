@@ -287,10 +287,10 @@ Sparrow supports [telemetry](https://github.com/beam-telemetry/telemetry). Emitt
 
 There are also events measuring the duration of a few chosen function calls:
 
-- `[:sparrow, :api_push]`
-- `[:sparrow, :apns_push]`
-- `[:sparrow, :fcm_push]`
-- `[:sparrow, :h2_worker_handle]`
+- `[:sparrow, :push, :api]`
+- `[:sparrow, :push, :apns]`
+- `[:sparrow, :push, :fcm]`
+- `[:sparrow, :h2_worker, :handle]`
 
 # Send your first push notification
 
