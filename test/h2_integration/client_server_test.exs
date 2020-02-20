@@ -49,7 +49,7 @@ defmodule H2Integration.ClientServerTest do
     ]
 
     Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Sparrow.H2Worker.Pool.start_link()
+    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
 
     request =
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
@@ -74,7 +74,7 @@ defmodule H2Integration.ClientServerTest do
     ]
 
     Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Sparrow.H2Worker.Pool.start_link()
+    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
 
     request =
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
@@ -103,7 +103,7 @@ defmodule H2Integration.ClientServerTest do
     ]
 
     Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Sparrow.H2Worker.Pool.start_link()
+    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
 
     request =
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
@@ -125,7 +125,7 @@ defmodule H2Integration.ClientServerTest do
     headers = Setup.default_headers()
 
     Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Sparrow.H2Worker.Pool.start_link()
+    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
 
     request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
 

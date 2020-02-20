@@ -99,7 +99,7 @@ defmodule Sparrow.FCM.V1Test do
       )
 
     Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Sparrow.H2Worker.Pool.start_link()
+    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)

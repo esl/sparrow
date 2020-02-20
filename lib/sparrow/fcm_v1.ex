@@ -2,6 +2,7 @@ defmodule Sparrow.FCM.V1 do
   @moduledoc """
   Provides functions to build and send push notifications to FCM v1.
   """
+  use Sparrow.Telemetry.Timer
   require Logger
 
   alias Sparrow.H2Worker.Request
@@ -39,12 +40,13 @@ defmodule Sparrow.FCM.V1 do
       * `{:error, :reason}` when error with other reason occures.
     * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
   """
+  @timed event_name: :fcm_push
   @spec push(
           atom,
           Sparrow.FCM.V1.Notification.t(),
           push_opts
         ) :: sync_push_result | :ok
-  def push(h2_worker_pool, notification, opts \\ []) do
+  def push(h2_worker_pool, notification, opts) do
     case Sparrow.FCM.V1.Notification.normalize(notification) do
       {:error, reason} ->
         {:error, reason}
@@ -53,6 +55,9 @@ defmodule Sparrow.FCM.V1 do
         do_push(h2_worker_pool, notification, opts)
     end
   end
+
+  def push(h2_worker_pool, notification),
+    do: push(h2_worker_pool, notification, [])
 
   @spec do_push(
           atom,

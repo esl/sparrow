@@ -58,7 +58,7 @@ defmodule H2Integration.CerificateRequiredTest do
       OuterRequest.new(headers, body, "/EchoClientCerificateHandler", 2_000)
 
     Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Sparrow.H2Worker.Pool.start_link()
+    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
 
     {:ok, {answer_headers, answer_body}} =
       Sparrow.H2Worker.Pool.send_request(@pool_name, request)

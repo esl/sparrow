@@ -2,6 +2,7 @@ defmodule Sparrow.APNS do
   @moduledoc """
   Provides functions to build and send push notifications to APNS
   """
+  use Sparrow.Telemetry.Timer
   require Logger
 
   alias Sparrow.H2Worker.Request
@@ -54,7 +55,7 @@ defmodule Sparrow.APNS do
     {:ok, _pid} =
         config
         |> Sparrow.H2Worker.Pool.Config.new(:your_apns_workers_name)
-        |> Sparrow.H2Worker.Pool.start_link()
+        |> Sparrow.H2Worker.Pool.start_unregistered({:apns, :dev})
 
     notification =
         @device_token
@@ -66,12 +67,13 @@ defmodule Sparrow.APNS do
     Sparrow.APNS.push(:your_apns_workers_name, notification)
   """
 
+  @timed event_name: :apns_push
   @spec push(
           atom,
           Sparrow.APNS.Notification.t(),
           push_opts
         ) :: sync_push_result | :ok
-  def push(h2_worker_pool, notification, opts \\ []) do
+  def push(h2_worker_pool, notification, opts) do
     is_sync = Keyword.get(opts, :is_sync, true)
     timeout = Keyword.get(opts, :timeout, 5_000)
     strategy = Keyword.get(opts, :strategy, :random_worker)
@@ -94,6 +96,9 @@ defmodule Sparrow.APNS do
     )
     |> process_response()
   end
+
+  def push(h2_worker_pool, notification),
+    do: push(h2_worker_pool, notification, [])
 
   @doc """
   Parses the return headers and body in `push/2` returning the status code and reason in case of errors

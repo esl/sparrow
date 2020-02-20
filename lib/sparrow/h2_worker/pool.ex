@@ -68,14 +68,22 @@ defmodule Sparrow.H2Worker.Pool do
   @doc """
   Function to start pool.
   """
-  @spec start_link(Sparrow.H2Worker.Pool.Config.t()) ::
+  @spec start_unregistered(Sparrow.H2Worker.Pool.Config.t(), pool_type, [atom]) ::
           {:error, any} | {:ok, pid}
-  def start_link(config) do
+  def start_unregistered(config, pool_type, tags \\ []) do
+    # We add pool information to worker config only for the telemetry events
+    worker_config_with_pool = %Sparrow.H2Worker.Config{
+      config.workers_config
+      | pool_type: pool_type,
+        pool_name: config.pool_name,
+        pool_tags: tags
+    }
+
     :wpool.start_pool(
       config.pool_name,
       [
         {:workers, config.worker_num},
-        {:worker, {Sparrow.H2Worker, config.workers_config}}
+        {:worker, {Sparrow.H2Worker, worker_config_with_pool}}
         | config.raw_opts
       ]
     )
@@ -88,7 +96,7 @@ defmodule Sparrow.H2Worker.Pool do
           {:ok, pid}
   def start_link(config, pool_type, tags \\ []) do
     pool_name = config.pool_name
-    {:ok, pid} = start_link(config)
+    {:ok, pid} = start_unregistered(config, pool_type, tags)
     Sparrow.PoolsWarden.add_new_pool(pid, pool_type, pool_name, tags)
     {:ok, pid}
   end
