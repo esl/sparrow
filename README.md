@@ -269,6 +269,29 @@ If you pass `[:not_existing, :set_of_tags]`, `{:error, :configuration_error}` is
 
 [](https://placehold.it/15/ff0000/ff0000?text=+) *`It is not recommended to choose a pool based on pools order!`*
 
+## Telemetry
+Sparrow supports [telemetry](https://github.com/beam-telemetry/telemetry). Emitted events are defined with following tags:
+
+- `[:sparrow, :h2_worker, :init]`
+- `[:sparrow, :h2_worker, :terminate]`
+- `[:sparrow, :h2_worker, :conn_lost]`
+- `[:sparrow, :h2_worker, :request_error]`
+- `[:sparrow, :h2_worker, :request_success]`
+- `[:sparrow, :h2_worker, :conn_success]`
+- `[:sparrow, :h2_worker, :conn_fail]`
+- `[:sparrow, :pools_warden, :init]`
+- `[:sparrow, :pools_warden, :terminate]`
+- `[:sparrow, :pools_warden, :choose_pool]`
+- `[:sparrow, :pools_warden, :pool_down]`
+- `[:sparrow, :pools_warden, :add_pool]`
+
+There are also events measuring the duration of a few chosen function calls:
+
+- `[:sparrow, :push, :api]`
+- `[:sparrow, :push, :apns]`
+- `[:sparrow, :push, :fcm]`
+- `[:sparrow, :h2_worker, :handle]`
+
 # Send your first push notification
 
 1) [Define your config](#build-sparrow-config)

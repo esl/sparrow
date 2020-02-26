@@ -18,10 +18,10 @@ defmodule Sparrow.Telemetry.Timer do
     time_info = Module.get_attribute(module, :timed)
 
     if time_info do
-      event_name = time_info[:event_name]
+      event_tags = time_info[:event_tags]
 
       Module.put_attribute(module, :timed_functions, %{
-        event_name: event_name,
+        event_tags: event_tags,
         name: name,
         args: args,
         guards: guards,
@@ -75,7 +75,7 @@ defmodule Sparrow.Telemetry.Timer do
       t = abs(Time.diff(t_start, t_end, :microsecond))
 
       :telemetry.execute(
-        [:sparrow, unquote(fun_info.event_name)],
+        [:sparrow | unquote(fun_info.event_tags)],
         %{
           time: t
         },

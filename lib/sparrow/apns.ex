@@ -67,7 +67,7 @@ defmodule Sparrow.APNS do
     Sparrow.APNS.push(:your_apns_workers_name, notification)
   """
 
-  @timed event_name: :apns_push
+  @timed event_tags: [:push, :apns]
   @spec push(
           atom,
           Sparrow.APNS.Notification.t(),
@@ -258,7 +258,8 @@ defmodule Sparrow.APNS do
       authentication: authentication,
       tls_options: tls_opts,
       ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts
+      reconnect_attempts: reconnect_attempts,
+      pool_type: {:apns, :prod}
     })
   end
 
@@ -287,7 +288,8 @@ defmodule Sparrow.APNS do
       authentication: authentication,
       tls_options: tls_opts,
       ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts
+      reconnect_attempts: reconnect_attempts,
+      pool_type: {:apns, :dev}
     })
   end
 
