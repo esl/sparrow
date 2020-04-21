@@ -44,18 +44,22 @@ defmodule Sparrow.H2Worker.Pool do
 
   def send_request(worker_pool, request, false, _, strategy) do
     _ =
-      Logger.debug(fn ->
-        "worker_pool=#{inspect(worker_pool)}, request=#{inspect(request)}, type=cast"
-      end)
+      Logger.debug("Dispatching request to worker pool",
+        worker_pool: inspect(worker_pool),
+        request: request,
+        type: :cast
+      )
 
     :wpool.cast(worker_pool, {:send_request, request}, strategy)
   end
 
   def send_request(worker_pool, request, true, genserver_timeout, strategy) do
     _ =
-      Logger.debug(fn ->
-        "worker_pool=#{inspect(worker_pool)}, request=#{inspect(request)}, type=call"
-      end)
+      Logger.debug("Dispatching request to worker pool",
+        worker_pool: inspect(worker_pool),
+        request: request,
+        type: :call
+      )
 
     :wpool.call(
       worker_pool,

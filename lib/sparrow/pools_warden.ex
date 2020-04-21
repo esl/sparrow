@@ -51,11 +51,12 @@ defmodule Sparrow.PoolsWarden do
       end
 
     _ =
-      Logger.debug(fn ->
-        "worker=pools_warden, action=choose_pool, result=#{inspect(result)}, result_len=#{
-          inspect(Enum.count(result))
-        }"
-      end)
+      Logger.debug("Selecting connection pool",
+        worker: :pools_warden,
+        what: :choose_pool,
+        result: result,
+        result_len: Enum.count(result)
+      )
 
     chosen_pool = List.first(result)
 
@@ -91,9 +92,11 @@ defmodule Sparrow.PoolsWarden do
     @tab_name = :ets.new(@tab_name, [:bag, :protected, :named_table])
 
     _ =
-      Logger.info(fn ->
-        "worker=pools_warden, action=init, result=success"
-      end)
+      Logger.info("Starting PoolsWarden",
+        worker: :pools_warden,
+        what: :init,
+        result: :success
+      )
 
     :telemetry.execute(
       [:sparrow, :pools_warden, :init],
@@ -109,11 +112,12 @@ defmodule Sparrow.PoolsWarden do
     ets_del = :ets.delete(@tab_name)
 
     _ =
-      Logger.info(fn ->
-        "worker=pools_warden, action=terminate, reason=#{inspect(reason)}, ets_delate_result=#{
-          inspect(ets_del)
-        }"
-      end)
+      Logger.info("Shutting down PoolsWarden",
+        worker: :pools_warden,
+        what: :terminate,
+        reason: inspect(reason),
+        ets_delate_result: inspect(ets_del)
+      )
 
     :telemetry.execute(
       [:sparrow, :pools_warden, :terminate],
@@ -128,11 +132,12 @@ defmodule Sparrow.PoolsWarden do
     :ets.delete_object(@tab_name, {pool_type, {pool_name, tags}})
 
     _ =
-      Logger.info(fn ->
-        "worker=pools_warden, action=unregistering pool,
-        ets_table=#{inspect(:ets.info(@tab_name))},
-        pid=#{inspect(pid)}, reason=#{inspect(reason)}"
-      end)
+      Logger.info("Pool down",
+        worker: :pools_warden,
+        what: :pool_down,
+        pid: inspect(pid),
+        reason: inspect(reason)
+      )
 
     new_state = Map.delete(state, pid)
 
@@ -152,9 +157,11 @@ defmodule Sparrow.PoolsWarden do
 
   def handle_info(unknown, state) do
     _ =
-      Logger.warn(fn ->
-        "worker=pools_warden, Unknown info #{inspect(unknown)}"
-      end)
+      Logger.warn("Unknown message",
+        worker: :pools_warden,
+        what: :unknown_message,
+        message: inspect(unknown)
+      )
 
     {:noreply, state}
   end
@@ -165,11 +172,13 @@ defmodule Sparrow.PoolsWarden do
     :ets.insert(@tab_name, {pool_type, {pool_name, tags}})
 
     _ =
-      Logger.info(fn ->
-        "worker=pools_warden, action=adding_pool, pool_type=#{
-          inspect(pool_type)
-        }, pool_name=#{inspect(pool_name)}, pool_tags=#{inspect(tags)}"
-      end)
+      Logger.info("Pool added",
+        worker: :pools_warden,
+        what: :adding_pool,
+        pool_type: pool_type,
+        pool_name: pool_name,
+        pool_tags: tags
+      )
 
     new_state = Map.merge(state, %{pid => [pool_type, pool_name, tags]})
 

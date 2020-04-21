@@ -80,9 +80,10 @@ defmodule Sparrow.FCM.V1 do
     request = Request.new(headers, json_body, path, timeout)
 
     _ =
-      Logger.debug(fn ->
-        "action=push_fcm_notification, request=#{inspect(request)}"
-      end)
+      Logger.debug("Sending FCM notification",
+        what: :push_fcm_notification,
+        request: request
+      )
 
     h2_worker_pool
     |> Sparrow.H2Worker.Pool.send_request(
@@ -99,21 +100,28 @@ defmodule Sparrow.FCM.V1 do
           | {:error, reason :: :request_timeout | :not_ready | reason}
 
   def process_response(:ok) do
-    _ = Logger.debug(fn -> "action=handle_async_push_response" end)
+    _ =
+      Logger.debug("Processing async FCM notification response",
+        what: :async_fcm_push_response
+      )
+
     :ok
   end
 
   def process_response({:ok, {headers, body}}) do
     _ =
-      Logger.debug(fn ->
-        "action=handle_push_response, raw=#{inspect({:ok, {headers, body}})}"
-      end)
+      Logger.debug("Processing FCM notification response",
+        what: :fcm_push_response,
+        raw: inspect({:ok, {headers, body}})
+      )
 
     if {":status", "200"} in headers do
       _ =
-        Logger.debug(fn ->
-          "action=handle_push_response, result=succes, status=200"
-        end)
+        Logger.debug("Processing FCM notification response",
+          what: :fcm_push_response,
+          result: :success,
+          status: "200"
+        )
 
       # TODO extend implementation if needed in further tests
 
@@ -122,9 +130,11 @@ defmodule Sparrow.FCM.V1 do
       status = get_status_from_headers(headers)
 
       _ =
-        Logger.debug(fn ->
-          "action=handle_push_response, result=fail, status=#{inspect(status)}"
-        end)
+        Logger.debug("Processing FCM notification response",
+          what: :fcm_push_response,
+          result: :error,
+          status: inspect(status)
+        )
 
       reason =
         body
@@ -132,11 +142,11 @@ defmodule Sparrow.FCM.V1 do
         |> String.to_atom()
 
       _ =
-        Logger.warn(fn ->
-          "action=handle_push_response, result=fail, response_body=#{
-            inspect(body)
-          }"
-        end)
+        Logger.warn("Processing FCM notification response",
+          what: :fcm_push_response,
+          result: :error,
+          response_body: inspect(body)
+        )
 
       {:error, reason}
     end
@@ -214,11 +224,6 @@ defmodule Sparrow.FCM.V1 do
   defp build_notification(notification) do
     maybe_title =
       if notification.title != nil do
-        _ =
-          Logger.debug(fn ->
-            "action=push_fcm_notification, add title"
-          end)
-
         %{:title => notification.title}
       else
         %{}

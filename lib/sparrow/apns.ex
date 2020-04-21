@@ -83,9 +83,10 @@ defmodule Sparrow.APNS do
     request = Request.new(headers, json_body, path, timeout)
 
     _ =
-      Logger.debug(fn ->
-        "action=push_apns_notification, request=#{inspect(request)}"
-      end)
+      Logger.debug("Sending APNS push notification",
+        what: :apns_notification,
+        request: request
+      )
 
     h2_worker_pool
     |> Sparrow.H2Worker.Pool.send_request(
@@ -123,16 +124,22 @@ defmodule Sparrow.APNS do
              reason :: String.t() | nil | :request_timeout | :not_ready | reason}
 
   def process_response(:ok) do
-    _ = Logger.debug(fn -> "action=handle_async_push_response" end)
+    _ =
+      Logger.debug("Processing async APNS notification response",
+        what: :async_apns_push_response
+      )
+
     :ok
   end
 
   def process_response({:ok, {headers, body}}) do
     if {":status", "200"} in headers do
       _ =
-        Logger.debug(fn ->
-          "action=handle_push_response, result=succes, status=200"
-        end)
+        Logger.debug("Processing APNS notification response",
+          what: :apns_push_response,
+          result: :success,
+          status: "200"
+        )
 
       :ok
     else
@@ -142,9 +149,11 @@ defmodule Sparrow.APNS do
         |> String.to_atom()
 
       _ =
-        Logger.info(fn ->
-          "action=handle_push_response, result=fail, reason=#{inspect(reason)}"
-        end)
+        Logger.info("Processing APNS notification response",
+          what: :apns_push_response,
+          result: :error,
+          reason: inspect(reason)
+        )
 
       {:error, reason}
     end
@@ -291,23 +300,6 @@ defmodule Sparrow.APNS do
       reconnect_attempts: reconnect_attempts,
       pool_type: {:apns, :dev}
     })
-  end
-
-  @spec notification_contains_title_or_body?(Sparrow.APNS.Notification.t()) ::
-          boolean()
-  defp notification_contains_title_or_body?(notification) do
-    to_boolean = fn
-      false -> false
-      _ -> true
-    end
-
-    contains_title =
-      notification.alert_opts |> Keyword.get(:title, false) |> to_boolean.()
-
-    contains_body =
-      notification.alert_opts |> Keyword.get(:body, false) |> to_boolean.()
-
-    contains_title or contains_body
   end
 
   @spec get_reason_from_body(String.t()) :: String.t() | nil

@@ -13,9 +13,11 @@ defmodule Sparrow.FCM.V1.TokenBearer do
       )
 
     _ =
-      Logger.debug(fn ->
-        "worker=fcm_token_bearer, action=get_token, result=success"
-      end)
+      Logger.debug("Fetching FCM token",
+        worker: :fcm_token_bearer,
+        what: :get_token,
+        result: :success
+      )
 
     Map.get(token_map, :token)
   end
@@ -28,17 +30,13 @@ defmodule Sparrow.FCM.V1.TokenBearer do
       |> Jason.encode!()
 
     _ =
-      Logger.debug(fn ->
-        "worker=fcm_token_bearer, action=start_link_read_json, result=success"
-      end)
+      Logger.debug("Starting FCM TokenBearer",
+        worker: :fcm_token_bearer,
+        what: :start_link,
+        result: :success
+      )
 
     Application.put_env(:goth, :json, json)
-
-    _ =
-      Logger.debug(fn ->
-        "worker=fcm_token_bearer, action=start_link_put_env, result=success"
-      end)
-
     Goth.Supervisor.start_link()
   end
 

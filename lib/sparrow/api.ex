@@ -33,10 +33,11 @@ defmodule Sparrow.API do
     case Sparrow.PoolsWarden.choose_pool(pool_type, tags) do
       nil ->
         _ =
-          Logger.error(
-            "worker=main_api, problem=no_tags_matching_pool_found, pool_type=#{
-              inspect(pool_type)
-            }, tags=#{inspect(tags)}"
+          Logger.error("Unable to select connection pool",
+            what: :connection_pool,
+            reason: :unable_to_find,
+            pool_type: inspect(pool_type),
+            tags: tags
           )
 
         {:error, :configuration_error}

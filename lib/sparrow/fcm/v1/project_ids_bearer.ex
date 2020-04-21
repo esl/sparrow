@@ -29,9 +29,11 @@ defmodule Sparrow.FCM.V1.ProjectIdBearer do
     json = File.read!(google_json_path)
 
     _ =
-      Logger.debug(fn ->
-        "worker=fcm_project_id_bearer, action=read_json, result=success"
-      end)
+      Logger.debug("Reading FCM config file",
+        worker: :fcm_project_id_bearer,
+        what: :read_json_config,
+        result: :success
+      )
 
     project_id =
       json
@@ -39,11 +41,11 @@ defmodule Sparrow.FCM.V1.ProjectIdBearer do
       |> Map.get("project_id")
 
     _ =
-      Logger.debug(fn ->
-        "worker=fcm_project_id_bearer, action=exteract_project_id_from_json, project_id=#{
-          inspect(project_id)
-        }"
-      end)
+      Logger.debug("Extracting FCM project ID from config",
+        worker: :fcm_project_id_bearer,
+        what: :extract_project_id_from_json,
+        project_id: inspect(project_id)
+      )
 
     :ets.insert(@tab_name, {h2_worker_pool_name, project_id})
     {:reply, :ok, :ok}
@@ -64,10 +66,30 @@ defmodule Sparrow.FCM.V1.ProjectIdBearer do
     @tab_name = :ets.new(@tab_name, [:set, :protected, :named_table])
 
     _ =
-      Logger.info(fn ->
-        "worker=fcm_project_id_bearer, action=init, result=success"
-      end)
+      Logger.info("Starting ProjectIdBearer",
+        worker: :fcm_project_id_bearer,
+        what: :init,
+        result: :success
+      )
+
+    :telemetry.execute([:sparrow, :fcm, :project_id_bearer, :init], %{}, %{})
 
     {:ok, :ok}
+  end
+
+  @spec terminate(any, any) :: :ok
+  def terminate(reason, _state) do
+    _ =
+      Logger.info("Shutting down ProjectIdBearer",
+        worker: :fcm_project_id_bearer,
+        what: :terminate,
+        reason: inspect(reason)
+      )
+
+    :telemetry.execute(
+      [:sparrow, :fcm, :project_id_bearer, :terminate],
+      %{},
+      %{}
+    )
   end
 end

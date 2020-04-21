@@ -9,7 +9,7 @@ defmodule Sparrow.APNS.TokenBearer do
   @type bearer_token :: Joken.bearer_token()
   @type claims :: Joken.claims()
 
-  @tab_name :sparrow_apns_tokens_bearer
+  @tab_name :sparrow_apns_token_bearer
   @apns_jwt_alg "ES256"
   @refresh_token_time :timer.minutes(50)
 
@@ -42,9 +42,13 @@ defmodule Sparrow.APNS.TokenBearer do
     update_tokens(state)
 
     _ =
-      Logger.info(fn ->
-        "worker=apns_tokens_bearer, action=init, result=success"
-      end)
+      Logger.info("Starting TokenBearer",
+        worker: :apns_token_bearer,
+        what: :init,
+        result: :success
+      )
+
+    :telemetry.execute([:sparrow, :apns, :token_bearer, :init], %{}, %{})
 
     {:ok, state}
   end
@@ -55,9 +59,13 @@ defmodule Sparrow.APNS.TokenBearer do
     update_tokens(state)
 
     _ =
-      Logger.info(fn ->
-        "worker=apns_tokens_bearer, action=init, result=success"
-      end)
+      Logger.info("Starting TokenBearer",
+        worker: :apns_token_bearer,
+        what: :init,
+        result: :success
+      )
+
+    :telemetry.execute([:sparrow, :apns, :token_bearer, :init], %{}, %{})
 
     {:ok, state}
   end
@@ -67,26 +75,37 @@ defmodule Sparrow.APNS.TokenBearer do
     ets_del = :ets.delete(@tab_name)
 
     _ =
-      Logger.info(fn ->
-        "worker=apns_tokens_bearer, action=terminate, reason=#{inspect(reason)}, ets_delate_result=#{
-          inspect(ets_del)
-        }"
-      end)
+      Logger.info("Shutting down TokenBearer",
+        worker: :apns_token_bearer,
+        what: :terminate,
+        reason: inspect(reason),
+        ets_delate_result: inspect(ets_del)
+      )
+
+    :telemetry.execute([:sparrow, :apns, :token_bearer, :terminate], %{}, %{})
   end
 
   @spec handle_info(:update_tokens | any, Sparrow.APNS.TokenBearer.State.t()) ::
           {:noreply, Sparrow.APNS.TokenBearer.State.t()}
   def handle_info(:update_tokens, state) do
     update_tokens(state)
-    _ = Logger.debug(fn -> "worker=apns_tokens_bearer, action=token_update" end)
+
+    _ =
+      Logger.debug("Updating APNS token",
+        worker: :apns_token_bearer,
+        what: :token_update
+      )
+
     {:noreply, state}
   end
 
   def handle_info(unknown, state) do
     _ =
-      Logger.warn(fn ->
-        "worker=apns_tokens_bearer, Unknown info #{inspect(unknown)}"
-      end)
+      Logger.warn("Unknown message",
+        worker: :apns_token_bearer,
+        what: :unknown_message,
+        message: inspect(unknown)
+      )
 
     {:noreply, state}
   end
@@ -141,13 +160,6 @@ defmodule Sparrow.APNS.TokenBearer do
 
   @spec schedule_message_after(pos_integer, :update_tokens) :: reference
   defp schedule_message_after(time, message) do
-    _ =
-      Logger.debug(fn ->
-        "worker=apns_tokens_bearer, action=schedule, message=#{inspect(message)}, after=#{
-          inspect(time)
-        }"
-      end)
-
     :erlang.send_after(time, self(), message)
   end
 end
