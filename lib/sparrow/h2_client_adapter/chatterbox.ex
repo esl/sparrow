@@ -18,30 +18,47 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
   @impl true
   def open(domain, port, opts \\ []) do
     _ =
-      Logger.debug(fn ->
-        "action=open_conn, to=#{inspect(domain)}, port=#{port}, opts=#{
-          inspect(opts)
-        }"
-      end)
+      Logger.debug("Opening HTTP/2 connection",
+        what: :http_open,
+        domain: domain,
+        port: port,
+        opts: inspect(opts)
+      )
 
     case :h2_client.start(:https, to_charlist(domain), port, opts) do
       :ignore ->
-        _ = Logger.debug(fn -> "action=open_conn, response=#{:ignore}" end)
+        _ =
+          Logger.debug("Error while opening HTTP/2 connection",
+            what: :http_open,
+            status: :error,
+            domain: domain,
+            port: port,
+            reason: :ignore
+          )
+
         {:error, :ignore}
 
       {:ok, connection_ref} ->
         _ =
-          Logger.debug(fn ->
-            "action=open_conn, response=#{inspect({:ok, connection_ref})}"
-          end)
+          Logger.debug("HTTP/2 connection opened",
+            what: :http_open,
+            status: :error,
+            domain: domain,
+            port: port,
+            connection: connection_ref
+          )
 
         {:ok, connection_ref}
 
       {:error, reason} ->
         _ =
-          Logger.debug(fn ->
-            "action=open_conn, response=#{inspect({:error, reason})}"
-          end)
+          Logger.debug("Error while opening HTTP/2 connection",
+            what: :http_open,
+            status: :error,
+            domain: domain,
+            port: port,
+            reason: inspect(reason)
+          )
 
         {:error, reason}
     end
@@ -72,11 +89,14 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
       # We may loose connection mid-request
       :exit, reason ->
         _ =
-          Logger.debug(fn ->
-            "action=http_send, item=post, headers=#{inspect(headers)}, body=#{
-              inspect(body)
-            }, status=error, reason=#{inspect(reason)}"
-          end)
+          Logger.debug("Error while sending HTTP request",
+            what: :http_send,
+            method: :post,
+            headers: headers,
+            body: inspect(body),
+            status: :error,
+            reason: inspect(reason)
+          )
 
         {:error, :connection_lost}
     end
@@ -109,9 +129,12 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
     # We may loose connection mid-request
     :exit, reason ->
       _ =
-        Logger.debug(fn ->
-          "action=http_send, item=ping, status=error, reason=#{inspect(reason)}"
-        end)
+        Logger.debug("Error while sending HTTP ping",
+          what: :http_send,
+          method: :ping,
+          status: :error,
+          reason: inspect(reason)
+        )
 
       {:error, :connection_lost}
   end

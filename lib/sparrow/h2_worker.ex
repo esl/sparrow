@@ -66,9 +66,11 @@ defmodule Sparrow.H2Worker do
   @spec terminate(reason, state) :: :ok
   def terminate(reason, state = %State{connection_ref: nil}) do
     _ =
-      Logger.info(fn ->
-        "action=terminate, reason=#{inspect(reason)}, connection_ref=nil"
-      end)
+      Logger.info("Connection shutting down",
+        what: :h2_connection_terminate,
+        reason: inspect(reason),
+        connection_ref: nil
+      )
 
     :telemetry.execute(
       [:sparrow, :h2_worker, :terminate],
@@ -85,9 +87,11 @@ defmodule Sparrow.H2Worker do
     H2ClientAdapter.close(state.connection_ref)
 
     _ =
-      Logger.info(fn ->
-        "action=terminate, reason=#{inspect(reason)}, connection_ref!=nil"
-      end)
+      Logger.info("Connection shutting down",
+        what: :h2_connection_terminate,
+        reason: inspect(reason),
+        connection_ref: state.connection_ref
+      )
 
     :telemetry.execute(
       [:sparrow, :h2_worker, :terminate],
@@ -139,26 +143,28 @@ defmodule Sparrow.H2Worker do
 
   def handle_info({:PONG, from}, state) do
     _ =
-      Logger.debug(fn ->
-        "action=receive, item=ping_response, from=#{inspect(from)}"
-      end)
+      Logger.debug("Received ping response",
+        what: :ping_response,
+        from: inspect(from)
+      )
 
     {:noreply, state}
   end
 
   def handle_info({:END_STREAM, stream_id}, state) do
     _ =
-      Logger.debug(fn ->
-        "action=receive, item=request_response, stream_id=#{inspect(stream_id)}"
-      end)
+      Logger.debug("Received H2 response",
+        what: :h2_response_received,
+        stream_id: inspect(stream_id)
+      )
 
     case RequestSet.get_request(state.requests, stream_id) do
       {:error, :not_found} ->
         _ =
-          Logger.info(fn ->
-            "Request not found in requests set stream_id=#{inspect(stream_id)}," <>
-              " timed out or you are losing requests"
-          end)
+          Logger.info("Received H2 response for unknown request",
+            what: :unknown_h2_response_received,
+            stream_id: inspect(stream_id)
+          )
 
         :ok
 
@@ -178,9 +184,10 @@ defmodule Sparrow.H2Worker do
 
   def handle_info({:timeout_request, stream_id}, state) do
     _ =
-      Logger.debug(fn ->
-        "action=timeout, item=request, stream_id=#{stream_id}"
-      end)
+      Logger.debug("H2 request timeout",
+        what: :h2_request_timeout,
+        stream_id: "#{stream_id}"
+      )
 
     case RequestSet.get_request(state.requests, stream_id) do
       {:error, :not_found} ->
@@ -203,11 +210,11 @@ defmodule Sparrow.H2Worker do
     case state.connection_ref == pid do
       true ->
         _ =
-          Logger.debug(fn ->
-            "action=conn_shutdown, pid=#{inspect(pid)}, reason=#{
-              inspect(reason)
-            }"
-          end)
+          Logger.debug("Connection process down",
+            what: :h2_connection_lost,
+            pid: inspect(pid),
+            reason: inspect(reason)
+          )
 
         :telemetry.execute(
           [:sparrow, :h2_worker, :conn_lost],
@@ -222,11 +229,11 @@ defmodule Sparrow.H2Worker do
 
       _ ->
         _ =
-          Logger.warn(fn ->
-            "action=unknown_down_message, pid=#{inspect(pid)}, reason=#{
-              inspect(reason)
-            }"
-          end)
+          Logger.warn("Unknown connection process down",
+            what: :h2_unknown_down_message,
+            pid: inspect(pid),
+            reason: inspect(reason)
+          )
 
         {:noreply, state}
     end
@@ -244,7 +251,7 @@ defmodule Sparrow.H2Worker do
   end
 
   def handle_info(unknown, state) do
-    _ = Logger.warn(fn -> "Unknown info #{inspect(unknown)}" end)
+    _ = Logger.warn("Unknown info message", what: :unknown_info, value: unknown)
     {:noreply, state}
   end
 
@@ -268,11 +275,13 @@ defmodule Sparrow.H2Worker do
           {:noreply, state} | {:stop, reason, state}
   def handle_call({:send_request, request}, from, state) do
     _ =
-      Logger.debug(fn ->
-        "action=send, item=request, type=call, request=#{inspect(request)}, from=#{
-          inspect(from)
-        }, state=#{inspect(state)}"
-      end)
+      Logger.debug("Attempt to send HTTP request",
+        what: :h2_request_attempt,
+        type: :call,
+        request: request,
+        from: inspect(from),
+        state: state
+      )
 
     try_handle(request, from, state)
   end
@@ -281,11 +290,12 @@ defmodule Sparrow.H2Worker do
           {:stop, reason, state} | {:noreply, state}
   def handle_cast({:send_request, request}, state) do
     _ =
-      Logger.debug(fn ->
-        "action=send, item=request, type=cast, request=#{inspect(request)}, state=#{
-          inspect(state)
-        }"
-      end)
+      Logger.debug("Attempt to send HTTP request",
+        what: :h2_request_attempt,
+        type: :cast,
+        request: request,
+        state: state
+      )
 
     try_handle(request, :noreply, state)
   end
@@ -294,17 +304,19 @@ defmodule Sparrow.H2Worker do
           {:stop, reason, state} | {:noreply, state}
   defp try_handle(request, from, state = %State{connection_ref: nil}) do
     _ =
-      Logger.info(fn ->
-        "action=restarting_conn_on_new_request, request=#{inspect(request)}"
-      end)
+      Logger.debug("Restarting H2 connection due to new request",
+        what: :h2_restarting_conn_on_new_request,
+        request: request
+      )
 
     case start_conn(state.config, state.config.reconnect_attempts) do
       {:error, reason} ->
         _ =
-          Logger.error(
-            "action=restarting_conn_on_new_request, result=fail, reason=#{
-              inspect(reason)
-            }, request=#{inspect(request)}"
+          Logger.error("Restarting H2 connection failed",
+            what: :h2_restarting_conn_on_new_request,
+            result: :error,
+            reason: reason,
+            request: request
           )
 
         send_response(from, {:error, {:unable_to_connect, reason}})
@@ -312,11 +324,11 @@ defmodule Sparrow.H2Worker do
 
       {:ok, state} ->
         _ =
-          Logger.info(fn ->
-            "action=restarting_conn_on_new_request, result=sucess, request=#{
-              inspect(request)
-            }"
-          end)
+          Logger.debug("Restarting H2 connection succeeded",
+            what: :h2_restarting_conn_on_new_request,
+            result: :success,
+            request: request
+          )
 
         handle(request, from, state)
     end
@@ -341,11 +353,11 @@ defmodule Sparrow.H2Worker do
           token_header = state.config.authentication.token_getter.()
 
           _ =
-            Logger.debug(fn ->
-              "action=add_token_header_to_headers, result=sucess, token_header=#{
-                inspect(token_header)
-              }"
-            end)
+            Logger.debug("Auth token added to request headers",
+              what: :add_token_to_headers,
+              result: :success,
+              token_header: inspect(token_header)
+            )
 
           [token_header | request.headers]
       end
@@ -362,11 +374,12 @@ defmodule Sparrow.H2Worker do
     case post_result do
       {:error, return_code} ->
         _ =
-          Logger.warn(fn ->
-            "action=send, item=request, request=#{inspect(request)}, status=error, reason=#{
-              return_code
-            }"
-          end)
+          Logger.warn("Failed to send H2 request",
+            what: :h2_request_failed,
+            request: request,
+            status: :error,
+            reason: "#{return_code}"
+          )
 
         :telemetry.execute(
           [:sparrow, :h2_worker, :request_error],
@@ -419,9 +432,11 @@ defmodule Sparrow.H2Worker do
 
   defp schedule_message_after(message, time) do
     _ =
-      Logger.debug(fn ->
-        "action=schedule, message=#{inspect(message)}, after=#{inspect(time)}"
-      end)
+      Logger.debug("Scheduling H2 connection message",
+        what: :h2_schedule_message,
+        message: inspect(message),
+        after: inspect(time)
+      )
 
     :erlang.send_after(floor(time), self(), message)
   end
@@ -440,22 +455,23 @@ defmodule Sparrow.H2Worker do
         ) :: :ok
   defp send_response(:noreply, response) do
     _ =
-      Logger.debug(fn ->
-        "action=send, item=request_response, to=nil, response=#{
-          inspect(response)
-        }"
-      end)
+      Logger.debug("Sending response to caller",
+        what: :h2_send_reponse,
+        to: nil,
+        response: inspect(response)
+      )
 
     :ok
   end
 
   defp send_response(addressee, {:ok, {headers, body}}) do
     _ =
-      Logger.debug(fn ->
-        "action=send, item=request_response, to=#{inspect(addressee)}, headers=#{
-          inspect(headers)
-        }, body=#{body}"
-      end)
+      Logger.debug("Sending response to caller",
+        what: :h2_send_reponse,
+        to: inspect(addressee),
+        headers: inspect(headers),
+        body: "#{body}"
+      )
 
     GenServer.reply(addressee, {:ok, {headers, body}})
   end
@@ -464,26 +480,32 @@ defmodule Sparrow.H2Worker do
     case reason do
       {:request_timeout, stream_id} ->
         _ =
-          Logger.warn(fn ->
-            "action=send, item=request_response, stream_id=#{stream_id}, status=error, reason=timeout"
-          end)
+          Logger.warn("Sending response to caller",
+            what: :h2_send_reponse,
+            item: :request_response,
+            stream_id: "#{stream_id}",
+            status: :error,
+            reason: :timeout
+          )
 
         GenServer.reply(addressee, {:error, :request_timeout})
 
       :not_ready ->
         _ =
-          Logger.error(
-            "action=send, item=request_response, status=error, reason=response_not_ready"
+          Logger.error("Sending response to caller",
+            what: :h2_send_reponse,
+            status: :error,
+            reason: :response_not_ready
           )
 
         GenServer.reply(addressee, {:error, :not_ready})
 
       other_reason ->
         _ =
-          Logger.error(
-            "action=send, item=request_response, status=error, reason=#{
-              inspect(other_reason)
-            }"
+          Logger.error("Sending response to caller",
+            what: :h2_send_reponse,
+            status: :error,
+            reason: inspect(other_reason)
           )
 
         GenServer.reply(addressee, {:error, other_reason})
@@ -498,11 +520,10 @@ defmodule Sparrow.H2Worker do
     canceling_result = :erlang.cancel_timer(request.timeout_reference)
 
     _ =
-      Logger.debug(fn ->
-        "action=canceling_timer, request=#{inspect(request)}, result=#{
-          inspect(canceling_result)
-        }"
-      end)
+      Logger.debug("Canceling internal H2 timer",
+        what: :h2_canceling_timer,
+        result: inspect(canceling_result)
+      )
 
     :ok
   end
@@ -515,7 +536,7 @@ defmodule Sparrow.H2Worker do
         :telemetry.execute(
           [:sparrow, :h2_worker, :conn_success],
           %{
-            count: try_count,
+            try_count: try_count,
             timer: delay
           },
           extract_worker_info(state)
@@ -529,19 +550,21 @@ defmodule Sparrow.H2Worker do
         :telemetry.execute(
           [:sparrow, :h2_worker, :conn_fail],
           %{
-            count: try_count,
+            try_count: try_count,
             timer: delay
           },
           extract_worker_info(state)
         )
 
         _ =
-          Logger.warn(
-            "action=starting_connection, status=failed, domain=#{
-              inspect(config.domain)
-            }, port=#{inspect(config.port)}, reason=#{inspect(reason)}, next_try_in=#{
-              delay
-            }, tls_options=#{inspect(config.tls_options)}"
+          Logger.warn("Failed to start H2 connection",
+            what: :h2_connection_start,
+            status: :error,
+            domain: config.domain,
+            port: config.port,
+            reason: inspect(reason),
+            next_try_in: "#{delay}",
+            tls_options: inspect(config.tls_options)
           )
 
         timer =
@@ -561,10 +584,12 @@ defmodule Sparrow.H2Worker do
 
       {:error, reason} ->
         _ =
-          Logger.error(
-            "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
-              inspect(config.port)
-            }, tls_options=#{inspect(config.tls_options)}, restarts_left=0"
+          Logger.error("",
+            what: :starting_connection,
+            domain: inspect(config.domain),
+            port: inspect(config.port),
+            tls_options: inspect(config.tls_options),
+            restarts_left: "0"
           )
 
         {:error, reason}
@@ -573,13 +598,13 @@ defmodule Sparrow.H2Worker do
 
   defp start_conn(config, restarts_left) when restarts_left > 0 do
     _ =
-      Logger.info(fn ->
-        "action=starting_connection, domain=#{inspect(config.domain)}, port=#{
-          inspect(config.port)
-        }, tls_options=#{inspect(config.tls_options)}, restarts_left=#{
-          inspect(restarts_left)
-        }"
-      end)
+      Logger.debug("Starting H2 connection",
+        what: :h2_starting_connection,
+        domain: config.domain,
+        port: config.port,
+        tls_options: inspect(config.tls_options),
+        restarts_left: restarts_left
+      )
 
     case start_conn(config) do
       {:ok, state} ->
@@ -587,9 +612,15 @@ defmodule Sparrow.H2Worker do
 
       {:error, reason} ->
         _ =
-          Logger.warn(fn ->
-            "action=restarting_conn, reason=#{inspect(reason)}"
-          end)
+          Logger.warn("Failed to start H2 connection",
+            what: :h2_starting_connection,
+            status: :error,
+            reason: inspect(reason),
+            domain: config.domain,
+            port: config.port,
+            tls_options: inspect(config.tls_options),
+            restarts_left: restarts_left
+          )
 
         start_conn(config, restarts_left - 1)
     end
@@ -601,17 +632,10 @@ defmodule Sparrow.H2Worker do
         _ =
           schedule_message_after({:ping, connection_ref}, config.ping_interval)
 
-        _ = Logger.debug(fn -> "action=open_connection, result=succes" end)
         Process.monitor(connection_ref)
-        _ = Logger.debug(fn -> "action=starting_monitor" end)
         {:ok, State.new(connection_ref, config)}
 
       {:error, reason} ->
-        _ =
-          Logger.warn(fn ->
-            "action=open_connection, result=error, reason=#{inspect(reason)}"
-          end)
-
         {:error, reason}
     end
   end
