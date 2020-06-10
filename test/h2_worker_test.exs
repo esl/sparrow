@@ -851,4 +851,78 @@ defmodule Sparrow.H2WorkerTest do
   defp pid do
     spawn(fn -> :timer.sleep(5_000) end)
   end
+
+  describe "is_alive_connection/1" do
+    test "returns false when connection is not alive", context do
+      ptest [
+              domain: string(min: 3, max: 10, chars: ?a..?z),
+              port: int(min: 0, max: 65_535),
+              reason: atom(min: 2, max: 5),
+              tls_options: list(of: atom(), min: 0, max: 3)
+            ],
+            repeat_for: @repeats do
+        ping_interval = 123
+
+        with_mock H2Adapter,
+          open: fn _, _, _ -> {:error, reason} end,
+          close: fn _ -> :ok end do
+          config =
+            Config.new(%{
+              domain: domain,
+              port: port,
+              authentication: context[:auth],
+              tls_options: tls_options,
+              ping_interval: ping_interval
+            })
+
+          worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+          %State{connection_ref: nil} = :sys.get_state(worker_pid)
+
+          assert false == Sparrow.H2Worker.is_alive_connection(worker_pid)
+        end
+      end
+    end
+
+    test "returns true when connection is alive", context do
+      ptest [
+              domain: string(min: 3, max: 10, chars: ?a..?z),
+              port: int(min: 0, max: 65_535),
+              tls_options: list(of: atom(), min: 0, max: 3)
+            ],
+            repeat_for: @repeats do
+        ping_interval = 123
+        ponger = pid()
+
+        with_mock H2Adapter,
+          open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+          ping: fn _ ->
+            send(self(), {:PONG, ponger})
+            :ok
+          end,
+          close: fn _ -> :ok end do
+
+          config =
+            Config.new(%{
+              domain: domain,
+              port: port,
+              authentication: TokenBasedAuth.new(fn -> "dummyToken" end),
+              tls_options: tls_options,
+              ping_interval: ping_interval
+            })
+
+          worker_pid = start_supervised!(Tools.h2_worker_spec(config))
+
+          eventually(
+            assert Sparrow.H2Worker.State.new(
+                     context[:connection_ref],
+                     config
+                   ) == :sys.get_state(worker_pid, 100)
+          )
+
+          assert true == Sparrow.H2Worker.is_alive_connection(worker_pid)
+          stop_supervised(worker_pid)
+        end
+      end
+    end
+  end
 end
