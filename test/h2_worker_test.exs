@@ -15,6 +15,7 @@ defmodule Sparrow.H2WorkerTest do
   alias Sparrow.H2Worker.Request, as: OuterRequest
   alias Sparrow.H2Worker.State
 
+  alias Sparrow.H2Worker.Authentication.TokenBased, as: TokenBasedAuth
   @repeats 2
 
   import Helpers.SetupHelper, only: [passthrough_h2: 1]
@@ -764,14 +765,12 @@ defmodule Sparrow.H2WorkerTest do
           :ok
         end,
         close: fn _ -> :ok end do
-        auth =
-          Sparrow.H2Worker.Authentication.TokenBased.new(fn -> "dummyToken" end)
 
         config =
           Config.new(%{
             domain: domain,
             port: port,
-            authentication: auth,
+            authentication: TokenBasedAuth.new(fn -> "dummyToken" end),
             tls_options: tls_options,
             ping_interval: ping_interval
           })
