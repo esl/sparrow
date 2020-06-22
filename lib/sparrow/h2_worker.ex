@@ -271,6 +271,14 @@ defmodule Sparrow.H2Worker do
     |> State.reset_requests_collection()
   end
 
+  def is_alive_connection(pid) do
+    GenServer.call(pid, :is_alive_connection)
+  end
+
+  def handle_call(:is_alive_connection, _from, state) do
+    {:reply, state.connection_ref != nil, state}
+  end
+
   @spec handle_call({:send_request, request}, from, state) ::
           {:noreply, state} | {:stop, reason, state}
   def handle_call({:send_request, request}, from, state) do
