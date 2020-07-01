@@ -1,6 +1,6 @@
 # Sparrow
 ## Summary
-Sparrow is an Elixir library for [push notifications](en.wikipedia.org/wiki/Push_technology#Push_notification).
+Sparrow is an Elixir library for [push notifications](https://en.wikipedia.org/wiki/Push_technology#Push_notification).
 [![Build Status](https://travis-ci.org/esl/sparrow.svg?branch=master)](https://travis-ci.org/esl/sparrow)
 [![Coverage Status](https://coveralls.io/repos/github/esl/sparrow/badge.svg)](https://coveralls.io/github/esl/sparrow)
 
