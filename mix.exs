@@ -7,6 +7,7 @@ defmodule Sparrow.MixProject do
       version: "1.0.2",
       elixir: "~> 1.6",
       elixirc_paths: elixirc_paths(Mix.env()),
+      elixirc_options: elixirc_options(),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: dialyzer(),
@@ -69,4 +70,8 @@ defmodule Sparrow.MixProject do
     do: ["lib", "test/helpers"]
 
   defp elixirc_paths(_), do: ["lib"]
+
+  defp elixirc_options() do
+    [warnings_as_errors: true]
+  end
 end

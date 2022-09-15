@@ -3,7 +3,6 @@ defmodule Helpers.SetupHelper do
 
   import Mox
 
-  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Config
 
   @path_to_cert "priv/ssl/client_cert.pem"
