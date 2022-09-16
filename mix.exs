@@ -53,10 +53,9 @@ defmodule Sparrow.MixProject do
     [
       plt_core_path: ".dialyzer/",
       flags: [
-        "-Wunmatched_returns",
-        "-Werror_handling",
-        "-Wrace_conditions",
-        "-Wunderspecs"
+        :unmatched_returns,
+        :error_handling,
+        :underspecs,
       ],
       plt_add_apps: [:mix, :goth]
     ]

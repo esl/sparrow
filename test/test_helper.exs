@@ -1,3 +1,5 @@
+Code.compiler_options(warnings_as_errors: true)
+
 ExUnit.start(capture_log: true)
 
 defmodule TestHelper do

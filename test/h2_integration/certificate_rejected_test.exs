@@ -38,7 +38,7 @@ defmodule H2Integration.CerificateRejectedTest do
     notification =
       "OkResponseHandler"
       |> Notification.new(:dev)
-      |> Notification.add_title(@title)
+      |> Notification.add_title("")
       |> Notification.add_body("")
 
     worker_pid = start_supervised!(Setup.h2_worker_spec(config))
