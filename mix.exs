@@ -24,7 +24,7 @@ defmodule Sparrow.MixProject do
 
   defp deps do
     [
-      {:dialyxir, "~> 0.4", runtime: false, only: [:dev, :test]},
+      {:dialyxir, "~> 1.0", runtime: false, only: [:dev, :test]},
       {:credo, "~> 0.10", runtime: false, only: [:dev, :test]},
       {:chatterbox, github: "joedevivo/chatterbox", ref: "1f4ce4f"},
       {:certifi, "~> 2.5.1"},
@@ -45,7 +45,7 @@ defmodule Sparrow.MixProject do
       {:httpoison, "~> 0.11 or ~> 1.0"},
       {:worker_pool, "== 4.0.1"},
       {:assert_eventually, "~> 0.2.0", only: [:test]},
-      {:telemetry, "~>0.4.1"}
+      {:telemetry, "~> 1.1"}
     ]
   end
 
