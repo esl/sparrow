@@ -765,7 +765,6 @@ defmodule Sparrow.H2WorkerTest do
           :ok
         end,
         close: fn _ -> :ok end do
-
         config =
           Config.new(%{
             domain: domain,
@@ -900,7 +899,6 @@ defmodule Sparrow.H2WorkerTest do
             :ok
           end,
           close: fn _ -> :ok end do
-
           config =
             Config.new(%{
               domain: domain,

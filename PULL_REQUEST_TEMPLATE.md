@@ -31,6 +31,4 @@ If you're unsure about any of these, don't hesitate to ask. We're here to help!
 - [ ] I have added tests to cover my changes.
 - [ ] I have added tests to **TEST** my changes.
 - [ ] All new and existing tests passed.
-
 - [ ] Builds corresponding to the PR have passed.
-

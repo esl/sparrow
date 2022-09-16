@@ -25,7 +25,7 @@ defmodule Sparrow.MixProject do
   defp deps do
     [
       {:dialyxir, "~> 0.4", runtime: false, only: [:dev, :test]},
-      {:credo, "~> 0.10", runtime: false, only: :dev},
+      {:credo, "~> 0.10", runtime: false, only: [:dev, :test]},
       {:chatterbox, github: "joedevivo/chatterbox", ref: "1f4ce4f"},
       {:certifi, "~> 2.5.1"},
       {:excoveralls, "~> 0.5", runtime: false, only: :test},
@@ -51,11 +51,11 @@ defmodule Sparrow.MixProject do
 
   defp dialyzer do
     [
-      plt_core_path: ".dialyzer/",
+      plt_core_path: ".dialyzer",
       flags: [
         :unmatched_returns,
         :error_handling,
-        :underspecs,
+        :underspecs
       ],
       plt_add_apps: [:mix, :goth]
     ]
