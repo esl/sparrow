@@ -37,7 +37,9 @@ defmodule H2Integration.CerificateRejectedTest do
 
     headers = Setup.default_headers()
     body = "sound of silence, test body"
-    request = OuterRequest.new(headers, body, "/RejectCertificateHandler", 3_000)
+
+    request =
+      OuterRequest.new(headers, body, "/RejectCertificateHandler", 3_000)
 
     worker_pid = start_supervised!(Setup.h2_worker_spec(config))
 
