@@ -17,6 +17,8 @@ defmodule Helpers.SetupHelper do
 
   def h2_worker_spec(config) do
     id = :crypto.strong_rand_bytes(8) |> Base.encode64()
+    Process.put(:id, id)
+
     Supervisor.child_spec({Sparrow.H2Worker, config}, id: id)
   end
 
@@ -61,7 +63,8 @@ defmodule Helpers.SetupHelper do
       authentication: auth,
       backoff_base: 2,
       backoff_initial_delay: 100,
-      backoff_max_delay: 400
+      backoff_max_delay: 400,
+      reconnect_attempts: 0
     })
   end
 

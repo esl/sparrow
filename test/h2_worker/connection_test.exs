@@ -120,7 +120,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
         })
 
       {:ok, _pid} = start_supervised(Tools.h2_worker_spec(config))
-      assert_receive {:connection_success, s}, 200
+      assert_receive {:connection_success, _s}, 200
       send(conn_pid, :exit)
 
       assert_receive {:reconnection_failure, f}, 200

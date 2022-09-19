@@ -643,7 +643,7 @@ defmodule Sparrow.H2WorkerTest do
                  ) == :sys.get_state(worker_pid, 100)
         )
 
-        stop_supervised(worker_pid)
+        stop_h2_worker()
       end
     end
   end
@@ -783,7 +783,7 @@ defmodule Sparrow.H2WorkerTest do
                  ) == :sys.get_state(worker_pid, 100)
         )
 
-        stop_supervised(worker_pid)
+        stop_h2_worker()
       end
     end
   end
@@ -918,9 +918,14 @@ defmodule Sparrow.H2WorkerTest do
           )
 
           assert true == Sparrow.H2Worker.is_alive_connection(worker_pid)
-          stop_supervised(worker_pid)
+          stop_h2_worker()
         end
       end
     end
+  end
+
+  defp stop_h2_worker() do
+    Process.get(:id)
+    |> stop_supervised!()
   end
 end

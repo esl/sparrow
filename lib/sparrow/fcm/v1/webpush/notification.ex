@@ -43,10 +43,10 @@ defmodule Sparrow.FCM.V1.Webpush.Notification do
     :fields
   ]
 
-  @spec new :: __MODULE__.t()
-  def new do
+  @spec new([field]) :: __MODULE__.t()
+  def new(fields \\ []) do
     %__MODULE__{
-      fields: []
+      fields: fields
     }
   end
 
