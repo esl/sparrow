@@ -2,6 +2,8 @@ defmodule Sparrow.H2Worker.RequestState do
   @moduledoc """
   Struct for requests internal representation.
   """
+  alias Sparrow.H2Worker.Request
+
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
   @type from :: {pid, tag :: term} | :noreply
@@ -24,7 +26,7 @@ defmodule Sparrow.H2Worker.RequestState do
     :timeout_reference
   ]
 
-  @spec new(%Sparrow.H2Worker.Request{}, from, timeout_reference) :: t
+  @spec new(Request.t(), from, timeout_reference) :: t
   def new(request, from, timeout_reference) do
     %__MODULE__{
       headers: request.headers,

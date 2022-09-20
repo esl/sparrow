@@ -30,7 +30,7 @@
           {Credo.Check.Readability.TrailingWhiteSpace},
           {Credo.Check.Readability.VariableNames},
 
-          {Credo.Check.Refactor.ABCSize},
+          {Credo.Check.Refactor.ABCSize, max_size: 34},
           {Credo.Check.Refactor.CondStatements},
           {Credo.Check.Refactor.FunctionArity},
           {Credo.Check.Refactor.MatchInCondition},
@@ -43,10 +43,6 @@
 
           {Credo.Check.Warning.IExPry},
           {Credo.Check.Warning.IoInspect},
-          {Credo.Check.Warning.NameRedeclarationByAssignment},
-          {Credo.Check.Warning.NameRedeclarationByCase},
-          {Credo.Check.Warning.NameRedeclarationByDef},
-          {Credo.Check.Warning.NameRedeclarationByFn},
           {Credo.Check.Warning.OperationOnSameValues},
           {Credo.Check.Warning.BoolOperationOnSameValues},
           {Credo.Check.Warning.UnusedEnumOperation},

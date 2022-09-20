@@ -582,7 +582,7 @@ defmodule Sparrow.FCM.V1Test do
     |> Webpush.add_lang(@webpush_lang)
     |> Webpush.add_permission(@webpush_permission)
     |> Webpush.add_renotify(@webpush_renotify)
-    |> Webpush.add_requireInteraction(@webpush_requireInteraction)
+    |> Webpush.add_require_interaction(@webpush_requireInteraction)
     |> Webpush.add_silent(@webpush_silent)
     |> Webpush.add_tag(@webpush_tag)
     |> Webpush.add_timestamp(@webpush_timestamp)

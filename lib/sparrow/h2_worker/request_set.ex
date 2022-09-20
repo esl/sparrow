@@ -19,7 +19,7 @@ defmodule Sparrow.H2Worker.RequestSet do
   @doc """
   Adds request to requests collection.
   """
-  @spec add(requests, stream_id, %RequestState{}) :: requests
+  @spec add(requests, stream_id, RequestState.t()) :: requests
   def add(
         other_requests,
         stream_id,
@@ -43,7 +43,7 @@ defmodule Sparrow.H2Worker.RequestSet do
   Gets request from requests collection by `stream_id` as search key.
   """
   @spec get_request(requests, stream_id) ::
-          {:ok, %RequestState{}} | {:error, :not_found}
+          {:ok, RequestState.t()} | {:error, :not_found}
   def get_request(requests, stream_id) do
     case Map.get(requests, stream_id, :not_found) do
       :not_found -> {:error, :not_found}

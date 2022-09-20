@@ -18,9 +18,10 @@ defmodule Sparrow.APNS.TokenBearer do
   """
   @spec get_token(atom) :: String.t() | nil
   def get_token(token_id) do
-    @tab_name
-    |> :ets.lookup(token_id)
-    |> (fn [{_, token}] -> token end).()
+    case :ets.lookup(@tab_name, token_id) do
+      [{_, token}] -> token
+      _ -> nil
+    end
   end
 
   @spec start_link(

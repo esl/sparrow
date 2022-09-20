@@ -37,6 +37,7 @@ jobs:
             - deps
       - run: mix compile
       - run: mix format --check-formatted
+      - run: mix credo --strict
       - restore_cache:
           key: dialyzer-{{ checksum "mix.lock" }}
       - run:
