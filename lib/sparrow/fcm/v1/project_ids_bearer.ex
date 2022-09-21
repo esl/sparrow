@@ -8,9 +8,10 @@ defmodule Sparrow.FCM.V1.ProjectIdBearer do
 
   @spec get_project_id(atom) :: String.t() | nil
   def get_project_id(h2_worker_pool) do
-    @tab_name
-    |> :ets.lookup(h2_worker_pool)
-    |> (fn [{_, project_id}] -> project_id end).()
+    case :ets.lookup(@tab_name, h2_worker_pool) do
+      [{_, project_id}] -> project_id
+      _ -> nil
+    end
   end
 
   @spec add_project_id(Path.t(), atom) :: true

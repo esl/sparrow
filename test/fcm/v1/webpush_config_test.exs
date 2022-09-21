@@ -38,7 +38,7 @@ defmodule Sparrow.FCM.V1.WebpushTest do
       |> Webpush.add_icon(icon)
       |> Webpush.add_image(image)
       |> Webpush.add_renotify(renotify)
-      |> Webpush.add_requireInteraction(true)
+      |> Webpush.add_require_interaction(true)
       |> Webpush.add_silent(silent)
       |> Webpush.add_timestamp(timestamp)
       |> Webpush.add_title(title)

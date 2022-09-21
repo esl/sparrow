@@ -123,8 +123,6 @@ defmodule Sparrow.FCM.V1 do
           status: "200"
         )
 
-      # TODO extend implementation if needed in further tests
-
       :ok
     else
       status = get_status_from_headers(headers)
@@ -209,15 +207,17 @@ defmodule Sparrow.FCM.V1 do
 
   @spec make_body(Sparrow.FCM.V1.Notification.t()) :: map
   defp make_body(notification) do
-    %{
-      :data => notification.data,
-      :notification => build_notification(notification),
-      notification.target_type => notification.target
-    }
-    |> maybe_add_android(notification.android)
-    |> maybe_add_webpush(notification.webpush)
-    |> maybe_add_apns(notification.apns)
-    |> (fn m -> %{:message => m} end).()
+    message =
+      %{
+        :data => notification.data,
+        :notification => build_notification(notification),
+        notification.target_type => notification.target
+      }
+      |> maybe_add_android(notification.android)
+      |> maybe_add_webpush(notification.webpush)
+      |> maybe_add_apns(notification.apns)
+
+    %{message: message}
   end
 
   @spec build_notification(Sparrow.FCM.V1.Notification.t()) :: map

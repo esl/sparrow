@@ -104,9 +104,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
     assert_response_header(
       fail_answer_headers,
       {"content-length",
-       "#{
-         inspect(String.length(TokenHelper.get_incorrect_token_response_body()))
-       }"}
+       "#{inspect(String.length(TokenHelper.get_incorrect_token_response_body()))}"}
     )
 
     assert fail_answer_body == TokenHelper.get_incorrect_token_response_body()

@@ -1,0 +1,66 @@
+version: 2.1
+
+executors:
+  elixir:
+    parameters:
+      elixir:
+        type: string
+      erlang:
+        type: string
+    docker:
+      - image: hexpm/elixir:<< parameters.elixir >>-erlang-<< parameters.erlang >>-alpine-3.16.0
+        environment:
+            - MIX_ENV=test
+
+jobs:
+  test:
+    parameters:
+      elixir:
+        type: string
+      erlang:
+        type: string
+    executor:
+      name: elixir
+      elixir: << parameters.elixir >>
+      erlang: << parameters.erlang >>
+    steps:
+      - checkout
+      - run: apk add git
+      - run: mix do local.rebar --force, local.hex --force
+      - restore_cache:
+          key: deps-{{ checksum "mix.lock" }}
+      - run: mix do deps.get, deps.compile
+      - save_cache:
+          key: deps-{{ checksum "mix.lock" }}
+          paths:
+            - _build
+            - deps
+      - run: mix compile
+      - run: mix format --check-formatted
+      - run: mix credo --strict
+      - restore_cache:
+          key: dialyzer-{{ checksum "mix.lock" }}
+      - run:
+          name: Create PLTs
+          command: |
+            mkdir -p .dialyzer
+            mix dialyzer --plt
+      - save_cache:
+          key: dialyzer-{{ checksum "mix.lock" }}
+          paths:
+            - .dialyzer
+      - run: mix dialyzer --halt-exit-status
+      - run:
+          name: Run tests
+          command: |
+            mix sparrow.certs.dev
+            mix test
+
+workflows:
+  default:
+    jobs:
+      - test:
+          matrix:
+            parameters:
+              elixir: [1.12.3, 1.13.4]
+              erlang: [23.3.4, 24.3.4]

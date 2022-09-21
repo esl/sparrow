@@ -1,8 +1,6 @@
 defmodule Helpers.CowboyHandlers.OkFCMHandler do
   @moduledoc false
   def init(req, opts) do
-    IO.puts("request is: " <> inspect(req))
-
     reply =
       :cowboy_req.reply(
         200,
