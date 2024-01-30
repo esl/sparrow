@@ -37,7 +37,8 @@ defmodule Sparrow.FCM.V1.TokenBearer do
       )
 
     Application.put_env(:goth, :json, json)
-    Goth.Supervisor.start_link()
+    envs = Application.get_all_env(:goth)
+    Goth.Supervisor.start_link(envs)
   end
 
   defp decode_config(config) do

@@ -41,7 +41,7 @@ defmodule Sparrow.MixProject do
       {:lager, "~> 3.9", override: true},
       {:logger_lager_backend, "~> 0.2"},
       {:plug, "~> 1.15", only: :test},
-      {:goth, "~> 1.1.0", runtime: false},
+      {:goth, "~> 1.2.0", runtime: false},
       {:httpoison, "~> 1.8"},
       {:worker_pool, "~> 6.2"},
       {:assert_eventually, "~> 1.0", only: [:test]},
