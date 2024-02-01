@@ -41,14 +41,15 @@ defmodule SparrowTest do
   end
 
   test "Sparrow starts correctly", context do
-    # DON'T COPY THIS TOKEN GETTER
-    with_mock Sparrow.FCM.V1, [:passthrough],
-      get_token_based_authentication: fn _ ->
-        getter = fn ->
-          {"authorization", "bearer dummy_token"}
-        end
-
-        Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+    with_mock Goth.Token, [:passthrough],
+      fetch: fn %{source: {:service_account, _credentials, _options}} ->
+        dummy_token = %Goth.Token{
+          token: "dummy_token",
+          type: "Bearer",
+          scope: "https://www.googleapis.com/auth/firebase.messaging",
+          expires: 123_456,
+        }
+        {:ok, dummy_token}
       end do
       fcm = [
         [
@@ -173,14 +174,15 @@ defmodule SparrowTest do
   end
 
   test "Sparrow starts correctly, FCM only", context do
-    # DON'T COPY THIS TOKEN GETTER
-    with_mock Sparrow.FCM.V1, [:passthrough],
-      get_token_based_authentication: fn _ ->
-        getter = fn ->
-          {"authorization", "bearer dummy_token"}
-        end
-
-        Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+    with_mock Goth.Token, [:passthrough],
+      fetch: fn %{source: {:service_account, _credentials, _options}} ->
+        dummy_token = %Goth.Token{
+          token: "dummy_token",
+          type: "Bearer",
+          scope: "https://www.googleapis.com/auth/firebase.messaging",
+          expires: 123_456,
+        }
+        {:ok, dummy_token}
       end do
       fcm = [
         [
