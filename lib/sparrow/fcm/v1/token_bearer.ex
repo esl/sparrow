@@ -28,7 +28,8 @@ defmodule Sparrow.FCM.V1.TokenBearer do
       |> Enum.map(&decode_config/1)
       |> Enum.map(fn %{"client_email" => account} = json ->
         Supervisor.child_spec(
-          {Goth, name: account, source: {:service_account, json, scopes: scopes}},
+          {Goth,
+           name: account, source: {:service_account, json, scopes: scopes}},
           id: account
         )
       end)

@@ -81,6 +81,6 @@ defmodule H2Worker.RequestSetTest do
   end
 
   defp pid(string) when is_binary(string) do
-    :erlang.list_to_pid('<#{string}>')
+    :erlang.list_to_pid(~c"<#{string}>")
   end
 end

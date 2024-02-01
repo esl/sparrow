@@ -251,7 +251,12 @@ defmodule Sparrow.H2Worker do
   end
 
   def handle_info(unknown, state) do
-    _ = Logger.warning("Unknown info message", what: :unknown_info, value: unknown)
+    _ =
+      Logger.warning("Unknown info message",
+        what: :unknown_info,
+        value: unknown
+      )
+
     {:noreply, state}
   end
 

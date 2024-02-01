@@ -23,7 +23,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
 
       assert called :h2_client.start(
                       :https,
-                      'my.domain.at.domain',
+                      ~c"my.domain.at.domain",
                       1234,
                       []
                     )
@@ -206,6 +206,6 @@ defmodule H2ClientAdapter.ChatterboxTest do
   end
 
   defp pid(string) when is_binary(string) do
-    :erlang.list_to_pid('<#{string}>')
+    :erlang.list_to_pid(~c"<#{string}>")
   end
 end

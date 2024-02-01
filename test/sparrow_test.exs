@@ -47,8 +47,9 @@ defmodule SparrowTest do
           token: "dummy_token",
           type: "Bearer",
           scope: "https://www.googleapis.com/auth/firebase.messaging",
-          expires: 123_456,
+          expires: 123_456
         }
+
         {:ok, dummy_token}
       end do
       fcm = [
@@ -180,8 +181,9 @@ defmodule SparrowTest do
           token: "dummy_token",
           type: "Bearer",
           scope: "https://www.googleapis.com/auth/firebase.messaging",
-          expires: 123_456,
+          expires: 123_456
         }
+
         {:ok, dummy_token}
       end do
       fcm = [
