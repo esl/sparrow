@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 config :sparrow, Sparrow.H2ClientAdapter, %{
   adapter: Sparrow.H2ClientAdapter.Mock

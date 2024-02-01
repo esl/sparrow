@@ -140,7 +140,7 @@ defmodule Sparrow.FCM.V1 do
         |> String.to_atom()
 
       _ =
-        Logger.warn("Processing FCM notification response",
+        Logger.warning("Processing FCM notification response",
           what: :fcm_push_response,
           result: :error,
           response_body: inspect(body)

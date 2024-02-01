@@ -157,7 +157,7 @@ defmodule Sparrow.PoolsWarden do
 
   def handle_info(unknown, state) do
     _ =
-      Logger.warn("Unknown message",
+      Logger.warning("Unknown message",
         worker: :pools_warden,
         what: :unknown_message,
         message: inspect(unknown)
