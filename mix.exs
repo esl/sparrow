@@ -42,7 +42,7 @@ defmodule Sparrow.MixProject do
       {:logger_lager_backend, "~> 0.2"},
       {:plug, "~> 1.15", only: :test},
       {:goth, "~> 1.4"},
-      {:httpoison, "~> 1.8"},
+      {:httpoison, "~> 2.2"},
       {:worker_pool, "~> 6.2"},
       {:assert_eventually, "~> 1.0", only: [:test]},
       {:telemetry, "~> 1.2"}
