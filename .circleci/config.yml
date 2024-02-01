@@ -8,7 +8,7 @@ executors:
       erlang:
         type: string
     docker:
-      - image: hexpm/elixir:<< parameters.elixir >>-erlang-<< parameters.erlang >>-alpine-3.16.0
+      - image: hexpm/elixir:<< parameters.elixir >>-erlang-<< parameters.erlang >>-alpine-3.18.4
         environment:
             - MIX_ENV=test
 
@@ -62,5 +62,5 @@ workflows:
       - test:
           matrix:
             parameters:
-              elixir: [1.12.3, 1.13.4]
-              erlang: [23.3.4, 24.3.4]
+              elixir: [1.15.7, 1.16.1]
+              erlang: [25.3.2.8, 26.2.1]
