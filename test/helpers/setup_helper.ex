@@ -64,7 +64,8 @@ defmodule Helpers.SetupHelper do
       backoff_base: 2,
       backoff_initial_delay: 100,
       backoff_max_delay: 400,
-      reconnect_attempts: 0
+      reconnect_attempts: 0,
+      tls_options: [verify: :verify_none]
     })
   end
 

@@ -58,7 +58,7 @@ defmodule SparrowTest do
           port: context[:port],
           tags: [:yippee_ki_yay],
           worker_num: 3,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ],
         [
           path_to_json: "sparrow_token2.json",
@@ -66,7 +66,7 @@ defmodule SparrowTest do
           port: context[:port],
           tags: [:I, :am, :your, :father],
           worker_num: 3,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ]
       ]
 
@@ -80,7 +80,7 @@ defmodule SparrowTest do
             port: context[:port],
             worker_num: 2,
             tags: [:wololo],
-            tls_opts: []
+            tls_opts: [verify: :verify_none]
           ],
           [
             auth_type: :certificate_based,
@@ -90,7 +90,7 @@ defmodule SparrowTest do
             port: context[:port],
             worker_num: 2,
             tags: [:walala],
-            tls_opts: []
+            tls_opts: [verify: :verify_none]
           ]
         ],
         prod: [
@@ -100,7 +100,7 @@ defmodule SparrowTest do
             endpoint: "localhost",
             port: context[:port],
             worker_num: 4,
-            tls_opts: []
+            tls_opts: [verify: :verify_none]
           ]
         ],
         tokens: [
@@ -191,14 +191,14 @@ defmodule SparrowTest do
           port: context[:port],
           tags: [:yippee_ki_yay],
           worker_num: 3,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ],
         [
           path_to_json: "sparrow_token2.json",
           endpoint: "localhost",
           port: context[:port],
           worker_num: 3,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ]
       ]
 
@@ -242,7 +242,7 @@ defmodule SparrowTest do
           port: context[:port],
           worker_num: 2,
           tags: [:wololo],
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ],
         [
           auth_type: :certificate_based,
@@ -252,7 +252,7 @@ defmodule SparrowTest do
           port: context[:port],
           worker_num: 2,
           tags: [:walala],
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ]
       ],
       prod: [
@@ -262,7 +262,7 @@ defmodule SparrowTest do
           endpoint: "localhost",
           port: context[:port],
           worker_num: 4,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ]
       ],
       tokens: [
