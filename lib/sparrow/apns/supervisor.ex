@@ -11,7 +11,7 @@ defmodule Sparrow.APNS.Supervisor do
   end
 
   @spec init(Keyword.t()) ::
-          {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}}
+          {:ok, {Supervisor.sup_flags(), [Supervisor.child_spec()]}}
   def init(raw_apns_config) do
     tokens = get_apns_tokens(raw_apns_config)
 

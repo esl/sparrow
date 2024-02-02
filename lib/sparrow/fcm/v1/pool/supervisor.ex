@@ -13,7 +13,7 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
   end
 
   @spec init(Keyword.t()) ::
-          {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}}
+          {:ok, {Supervisor.sup_flags(), [Supervisor.child_spec()]}}
   def init(raw_config) do
     pool_configs =
       Enum.map(raw_config, fn single_config ->
