@@ -23,13 +23,17 @@ defmodule Sparrow.FCM.V1.TokenBearer do
   def start_link(raw_fcm_config) do
     scopes = ["https://www.googleapis.com/auth/firebase.messaging"]
 
+    opts = [
+      {:scopes, scopes}
+      | maybe_url()
+    ]
+
     children =
       raw_fcm_config
       |> Enum.map(&decode_config/1)
       |> Enum.map(fn %{"client_email" => account} = json ->
         Supervisor.child_spec(
-          {Goth,
-           name: account, source: {:service_account, json, scopes: scopes}},
+          {Goth, name: account, source: {:service_account, json, opts}},
           id: account
         )
       end)
@@ -48,5 +52,12 @@ defmodule Sparrow.FCM.V1.TokenBearer do
     config[:path_to_json]
     |> File.read!()
     |> Jason.decode!()
+  end
+
+  defp maybe_url do
+    case Application.get_env(:sparrow, :google_auth_url) do
+      nil -> []
+      url -> [{:url, url}]
+    end
   end
 end
