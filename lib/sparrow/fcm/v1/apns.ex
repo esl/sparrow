@@ -5,7 +5,7 @@ defmodule Sparrow.FCM.V1.APNS do
   FCM wrapper for `Sparrow.APNS.Notification`.
   """
 
-  @type token_getter :: (() -> {String.t(), String.t()})
+  @type token_getter :: (-> {String.t(), String.t()})
   @type t :: %__MODULE__{
           notification: Sparrow.APNS.Notification.t(),
           token_getter: token_getter

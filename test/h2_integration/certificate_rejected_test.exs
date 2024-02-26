@@ -47,7 +47,7 @@ defmodule H2Integration.CerificateRejectedTest do
              GenServer.call(worker_pid, {:send_request, request})
 
     case reason do
-      {:unable_to_connect, {:tls_alert, 'bad certificate'}} -> :ok
+      {:unable_to_connect, {:tls_alert, ~c"bad certificate"}} -> :ok
       {:unable_to_connect, {:tls_alert, {:bad_certificate, _}}} -> :ok
       :connection_lost -> :ok
       _ -> flunk("Wrong error code: #{inspect(reason)}")

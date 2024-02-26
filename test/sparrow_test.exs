@@ -41,14 +41,16 @@ defmodule SparrowTest do
   end
 
   test "Sparrow starts correctly", context do
-    # DON'T COPY THIS TOKEN GETTER
-    with_mock Sparrow.FCM.V1, [:passthrough],
-      get_token_based_authentication: fn _ ->
-        getter = fn ->
-          {"authorization", "bearer dummy_token"}
-        end
+    with_mock Goth.Token, [:passthrough],
+      fetch: fn %{source: {:service_account, _credentials, _options}} ->
+        dummy_token = %Goth.Token{
+          token: "dummy_token",
+          type: "Bearer",
+          scope: "https://www.googleapis.com/auth/firebase.messaging",
+          expires: 123_456
+        }
 
-        Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+        {:ok, dummy_token}
       end do
       fcm = [
         [
@@ -57,7 +59,7 @@ defmodule SparrowTest do
           port: context[:port],
           tags: [:yippee_ki_yay],
           worker_num: 3,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ],
         [
           path_to_json: "sparrow_token2.json",
@@ -65,7 +67,7 @@ defmodule SparrowTest do
           port: context[:port],
           tags: [:I, :am, :your, :father],
           worker_num: 3,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ]
       ]
 
@@ -79,7 +81,7 @@ defmodule SparrowTest do
             port: context[:port],
             worker_num: 2,
             tags: [:wololo],
-            tls_opts: []
+            tls_opts: [verify: :verify_none]
           ],
           [
             auth_type: :certificate_based,
@@ -89,7 +91,7 @@ defmodule SparrowTest do
             port: context[:port],
             worker_num: 2,
             tags: [:walala],
-            tls_opts: []
+            tls_opts: [verify: :verify_none]
           ]
         ],
         prod: [
@@ -99,7 +101,7 @@ defmodule SparrowTest do
             endpoint: "localhost",
             port: context[:port],
             worker_num: 4,
-            tls_opts: []
+            tls_opts: [verify: :verify_none]
           ]
         ],
         tokens: [
@@ -173,14 +175,16 @@ defmodule SparrowTest do
   end
 
   test "Sparrow starts correctly, FCM only", context do
-    # DON'T COPY THIS TOKEN GETTER
-    with_mock Sparrow.FCM.V1, [:passthrough],
-      get_token_based_authentication: fn _ ->
-        getter = fn ->
-          {"authorization", "bearer dummy_token"}
-        end
+    with_mock Goth.Token, [:passthrough],
+      fetch: fn %{source: {:service_account, _credentials, _options}} ->
+        dummy_token = %Goth.Token{
+          token: "dummy_token",
+          type: "Bearer",
+          scope: "https://www.googleapis.com/auth/firebase.messaging",
+          expires: 123_456
+        }
 
-        Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+        {:ok, dummy_token}
       end do
       fcm = [
         [
@@ -189,14 +193,14 @@ defmodule SparrowTest do
           port: context[:port],
           tags: [:yippee_ki_yay],
           worker_num: 3,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ],
         [
           path_to_json: "sparrow_token2.json",
           endpoint: "localhost",
           port: context[:port],
           worker_num: 3,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ]
       ]
 
@@ -240,7 +244,7 @@ defmodule SparrowTest do
           port: context[:port],
           worker_num: 2,
           tags: [:wololo],
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ],
         [
           auth_type: :certificate_based,
@@ -250,7 +254,7 @@ defmodule SparrowTest do
           port: context[:port],
           worker_num: 2,
           tags: [:walala],
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ]
       ],
       prod: [
@@ -260,7 +264,7 @@ defmodule SparrowTest do
           endpoint: "localhost",
           port: context[:port],
           worker_num: 4,
-          tls_opts: []
+          tls_opts: [verify: :verify_none]
         ]
       ],
       tokens: [

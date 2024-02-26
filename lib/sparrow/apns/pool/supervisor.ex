@@ -14,7 +14,7 @@ defmodule Sparrow.APNS.Pool.Supervisor do
   end
 
   @spec init(Keyword.t()) ::
-          {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}}
+          {:ok, {Supervisor.sup_flags(), [Supervisor.child_spec()]}}
   def init(raw_apns_config) do
     dev_raw_configs = Keyword.get(raw_apns_config, :dev, [])
     prod_raw_configs = Keyword.get(raw_apns_config, :prod, [])

@@ -102,7 +102,7 @@ defmodule Sparrow.APNS.TokenBearer do
 
   def handle_info(unknown, state) do
     _ =
-      Logger.warn("Unknown message",
+      Logger.warning("Unknown message",
         worker: :apns_token_bearer,
         what: :unknown_message,
         message: inspect(unknown)

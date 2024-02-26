@@ -1,6 +1,6 @@
 # This file is responsible for configuring your application
-# and its dependencies with the aid of the Mix.Config module.
-use Mix.Config
+# and its dependencies with the aid of the Config module.
+import Config
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this
 # file won't be loaded nor affect the parent project. For this reason,
@@ -18,6 +18,8 @@ use Mix.Config
 # You can also configure a 3rd-party app:
 #
 config :logger, level: :info
+
+config :logger, :default_formatter, metadata: :all
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment

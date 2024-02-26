@@ -851,7 +851,7 @@ defmodule Sparrow.H2WorkerTest do
     spawn(fn -> :timer.sleep(5_000) end)
   end
 
-  describe "is_alive_connection/1" do
+  describe "alive_connection?/1" do
     test "returns false when connection is not alive", context do
       ptest [
               domain: string(min: 3, max: 10, chars: ?a..?z),
@@ -877,7 +877,7 @@ defmodule Sparrow.H2WorkerTest do
           worker_pid = start_supervised!(Tools.h2_worker_spec(config))
           %State{connection_ref: nil} = :sys.get_state(worker_pid)
 
-          assert false == Sparrow.H2Worker.is_alive_connection(worker_pid)
+          assert false == Sparrow.H2Worker.alive_connection?(worker_pid)
         end
       end
     end
@@ -917,7 +917,7 @@ defmodule Sparrow.H2WorkerTest do
                    ) == :sys.get_state(worker_pid, 100)
           )
 
-          assert true == Sparrow.H2Worker.is_alive_connection(worker_pid)
+          assert true == Sparrow.H2Worker.alive_connection?(worker_pid)
           stop_h2_worker()
         end
       end

@@ -48,7 +48,8 @@ defmodule H2Integration.CerificateRequiredTest do
       Sparrow.H2Worker.Config.new(%{
         domain: Setup.server_host(),
         port: context[:port],
-        authentication: auth
+        authentication: auth,
+        tls_options: [verify: :verify_none]
       })
 
     headers = Setup.default_headers()
@@ -101,7 +102,16 @@ defmodule H2Integration.CerificateRequiredTest do
     assert {:error, {:unable_to_connect, reason}} =
              GenServer.call(worker_pid, {:send_request, notification})
 
-    assert {:options, {:cacertfile, []}} == reason
+    assert Enum.member?(
+             [
+               # OTP 25 and below
+               {:options, {:cacertfile, []}},
+               # OTP 26+
+               {:options, :incompatible,
+                [verify: :verify_peer, cacerts: :undefined]}
+             ],
+             reason
+           )
   end
 
   defp assert_response_header(headers, expected_header) do

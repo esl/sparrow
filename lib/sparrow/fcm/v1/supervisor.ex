@@ -11,7 +11,7 @@ defmodule Sparrow.FCM.V1.Supervisor do
   end
 
   @spec init([Keyword.t()]) ::
-          {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}}
+          {:ok, {Supervisor.sup_flags(), [Supervisor.child_spec()]}}
   def init(raw_fcm_config) do
     children = [
       %{

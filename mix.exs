@@ -5,7 +5,7 @@ defmodule Sparrow.MixProject do
     [
       app: :sparrow,
       version: "1.0.2",
-      elixir: "~> 1.6",
+      elixir: "~> 1.13",
       elixirc_paths: elixirc_paths(Mix.env()),
       elixirc_options: elixirc_options(),
       start_permanent: Mix.env() == :prod,
@@ -24,28 +24,28 @@ defmodule Sparrow.MixProject do
 
   defp deps do
     [
-      {:dialyxir, "~> 1.0", runtime: false, only: [:dev, :test]},
-      {:credo, "~> 1.6", runtime: false, only: [:dev, :test]},
-      {:chatterbox, github: "joedevivo/chatterbox", ref: "1f4ce4f"},
-      {:certifi, "~> 2.9"},
-      {:excoveralls, "~> 0.14", runtime: false, only: :test},
+      {:dialyxir, "~> 1.4", runtime: false, only: [:dev, :test]},
+      {:credo, "~> 1.7", runtime: false, only: [:dev, :test]},
+      {:chatterbox, github: "joedevivo/chatterbox", ref: "c0506c7"},
+      {:certifi, "~> 2.12"},
+      {:excoveralls, "~> 0.18", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},
       {:uuid, "~> 1.1"},
       {:jason, "~> 1.4"},
-      {:joken, "~> 2.5"},
+      {:joken, "~> 2.6"},
       {:poison, "~> 5.0"},
-      {:mox, "~> 1.0", only: :test},
+      {:mox, "~> 1.1", only: :test},
       {:mock, "~> 0.3", only: :test},
       {:meck, github: "eproxus/meck", only: :test, override: true},
-      {:cowboy, "~> 2.9", only: :test},
+      {:cowboy, "~> 2.11", only: :test},
       {:lager, "~> 3.9", override: true},
       {:logger_lager_backend, "~> 0.2"},
-      {:plug, "~> 1.13", only: :test},
-      {:goth, "~> 1.1.0", runtime: false},
-      {:httpoison, "~> 1.8"},
-      {:worker_pool, "== 4.0.1"},
+      {:plug, "~> 1.15", only: :test},
+      {:goth, "~> 1.4"},
+      {:httpoison, "~> 2.2"},
+      {:worker_pool, "~> 6.2"},
       {:assert_eventually, "~> 1.0", only: [:test]},
-      {:telemetry, "~> 1.1"}
+      {:telemetry, "~> 1.2"}
     ]
   end
 

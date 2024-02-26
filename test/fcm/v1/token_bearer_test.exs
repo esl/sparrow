@@ -15,12 +15,12 @@ defmodule Sparrow.FCM.V1.TokenBearerTest do
   setup :passthrough_h2
 
   test "token bearer gets token" do
-    with_mock Goth.Token,
-      for_scope: fn {_, scope} ->
+    with_mock Goth,
+      fetch: fn _name ->
         {:ok,
          %Goth.Token{
            expires: @expires,
-           scope: scope,
+           scope: "https://www.googleapis.com/auth/firebase.messaging",
            sub: nil,
            token: @token,
            type: "Bearer"
