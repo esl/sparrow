@@ -104,7 +104,7 @@ defmodule H2Integration.CerificateRequiredTest do
 
     assert Enum.member?(
              [
-               # OTP 25 and bellow
+               # OTP 25 and below
                {:options, {:cacertfile, []}},
                # OTP 26+
                {:options, :incompatible,
