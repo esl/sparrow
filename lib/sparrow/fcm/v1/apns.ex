@@ -5,7 +5,7 @@ defmodule Sparrow.FCM.V1.APNS do
   FCM wrapper for `Sparrow.APNS.Notification`.
   """
 
-  @type token_getter :: (-> {String.t(), String.t()})
+  @type token_getter :: (-> {String.t(), String.t()}) | nil
   @type t :: %__MODULE__{
           notification: Sparrow.APNS.Notification.t(),
           token_getter: token_getter
@@ -25,7 +25,7 @@ defmodule Sparrow.FCM.V1.APNS do
   """
   @spec new(Sparrow.APNS.Notification.t(), token_getter) ::
           Sparrow.FCM.V1.APNS.t()
-  def new(notification, token_getter) do
+  def new(notification, token_getter \\ nil) do
     %__MODULE__{
       notification: notification,
       token_getter: token_getter
@@ -37,8 +37,14 @@ defmodule Sparrow.FCM.V1.APNS do
   """
   @spec to_map(t) :: map
   def to_map(apns) do
+    auth_header =
+      case apns.token_getter do
+        nil -> []
+        token_getter -> [token_getter.()]
+      end
+
     %{
-      :headers => Map.new([apns.token_getter.() | apns.notification.headers]),
+      :headers => Map.new(auth_header ++ apns.notification.headers),
       :payload => Sparrow.APNS.make_body(apns.notification)
     }
   end
