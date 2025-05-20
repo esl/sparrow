@@ -62,5 +62,5 @@ workflows:
       - test:
           matrix:
             parameters:
-              elixir: [1.15.7, 1.16.1]
-              erlang: [25.3.2.8, 26.2.1]
+              elixir: [1.17.3, 1.18.3]
+              erlang: [26.2.5.12, 27.3.4]
