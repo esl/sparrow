@@ -110,7 +110,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
           repeat_for: @repeats do
       with_mock :h2_connection, new_stream: fn _ -> {:error, reason} end do
         conn = self()
-        headers = List.zip([headersA1, headersB1])
+        headers = Enum.zip([headersA1, headersB1])
 
         assert {:error, reason} ===
                  H2Adapter.post(conn, domain, path, headers, body)
@@ -131,7 +131,7 @@ defmodule H2ClientAdapter.ChatterboxTest do
           ],
           repeat_for: @repeats do
       conn = pid("0.2.3")
-      headers = List.zip([headersA1, headersB1])
+      headers = Enum.zip([headersA1, headersB1])
 
       with_mock :h2_connection,
         new_stream: fn _ -> stream_id end,

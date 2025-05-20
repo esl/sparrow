@@ -12,7 +12,7 @@ defmodule H2Worker.RequestTest do
             path: string(min: 3, max: 15, chars: :ascii)
           ],
           repeat_for: @repeats do
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       %name{} = Sparrow.H2Worker.Request.new(headers, body, path)
       assert Sparrow.H2Worker.Request == name
