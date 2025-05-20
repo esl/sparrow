@@ -52,7 +52,7 @@ defmodule Sparrow.H2WorkerTest do
       ponger = pid()
       ping_interval = 100
       request_timeout = 300
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
@@ -99,7 +99,7 @@ defmodule Sparrow.H2WorkerTest do
       ponger = pid()
       ping_interval = 100
       request_timeout = 3_000
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
@@ -153,7 +153,7 @@ defmodule Sparrow.H2WorkerTest do
       ponger = pid()
       ping_interval = 100
       request_timeout = 300
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
@@ -206,7 +206,7 @@ defmodule Sparrow.H2WorkerTest do
       ponger = pid()
       ping_interval = 100
       request_timeout = 300
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
@@ -258,7 +258,7 @@ defmodule Sparrow.H2WorkerTest do
       ponger = pid()
       ping_interval = 100
       request_timeout = 300
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
@@ -365,7 +365,7 @@ defmodule Sparrow.H2WorkerTest do
       ponger = pid()
       ping_interval = 1_000
       request_timeout = 200
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
@@ -564,7 +564,7 @@ defmodule Sparrow.H2WorkerTest do
           repeat_for: @repeats do
       ping_interval = 100
       request_timeout = 1_000
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter,
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
@@ -674,7 +674,7 @@ defmodule Sparrow.H2WorkerTest do
           end
         end,
         close: fn _ -> :ok end do
-        headers = List.zip([headersA, headersB])
+        headers = Enum.zip([headersA, headersB])
 
         config =
           Config.new(%{
@@ -716,7 +716,7 @@ defmodule Sparrow.H2WorkerTest do
           ],
           repeat_for: 1 do
       ping_interval = 12_300
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter,
         open: fn _, _, _ ->

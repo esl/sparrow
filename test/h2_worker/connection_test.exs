@@ -152,7 +152,7 @@ defmodule Sparrow.H2Worker.ConnectionTest do
           repeat_for: @repeats do
       me = self()
       request_timeout = 300
-      headers = List.zip([headersA, headersB])
+      headers = Enum.zip([headersA, headersB])
 
       Sparrow.H2ClientAdapter.Mock
       |> expect(:open, 1, fn _, _, _ ->

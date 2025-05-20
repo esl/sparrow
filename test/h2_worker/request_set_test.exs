@@ -31,9 +31,9 @@ defmodule H2Worker.RequestSetTest do
       stream_id2 = 2222
       stream_id3_not_exisiting = 3333
 
-      headers1 = List.zip([headersA1, headersB1])
+      headers1 = Enum.zip([headersA1, headersB1])
       from_pid1 = pid("0.12.13")
-      headers2 = List.zip([headersA2, headersB2])
+      headers2 = Enum.zip([headersA2, headersB2])
       from_pid2 = pid("0.13.12")
 
       outer_request1 = Sparrow.H2Worker.Request.new(headers1, body1, path1)
