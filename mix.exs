@@ -43,7 +43,7 @@ defmodule Sparrow.MixProject do
       {:plug, "~> 1.15", only: :test},
       {:goth, "~> 1.4"},
       {:httpoison, "~> 2.2"},
-      {:worker_pool, "~> 6.2"},
+      {:worker_pool, "== 6.2.0"},
       {:assert_eventually, "~> 1.0", only: [:test]},
       {:telemetry, "~> 1.2"}
     ]
