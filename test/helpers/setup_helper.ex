@@ -69,37 +69,41 @@ defmodule Helpers.SetupHelper do
     })
   end
 
-  defp certificate_settings_list do
+  # `certfile`/`keyfile` let a test serve its own certificate; the defaults are
+  # the generic ones from `mix sparrow.certs.dev`.
+  defp certificate_settings_list(opts) do
+    certfile = Keyword.get(opts, :certfile, "priv/ssl/fake_cert.pem")
+
     [
-      {:cacertfile, "priv/ssl/fake_cert.pem"},
-      {:certfile, "priv/ssl/fake_cert.pem"},
-      {:keyfile, "priv/ssl/fake_key.pem"}
+      {:cacertfile, Keyword.get(opts, :cacertfile, certfile)},
+      {:certfile, certfile},
+      {:keyfile, Keyword.get(opts, :keyfile, "priv/ssl/fake_key.pem")}
     ]
   end
 
-  defp settings_list(:positive_cerificate_verification, port) do
+  defp settings_list(:positive_cerificate_verification, port, opts) do
     [
       {:port, port},
       {:verify, :verify_peer},
       {:verify_fun, {fn _, _, _ -> {:valid, :ok} end, :ok}}
-      | certificate_settings_list()
+      | certificate_settings_list(opts)
     ]
   end
 
-  defp settings_list(:negative_cerificate_verification, port) do
+  defp settings_list(:negative_cerificate_verification, port, opts) do
     [
       {:port, port},
       {:verify, :verify_peer},
       {:verify_fun,
        {fn _, _, _ -> {:fail, :negative_cerificate_verification} end, :ok}}
-      | certificate_settings_list()
+      | certificate_settings_list(opts)
     ]
   end
 
-  defp settings_list(:no, port) do
+  defp settings_list(:no, port, opts) do
     [
       {:port, port}
-      | certificate_settings_list()
+      | certificate_settings_list(opts)
     ]
   end
 
@@ -107,7 +111,7 @@ defmodule Helpers.SetupHelper do
     cert_required = Keyword.get(opts, :certificate_required, :no)
     port = Keyword.get(opts, :port, 0)
     name = Keyword.get(opts, :name, :look)
-    settings_list = settings_list(cert_required, port)
+    settings_list = settings_list(cert_required, port, opts)
 
     {:ok, pid} =
       :cowboy.start_tls(
