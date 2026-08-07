@@ -12,6 +12,14 @@ Currently it provides support for the following APIs:
 * Elixir 1.13 or higher
 * Erlang OTP 24 or higher
 
+## Running tests
+The suite needs local certificates, generated once by a Mix task. Requires `openssl`.
+
+```
+mix sparrow.certs.dev
+mix test
+```
+
 # Build sparrow config
 This section describes how to write a config file for Sparrow.
 If you wish to use just one of the following services, do not include the other in the config.
