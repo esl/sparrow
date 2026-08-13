@@ -34,6 +34,25 @@ defmodule H2Integration.WildcardCertificateTest do
     :ok
   end
 
+  setup_all do
+    {:ok, _cowboy_pid, cowboys_name} =
+      [
+        {":_",
+         [{"/OkResponseHandler", Helpers.CowboyHandlers.OkResponseHandler, []}]}
+      ]
+      |> :cowboy_router.compile()
+      |> Setup.start_cowboy_tls(
+        certificate_required: :no,
+        certfile: @wildcard_cert,
+        keyfile: @wildcard_key,
+        name: :wildcard_cert_listener
+      )
+
+    on_exit(fn -> :cowboy.stop_listener(cowboys_name) end)
+
+    {:ok, port: :ranch.get_port(cowboys_name)}
+  end
+
   describe "default TLS options" do
     test "FCM pool enables wildcard hostname matching" do
       assert Keyword.has_key?(
@@ -57,23 +76,17 @@ defmodule H2Integration.WildcardCertificateTest do
   end
 
   describe "handshake against a wildcard-only certificate" do
-    test "FCM defaults accept it" do
-      port = start_wildcard_tls_server()
-
+    test "FCM defaults accept it", %{port: port} do
       assert :ok == connect(port, fcm_default_tls_options())
     end
 
-    test "APNS defaults accept it" do
-      port = start_wildcard_tls_server()
-
+    test "APNS defaults accept it", %{port: port} do
       assert :ok == connect(port, apns_default_tls_options())
     end
 
     # Guards the tests above: without the option the handshake must fail, and
     # fail specifically on the hostname check rather than on path validation.
-    test "it is rejected without customize_hostname_check" do
-      port = start_wildcard_tls_server()
-
+    test "it is rejected without customize_hostname_check", %{port: port} do
       tls_options =
         Keyword.delete(fcm_default_tls_options(), :customize_hostname_check)
 
@@ -86,9 +99,7 @@ defmodule H2Integration.WildcardCertificateTest do
     # The handshake tests above drive `:ssl` directly. This one goes through a
     # real pool, so it also covers the tls_opts reaching `:ssl.connect`
     # unchanged through the H2 client.
-    test "an FCM pool serves a request over it" do
-      port = start_wildcard_tls_server()
-
+    test "an FCM pool serves a request over it", %{port: port} do
       config =
         Sparrow.H2Worker.Config.new(%{
           domain: Setup.server_host(),
@@ -142,25 +153,6 @@ defmodule H2Integration.WildcardCertificateTest do
       children
 
     pool_config.workers_config.tls_options
-  end
-
-  defp start_wildcard_tls_server do
-    {:ok, _pid, name} =
-      [
-        {":_",
-         [{"/OkResponseHandler", Helpers.CowboyHandlers.OkResponseHandler, []}]}
-      ]
-      |> :cowboy_router.compile()
-      |> Setup.start_cowboy_tls(
-        certificate_required: :no,
-        certfile: @wildcard_cert,
-        keyfile: @wildcard_key,
-        name: :wildcard_cert_listener
-      )
-
-    on_exit(fn -> :cowboy.stop_listener(name) end)
-
-    :ranch.get_port(name)
   end
 
   # Overrides only the trust anchor and the reference hostname; the rest is as
