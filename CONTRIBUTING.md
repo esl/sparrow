@@ -29,7 +29,14 @@ Do your work in the branch, push it to the ESL repository if you have access to 
 
 ### Run tests
 
-When done, run `mix test` and write tests related to what you've done.
+Generate the test certificates first, then run the suite:
+
+```
+mix sparrow.certs.dev
+mix test
+```
+
+Write tests related to what you've done.
 
 ### Check coding style
 

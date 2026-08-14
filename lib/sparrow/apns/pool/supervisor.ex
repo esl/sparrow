@@ -106,7 +106,9 @@ defmodule Sparrow.APNS.Pool.Supervisor do
     [
       {:verify, :verify_peer},
       {:depth, 99},
-      {:cacerts, cacerts}
+      {:cacerts, cacerts},
+      {:customize_hostname_check,
+       [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]}
     ]
   end
 end
