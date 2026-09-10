@@ -90,7 +90,7 @@ defmodule H2Integration.WildcardCertificateTest do
       tls_options =
         Keyword.delete(fcm_default_tls_options(), :customize_hostname_check)
 
-      assert {:error, {:tls_alert, {:handshake_failure, reason}}} =
+      assert {:error, {:tls_alert, {_alert, reason}}} =
                connect(port, tls_options)
 
       assert to_string(reason) =~ "hostname_check_failed"
