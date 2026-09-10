@@ -49,7 +49,7 @@ jobs:
           key: dialyzer-{{ checksum "mix.lock" }}
           paths:
             - .dialyzer
-      - run: mix dialyzer --halt-exit-status
+      - run: mix dialyzer
       - run:
           name: Run tests
           command: |
