@@ -74,10 +74,17 @@ defmodule Sparrow.H2Worker.Pool do
   """
   @spec start_unregistered(Sparrow.H2Worker.Pool.Config.t(), pool_type, [atom]) ::
           {:error, any} | {:ok, pid}
-  def start_unregistered(config, pool_type, tags \\ []) do
+  def start_unregistered(
+        config =
+          %Sparrow.H2Worker.Pool.Config{
+            workers_config: workers_config = %Sparrow.H2Worker.Config{}
+          },
+        pool_type,
+        tags \\ []
+      ) do
     # We add pool information to worker config only for the telemetry events
     worker_config_with_pool = %Sparrow.H2Worker.Config{
-      config.workers_config
+      workers_config
       | pool_type: pool_type,
         pool_name: config.pool_name,
         pool_tags: tags

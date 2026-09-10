@@ -2,8 +2,6 @@ defmodule Sparrow.Telemetry.Timer do
   @moduledoc """
   Module responsible for handling emitting telemetry events which measure time of execution
   """
-  require Logger
-
   defmacro __using__(_mod) do
     quote do
       import Sparrow.Telemetry.Timer
@@ -46,7 +44,7 @@ defmodule Sparrow.Telemetry.Timer do
 
         new_body = update_body(fun_info)
 
-        if length(fun_info.guards) > 0 do
+        if fun_info.guards != [] do
           quote generated: true do
             def unquote(fun_info.name)(unquote_splicing(fun_info.args))
                 when unquote_splicing(fun_info.guards) do

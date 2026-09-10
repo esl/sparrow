@@ -246,7 +246,7 @@ defmodule Sparrow.H2Worker do
     {:noreply, try_start_conn(state, try_count, delay_stream)}
   end
 
-  def handle_info({:start_conn, _, _}, state) do
+  def handle_info({:start_conn, _, _}, state = %State{}) do
     {:noreply, %State{state | restart_connection_timer: nil}}
   end
 
