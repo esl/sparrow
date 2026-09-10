@@ -3,7 +3,6 @@ defmodule Sparrow.H2WorkerTest do
   use ExUnit.Case
   use Quixir
   use AssertEventually
-  require Logger
 
   import Mock
   import Mox

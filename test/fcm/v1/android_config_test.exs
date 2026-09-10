@@ -69,8 +69,7 @@ defmodule Sparrow.FCM.V1.AndroidTest do
 
   test "android config, unknown prioirty" do
     assert_raise FunctionClauseError, fn ->
-      Android.new()
-      |> Android.add_priority(:LOW)
+      apply(Android, :add_priority, [Android.new(), :LOW])
     end
   end
 

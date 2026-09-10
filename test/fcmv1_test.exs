@@ -220,10 +220,11 @@ defmodule Sparrow.FCM.V1Test do
           |> Map.get("message")
           |> Map.get("android")
 
+        assert is_map(actual_decoded_android)
+
         actual_decoded_android_notification =
           Map.get(actual_decoded_android, "notification")
 
-        assert actual_decoded_android != nil
         assert @android_data == Map.get(actual_decoded_android, "data")
 
         assert @android_collapse_key ==
@@ -266,10 +267,11 @@ defmodule Sparrow.FCM.V1Test do
           |> Map.get("message")
           |> Map.get("webpush")
 
+        assert is_map(actual_decoded_webpush)
+
         actual_decoded_webpush_notification =
           Map.get(actual_decoded_webpush, "notification")
 
-        assert actual_decoded_webpush != nil
         assert @webpush_data == Map.get(actual_decoded_webpush, "data")
 
         assert @webpush_body ==
@@ -308,10 +310,10 @@ defmodule Sparrow.FCM.V1Test do
 
         actual_decoded_apns_payload = Map.get(actual_decoded_apns, "payload")
 
+        assert is_map(actual_decoded_apns_payload)
+
         aps_dictionary = Map.get(actual_decoded_apns_payload, "aps")
         alert_dictionary = Map.get(aps_dictionary, "alert")
-
-        assert actual_decoded_apns_payload != nil
 
         assert @apns_custom_data_value ==
                  Map.get(actual_decoded_apns_payload, @apns_custom_data_key)
