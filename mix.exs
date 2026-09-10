@@ -39,7 +39,7 @@ defmodule Sparrow.MixProject do
       {:cowboy, "~> 2.11", only: :test},
       {:plug, "~> 1.15", only: :test},
       {:goth, "~> 1.4"},
-      {:worker_pool, "== 6.2.0"},
+      {:worker_pool, "~> 7.0"},
       {:assert_eventually, "~> 1.0", only: [:test]},
       {:telemetry, "~> 1.2"}
     ]
