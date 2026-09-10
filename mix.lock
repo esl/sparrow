@@ -32,5 +32,5 @@
   "ranch": {:hex, :ranch, "2.3.0", "7de7b041a9a6a5091a3aa5898d66c0564be671d87db4f9d63b1b5ee775b097df", [:make, :rebar3], [], "hexpm", "6168ec49409d982f7cfbd83dd083144f6cbe67caa4036551d2f0a3ad67c9d023"},
   "telemetry": {:hex, :telemetry, "1.4.2", "a0cb522801dffb1c49fe6e30561badffc7b6d0e180db1300df759faa22062855", [:rebar3], [], "hexpm", "928f6495066506077862c0d1646609eed891a4326bee3126ba54b60af61febb1"},
   "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm", "c790593b4c3b601f5dc2378baae7efaf5b3d73c4c6456ba85759905be792f2ac"},
-  "worker_pool": {:hex, :worker_pool, "6.2.0", "506de38c528a81ed2c6a80a419b83dde6da5e295bd320bdf4d35a69afeb0247a", [:rebar3], [], "hexpm", "e1ded160797fbe656ad683109dbd741b520097df17bdf7b51e3e4697073a6e62"},
+  "worker_pool": {:hex, :worker_pool, "7.0.0", "20e780cb3c7d5c2bc015ee0a1f984940faa51fafd696d3f61ce9cabc24a0c191", [:rebar3], [], "hexpm", "cc35180c744c340d7988c659d26139fb8a8182b0d12152804fd4c3b3b5b47d06"},
 }
