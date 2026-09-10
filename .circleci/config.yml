@@ -28,10 +28,10 @@ jobs:
       - run: apk add --no-cache git openssl
       - run: mix do local.rebar --force, local.hex --force
       - restore_cache:
-          key: deps-{{ checksum "mix.lock" }}
+          key: deps-v2-elixir-<< parameters.elixir >>-otp-<< parameters.erlang >>-{{ checksum "mix.lock" }}
       - run: mix do deps.get, deps.compile
       - save_cache:
-          key: deps-{{ checksum "mix.lock" }}
+          key: deps-v2-elixir-<< parameters.elixir >>-otp-<< parameters.erlang >>-{{ checksum "mix.lock" }}
           paths:
             - _build
             - deps
@@ -39,14 +39,14 @@ jobs:
       - run: mix format --check-formatted
       - run: mix credo --strict
       - restore_cache:
-          key: dialyzer-{{ checksum "mix.lock" }}
+          key: dialyzer-v2-elixir-<< parameters.elixir >>-otp-<< parameters.erlang >>-{{ checksum "mix.lock" }}
       - run:
           name: Create PLTs
           command: |
             mkdir -p .dialyzer
             mix dialyzer --plt
       - save_cache:
-          key: dialyzer-{{ checksum "mix.lock" }}
+          key: dialyzer-v2-elixir-<< parameters.elixir >>-otp-<< parameters.erlang >>-{{ checksum "mix.lock" }}
           paths:
             - .dialyzer
       - run: mix dialyzer
