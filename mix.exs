@@ -5,7 +5,7 @@ defmodule Sparrow.MixProject do
     [
       app: :sparrow,
       version: "1.0.2",
-      elixir: "~> 1.17",
+      elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
       elixirc_options: elixirc_options(),
       start_permanent: Mix.env() == :prod,
@@ -33,17 +33,13 @@ defmodule Sparrow.MixProject do
       {:uuid, "~> 1.1"},
       {:jason, "~> 1.4"},
       {:joken, "~> 2.6"},
-      {:poison, "~> 5.0"},
       {:mox, "~> 1.1", only: :test},
       {:mock, "~> 0.3", only: :test},
-      {:meck, github: "eproxus/meck", only: :test, override: true},
+      {:meck, "~> 1.2", only: :test, override: true},
       {:cowboy, "~> 2.11", only: :test},
-      {:lager, "~> 3.9", override: true},
-      {:logger_lager_backend, "~> 0.2"},
       {:plug, "~> 1.15", only: :test},
       {:goth, "~> 1.4"},
-      {:httpoison, "~> 2.2"},
-      {:worker_pool, "== 6.2.0"},
+      {:worker_pool, "~> 7.0"},
       {:assert_eventually, "~> 1.0", only: [:test]},
       {:telemetry, "~> 1.2"}
     ]

@@ -8,7 +8,7 @@ executors:
       erlang:
         type: string
     docker:
-      - image: hexpm/elixir:<< parameters.elixir >>-erlang-<< parameters.erlang >>-alpine-3.21.3
+      - image: hexpm/elixir:<< parameters.elixir >>-erlang-<< parameters.erlang >>-alpine-3.24.1
         environment:
             - MIX_ENV=test
 
@@ -25,13 +25,13 @@ jobs:
       erlang: << parameters.erlang >>
     steps:
       - checkout
-      - run: apk add git
+      - run: apk add --no-cache git openssl
       - run: mix do local.rebar --force, local.hex --force
       - restore_cache:
-          key: deps-{{ checksum "mix.lock" }}
+          key: deps-v2-elixir-<< parameters.elixir >>-otp-<< parameters.erlang >>-{{ checksum "mix.lock" }}
       - run: mix do deps.get, deps.compile
       - save_cache:
-          key: deps-{{ checksum "mix.lock" }}
+          key: deps-v2-elixir-<< parameters.elixir >>-otp-<< parameters.erlang >>-{{ checksum "mix.lock" }}
           paths:
             - _build
             - deps
@@ -39,17 +39,17 @@ jobs:
       - run: mix format --check-formatted
       - run: mix credo --strict
       - restore_cache:
-          key: dialyzer-{{ checksum "mix.lock" }}
+          key: dialyzer-v2-elixir-<< parameters.elixir >>-otp-<< parameters.erlang >>-{{ checksum "mix.lock" }}
       - run:
           name: Create PLTs
           command: |
             mkdir -p .dialyzer
             mix dialyzer --plt
       - save_cache:
-          key: dialyzer-{{ checksum "mix.lock" }}
+          key: dialyzer-v2-elixir-<< parameters.elixir >>-otp-<< parameters.erlang >>-{{ checksum "mix.lock" }}
           paths:
             - .dialyzer
-      - run: mix dialyzer --halt-exit-status
+      - run: mix dialyzer
       - run:
           name: Run tests
           command: |
@@ -60,7 +60,10 @@ workflows:
   default:
     jobs:
       - test:
-          matrix:
-            parameters:
-              elixir: [1.17.3, 1.18.3]
-              erlang: [26.2.5.12, 27.3.4]
+          name: elixir-1.19.6-otp-28.5.0.6
+          elixir: "1.19.6"
+          erlang: "28.5.0.6"
+      - test:
+          name: elixir-1.20.4-otp-29.0.6
+          elixir: "1.20.4"
+          erlang: "29.0.6"
