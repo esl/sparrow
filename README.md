@@ -331,6 +331,53 @@ Application.start(:sparrow)
     
 ***
 
+# VoIP notifications
+
+## APNS
+
+APNS VoIP notifications use the regular APNS HTTP/2 endpoint, but they must
+target a PushKit VoIP device token and use the `voip` push type. The topic must
+be the application's bundle ID with the `.voip` suffix. When certificate-based
+authentication is used, the certificate must support VoIP services.
+
+VoIP payloads may contain application-defined JSON data without an `aps`
+dictionary. Sparrow omits `aps` when neither alert options nor APS dictionary
+options are set. For example, a Jingle Message Initiation session can be sent as
+follows:
+
+```elixir
+sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
+
+notification =
+  "voip_pushkit_device_token"
+  |> Sparrow.APNS.Notification.new(:dev)
+  |> Sparrow.APNS.Notification.add_apns_push_type("voip")
+  |> Sparrow.APNS.Notification.add_apns_priority("10")
+  |> Sparrow.APNS.Notification.add_apns_topic("com.example.app.voip")
+  |> Sparrow.APNS.Notification.add_apns_expiration("0")
+  |> Sparrow.APNS.Notification.add_custom_data("jmi-sid", sid)
+
+:ok = Sparrow.API.push(notification)
+```
+
+The resulting APNS payload is:
+
+```json
+{"jmi-sid":"ca3cf894-5325-482f-a412-a6e9f832298d"}
+```
+
+Apple recommends setting `apns-expiration` to `0` or to only a few seconds for
+VoIP notifications, so stale calls are not delivered later. A nonzero value is
+an absolute UNIX timestamp in seconds, not a relative time-to-live value.
+
+For the corresponding Apple requirements, see:
+
+- [VoIP payload contents](https://developer.apple.com/documentation/pushkit/pkpushpayload/dictionarypayload)
+- [Generating VoIP notifications from a server](https://developer.apple.com/documentation/pushkit/responding-to-voip-notifications-from-pushkit#Generate-Push-Notifications-from-Your-Server)
+- [APNS VoIP push type and topic](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types)
+
+***
+
 ## How to obtain and use APNS certificate for certificate based authorization?
 
 Pre Requirements:

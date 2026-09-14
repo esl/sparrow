@@ -178,7 +178,12 @@ defmodule Sparrow.APNS do
   end
 
   @doc """
-  Function to make APNS notifiaction payload.
+  Builds an APNS notification payload.
+
+  The `aps` dictionary is included only when the notification contains alert
+  options or APS dictionary options. Custom-data-only notifications are
+  returned without an empty `aps` dictionary, which permits payload formats
+  such as custom-data-only PushKit VoIP notifications.
   """
   @spec make_body(Sparrow.APNS.Notification.t()) :: map
   def make_body(notification) do
@@ -189,11 +194,11 @@ defmodule Sparrow.APNS do
     aps_opts =
       notification.aps_dictionary_opts
       |> Map.new()
-      |> maybe_alert(alert)
+      |> add_if_not_empty("alert", alert)
 
     notification.custom_data
     |> Map.new()
-    |> Map.put("aps", aps_opts)
+    |> add_if_not_empty("aps", aps_opts)
   end
 
   @doc """
@@ -307,10 +312,11 @@ defmodule Sparrow.APNS do
     body |> Jason.decode!() |> Map.get("reason")
   end
 
-  defp maybe_alert(map, alert) do
-    case Map.keys(alert) do
-      [] -> map
-      _ -> Map.put(map, "alert", alert)
+  @spec add_if_not_empty(map, String.t(), map) :: map
+  defp add_if_not_empty(map, key, sub_map) do
+    case sub_map == %{} do
+      true -> map
+      false -> Map.put(map, key, sub_map)
     end
   end
 end

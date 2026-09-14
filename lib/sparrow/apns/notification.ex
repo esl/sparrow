@@ -2,10 +2,11 @@ defmodule Sparrow.APNS.Notification do
   @moduledoc """
   Struct representing single APNS notification.
 
-  For details on the APNS notification payload structure see the following links:
-    * https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html#//apple_ref/doc/uid/TP40008194-CH11-SW1
-    * https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/PayloadKeyReference.html#//apple_ref/doc/uid/TP40008194-CH17-SW1
-    * https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/generating_a_remote_notification
+  For details on APNS notification requests and payloads, see:
+
+    * [Sending notification requests to APNS](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns)
+    * [VoIP payload contents](https://developer.apple.com/documentation/pushkit/pkpushpayload/dictionarypayload)
+
   This module contains a bunch of helper functions which allow you to build the notification conveniently.
 
     ## Example
@@ -239,6 +240,9 @@ defmodule Sparrow.APNS.Notification do
 
   @doc """
   Sets the `apns-expiration` header.
+
+  The value is a UNIX timestamp in seconds. A value of `"0"` tells APNS to
+  attempt delivery only once and not store the notification.
   """
   @spec add_apns_expiration(__MODULE__.t(), String.t()) :: __MODULE__.t()
   def add_apns_expiration(notification, value),
@@ -250,6 +254,16 @@ defmodule Sparrow.APNS.Notification do
   @spec add_apns_priority(__MODULE__.t(), String.t()) :: __MODULE__.t()
   def add_apns_priority(notification, value),
     do: add_header(notification, "apns-priority", value)
+
+  @doc """
+  Sets the `apns-push-type` header.
+
+  Use `"voip"` for incoming VoIP call notifications. See Apple's
+  [push type documentation](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types).
+  """
+  @spec add_apns_push_type(__MODULE__.t(), String.t()) :: __MODULE__.t()
+  def add_apns_push_type(notification, value),
+    do: add_header(notification, "apns-push-type", value)
 
   @doc """
   Sets the `apns-topic` header.
@@ -266,7 +280,10 @@ defmodule Sparrow.APNS.Notification do
     do: add_header(notification, "apns-collapse-id", value)
 
   @doc """
-  Add your custom data to the aps dictionary.
+  Adds custom data at the top level of the notification payload.
+
+  If the notification has no alert or APS dictionary options, Sparrow omits
+  the `aps` dictionary. This supports payloads such as VoIP call metadata.
   """
   @spec add_custom_data(__MODULE__.t(), String.t(), any) :: __MODULE__.t()
   def add_custom_data(notification, key, value),
