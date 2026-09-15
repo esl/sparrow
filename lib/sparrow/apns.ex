@@ -6,6 +6,7 @@ defmodule Sparrow.APNS do
   require Logger
 
   alias Sparrow.H2Worker.Request
+  alias Sparrow.NotificationHelper
 
   @type reason :: atom
   @type headers :: Request.headers()
@@ -178,7 +179,12 @@ defmodule Sparrow.APNS do
   end
 
   @doc """
-  Function to make APNS notifiaction payload.
+  Builds an APNS notification payload.
+
+  The `aps` dictionary is included only when the notification contains alert
+  options or APS dictionary options. Custom-data-only notifications are
+  returned without an empty `aps` dictionary, which permits payload formats
+  such as custom-data-only PushKit VoIP notifications.
   """
   @spec make_body(Sparrow.APNS.Notification.t()) :: map
   def make_body(notification) do
@@ -189,11 +195,11 @@ defmodule Sparrow.APNS do
     aps_opts =
       notification.aps_dictionary_opts
       |> Map.new()
-      |> maybe_alert(alert)
+      |> NotificationHelper.add_if_not_empty("alert", alert)
 
     notification.custom_data
     |> Map.new()
-    |> Map.put("aps", aps_opts)
+    |> NotificationHelper.add_if_not_empty("aps", aps_opts)
   end
 
   @doc """
@@ -305,12 +311,5 @@ defmodule Sparrow.APNS do
   @spec get_reason_from_body(String.t()) :: String.t() | nil
   defp get_reason_from_body(body) do
     body |> Jason.decode!() |> Map.get("reason")
-  end
-
-  defp maybe_alert(map, alert) do
-    case Map.keys(alert) do
-      [] -> map
-      _ -> Map.put(map, "alert", alert)
-    end
   end
 end

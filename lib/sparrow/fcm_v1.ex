@@ -6,6 +6,7 @@ defmodule Sparrow.FCM.V1 do
   require Logger
 
   alias Sparrow.H2Worker.Request
+  alias Sparrow.NotificationHelper
 
   @type reason :: atom
   @type headers :: Request.headers()
@@ -36,7 +37,7 @@ defmodule Sparrow.FCM.V1 do
       * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
       * `{:error, :connection_lost}` when the connection to FCM is lost before the response arrives.
       * `{:error, :not_ready}` when stream response is not yet ready, but it h2worker tries to get it.
-      * `{:error, :invalid_notification}` when notification does not contain neither title nor body.
+      * `{:error, :invalid_notification}` when data values cannot be converted to strings.
       * `{:error, :reason}` when error with other reason occures.
     * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
   """
@@ -207,12 +208,13 @@ defmodule Sparrow.FCM.V1 do
 
   @spec make_body(Sparrow.FCM.V1.Notification.t()) :: map
   defp make_body(notification) do
+
     message =
       %{
         :data => notification.data,
-        :notification => build_notification(notification),
         notification.target_type => notification.target
       }
+      |> maybe_add_notification(notification)
       |> maybe_add_android(notification.android)
       |> maybe_add_webpush(notification.webpush)
       |> maybe_add_apns(notification.apns)
@@ -220,23 +222,10 @@ defmodule Sparrow.FCM.V1 do
     %{message: message}
   end
 
-  @spec build_notification(Sparrow.FCM.V1.Notification.t()) :: map
-  defp build_notification(notification) do
-    maybe_title =
-      if notification.title != nil do
-        %{:title => notification.title}
-      else
-        %{}
-      end
-
-    maybe_body =
-      if notification.body != nil do
-        %{:body => notification.body}
-      else
-        %{}
-      end
-
-    Map.merge(maybe_title, maybe_body)
+  @spec maybe_add_notification(map, Sparrow.FCM.V1.Notification.t()) :: map
+  defp maybe_add_notification(message, map) do
+    kvs = Map.filter(map, fn {k, v} -> k in [:title, :body] and v != nil end)
+    NotificationHelper.add_if_not_empty(message, :notification, kvs)
   end
 
   @spec maybe_add_android(map, android) :: map

@@ -331,6 +331,118 @@ Application.start(:sparrow)
     
 ***
 
+# VoIP notifications
+
+## Android (FCM v1)
+
+For an incoming Jingle Message Initiation (JMI) proposal, send structured data
+without display notification fields. The calling application must extract `sid`
+from the `<propose id="…">` attribute and `caller` from the caller's full JID,
+including its resource. Sparrow transports these values; it does not parse XMPP.
+
+```elixir
+sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
+caller = "romeo@montague.example/orchard"
+
+android =
+  Sparrow.FCM.V1.Android.new()
+  |> Sparrow.FCM.V1.Android.add_priority(:HIGH)
+  |> Sparrow.FCM.V1.Android.add_ttl(30)
+  |> Sparrow.FCM.V1.Android.add_collapse_key("jmi-" <> sid)
+
+notification =
+  Sparrow.FCM.V1.Notification.new(:token, "android-device-fcm-token", nil, nil, %{
+    "type" => "jmi",
+    "jmi-sid" => sid,
+    "jmi-from" => caller
+  })
+  |> Sparrow.FCM.V1.Notification.add_android(android)
+
+:ok = Sparrow.API.push(notification)
+```
+
+The resulting FCM request body is:
+
+```json
+{
+  "message": {
+    "token": "android-device-fcm-token",
+    "android": {
+      "priority": "high",
+      "ttl": "30s",
+      "collapse_key": "jmi-ca3cf894-5325-482f-a412-a6e9f832298d"
+    },
+    "data": {
+      "type": "jmi",
+      "jmi-sid": "ca3cf894-5325-482f-a412-a6e9f832298d",
+      "jmi-from": "romeo@montague.example/orchard"
+    }
+  }
+}
+```
+
+Leave the top-level title/body and Android display fields unset: Sparrow omits
+both `notification` objects when empty. Call data replaces the regular
+`last-message-sender`, `last-message-body`, and `message-count` placeholders.
+Use `Android.add_priority(:NORMAL)` for regular messages and `:HIGH` for incoming
+calls. High priority lets FCM attempt immediate delivery through Doze; the client
+must handle the data and present the incoming call promptly.
+
+The 30-second TTL limits offline storage. The session-specific collapse key lets
+FCM replace a pending push for the same call; it does not deduplicate pushes
+already delivered, so the client should also track the session ID.
+
+References:
+
+- [FCM HTTP v1 send](https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages/send)
+- [AndroidConfig](https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages#androidconfig)
+- [Message priority](https://firebase.google.com/docs/cloud-messaging/customize-messages/setting-message-priority)
+
+## APNS
+
+APNS VoIP notifications use the regular APNS HTTP/2 endpoint, but they must
+target a PushKit VoIP device token and use the `voip` push type. The topic must
+be the application's bundle ID with the `.voip` suffix. When certificate-based
+authentication is used, the certificate must support VoIP services.
+
+VoIP payloads may contain application-defined JSON data without an `aps`
+dictionary. Sparrow omits `aps` when neither alert options nor APS dictionary
+options are set. For example, a Jingle Message Initiation session can be sent as
+follows:
+
+```elixir
+sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
+
+notification =
+  "voip_pushkit_device_token"
+  |> Sparrow.APNS.Notification.new(:dev)
+  |> Sparrow.APNS.Notification.add_apns_push_type("voip")
+  |> Sparrow.APNS.Notification.add_apns_priority("10")
+  |> Sparrow.APNS.Notification.add_apns_topic("com.example.app.voip")
+  |> Sparrow.APNS.Notification.add_apns_expiration("0")
+  |> Sparrow.APNS.Notification.add_custom_data("jmi-sid", sid)
+
+:ok = Sparrow.API.push(notification)
+```
+
+The resulting APNS payload is:
+
+```json
+{"jmi-sid":"ca3cf894-5325-482f-a412-a6e9f832298d"}
+```
+
+Apple recommends setting `apns-expiration` to `0` or to only a few seconds for
+VoIP notifications, so stale calls are not delivered later. A nonzero value is
+an absolute UNIX timestamp in seconds, not a relative time-to-live value.
+
+For the corresponding Apple requirements, see:
+
+- [VoIP payload contents](https://developer.apple.com/documentation/pushkit/pkpushpayload/dictionarypayload)
+- [Generating VoIP notifications from a server](https://developer.apple.com/documentation/pushkit/responding-to-voip-notifications-from-pushkit#Generate-Push-Notifications-from-Your-Server)
+- [APNS VoIP push type and topic](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types)
+
+***
+
 ## How to obtain and use APNS certificate for certificate based authorization?
 
 Pre Requirements:
