@@ -333,6 +333,71 @@ Application.start(:sparrow)
 
 # VoIP notifications
 
+## Android (FCM v1)
+
+For an incoming Jingle Message Initiation (JMI) proposal, send structured data
+without display notification fields. The calling application must extract `sid`
+from the `<propose id="…">` attribute and `caller` from the caller's full JID,
+including its resource. Sparrow transports these values; it does not parse XMPP.
+
+```elixir
+sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
+caller = "romeo@montague.example/orchard"
+
+android =
+  Sparrow.FCM.V1.Android.new()
+  |> Sparrow.FCM.V1.Android.add_priority(:HIGH)
+  |> Sparrow.FCM.V1.Android.add_ttl(30)
+  |> Sparrow.FCM.V1.Android.add_collapse_key("jmi-" <> sid)
+
+notification =
+  Sparrow.FCM.V1.Notification.new(:token, "android-device-fcm-token", nil, nil, %{
+    "type" => "jmi",
+    "jmi-sid" => sid,
+    "jmi-from" => caller
+  })
+  |> Sparrow.FCM.V1.Notification.add_android(android)
+
+:ok = Sparrow.API.push(notification)
+```
+
+The resulting FCM request body is:
+
+```json
+{
+  "message": {
+    "token": "android-device-fcm-token",
+    "android": {
+      "priority": "high",
+      "ttl": "30s",
+      "collapse_key": "jmi-ca3cf894-5325-482f-a412-a6e9f832298d"
+    },
+    "data": {
+      "type": "jmi",
+      "jmi-sid": "ca3cf894-5325-482f-a412-a6e9f832298d",
+      "jmi-from": "romeo@montague.example/orchard"
+    }
+  }
+}
+```
+
+Leave the top-level title/body and Android display fields unset: Sparrow omits
+both `notification` objects when empty. Call data replaces the regular
+`last-message-sender`, `last-message-body`, and `message-count` placeholders.
+Use `Android.add_priority(:NORMAL)` for regular messages and `:HIGH` for incoming
+calls. High priority lets FCM attempt immediate delivery through Doze; the client
+must handle the data and present the incoming call promptly.
+
+The 30-second TTL limits offline storage. The session-specific collapse key lets
+FCM replace a pending push for the same call; it does not deduplicate pushes
+already delivered, so the client should also track the session ID.
+
+References:
+
+- [FCM HTTP v1 send](https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages/send)
+- [AndroidConfig](https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages#androidconfig)
+- [Message priority](https://firebase.google.com/docs/cloud-messaging/customize-messages/setting-message-priority)
+
 ## APNS
 
 APNS VoIP notifications use the regular APNS HTTP/2 endpoint, but they must

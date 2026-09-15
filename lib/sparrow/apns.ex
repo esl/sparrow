@@ -6,6 +6,7 @@ defmodule Sparrow.APNS do
   require Logger
 
   alias Sparrow.H2Worker.Request
+  alias Sparrow.NotificationHelper
 
   @type reason :: atom
   @type headers :: Request.headers()
@@ -194,11 +195,11 @@ defmodule Sparrow.APNS do
     aps_opts =
       notification.aps_dictionary_opts
       |> Map.new()
-      |> add_if_not_empty("alert", alert)
+      |> NotificationHelper.add_if_not_empty("alert", alert)
 
     notification.custom_data
     |> Map.new()
-    |> add_if_not_empty("aps", aps_opts)
+    |> NotificationHelper.add_if_not_empty("aps", aps_opts)
   end
 
   @doc """
@@ -310,13 +311,5 @@ defmodule Sparrow.APNS do
   @spec get_reason_from_body(String.t()) :: String.t() | nil
   defp get_reason_from_body(body) do
     body |> Jason.decode!() |> Map.get("reason")
-  end
-
-  @spec add_if_not_empty(map, String.t(), map) :: map
-  defp add_if_not_empty(map, key, sub_map) do
-    case sub_map == %{} do
-      true -> map
-      false -> Map.put(map, key, sub_map)
-    end
   end
 end
