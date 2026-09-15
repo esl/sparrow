@@ -43,6 +43,8 @@ defmodule Sparrow.FCM.V1.Notification do
   @doc """
   Creates new notification.
 
+  When both `title` and `body` are `nil`, the top-level `notification` object is omitted from the payload.
+
   ## Arguments
 
     * `target` - Target to send a message to.

@@ -331,7 +331,81 @@ Application.start(:sparrow)
     
 ***
 
-# VoIP notifications
+# Voice and video call notifications
+
+The examples below illustrate notifications for incoming calls using Jingle
+Message Initiation (JMI). Sparrow is a generic push notification library: the
+application defines the payload fields and how the client handles them. Adapt
+these examples to your application's call protocol and delivery needs.
+
+## Android (FCM v1)
+
+One approach is to send an incoming JMI proposal as a data-only FCM message,
+so the client can process the call information itself. FCM has no dedicated
+Android VoIP push type; `type`, `jmi-sid`, and `jmi-from` below are
+application-defined fields, not FCM requirements.
+
+In this example, `sid` is the `<propose id="…">` attribute and `caller` is the
+caller's full JID, including its resource. The calling application supplies
+these values; Sparrow does not parse XMPP.
+
+```elixir
+sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
+caller = "romeo@montague.example/orchard"
+
+android =
+  Sparrow.FCM.V1.Android.new()
+  |> Sparrow.FCM.V1.Android.add_priority(:HIGH)
+  |> Sparrow.FCM.V1.Android.add_ttl(30)
+  |> Sparrow.FCM.V1.Android.add_collapse_key("jmi-" <> sid)
+
+notification =
+  Sparrow.FCM.V1.Notification.new(:token, "android-device-fcm-token", nil, nil, %{
+    "type" => "jmi",
+    "jmi-sid" => sid,
+    "jmi-from" => caller
+  })
+  |> Sparrow.FCM.V1.Notification.add_android(android)
+
+:ok = Sparrow.API.push(notification)
+```
+
+The resulting FCM request body is:
+
+```json
+{
+  "message": {
+    "token": "android-device-fcm-token",
+    "android": {
+      "priority": "high",
+      "ttl": "30s",
+      "collapse_key": "jmi-ca3cf894-5325-482f-a412-a6e9f832298d"
+    },
+    "data": {
+      "type": "jmi",
+      "jmi-sid": "ca3cf894-5325-482f-a412-a6e9f832298d",
+      "jmi-from": "romeo@montague.example/orchard"
+    }
+  }
+}
+```
+
+This example leaves the top-level title/body and Android display fields unset
+to produce a data-only message. High priority lets FCM attempt immediate delivery
+through Doze and is appropriate for time-sensitive, user-visible call alerts.
+The client handles the data and presents the incoming call promptly. Normal
+priority (`Android.add_priority(:NORMAL)`) is an option for less urgent messages.
+
+The suggested 30-second TTL limits offline storage. The session-specific collapse
+key lets FCM replace a pending push for the same call; it does not deduplicate
+pushes already delivered, so the client should also track the session ID. The TTL
+and collapse key are application choices, not prescribed FCM settings for calls.
+
+References:
+
+- [FCM HTTP v1 send](https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages/send)
+- [AndroidConfig](https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages#androidconfig)
+- [Message priority](https://firebase.google.com/docs/cloud-messaging/customize-messages/setting-message-priority)
 
 ## APNS
 
