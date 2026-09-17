@@ -331,6 +331,98 @@ Application.start(:sparrow)
     
 ***
 
+# Voice and video call notifications
+
+Sparrow has no Jingle Message Initiation (JMI) rules of its own, but it provides
+the FCM and APNS options needed to deliver application-defined call data.
+
+## Android (FCM v1)
+
+FCM has no dedicated Android VoIP push type. A call can be sent as a data-only,
+high-priority message with a short TTL and a session-specific collapse key:
+
+```elixir
+sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
+caller = "romeo@montague.example/orchard"
+
+android =
+  Sparrow.FCM.V1.Android.new()
+  |> Sparrow.FCM.V1.Android.add_priority(:HIGH)
+  |> Sparrow.FCM.V1.Android.add_ttl(30)
+  |> Sparrow.FCM.V1.Android.add_collapse_key("jmi-" <> sid)
+
+notification =
+  Sparrow.FCM.V1.Notification.new(:token, "android-device-fcm-token", nil, nil, %{
+    "type" => "jmi",
+    "jmi-sid" => sid,
+    "jmi-from" => caller
+  })
+  |> Sparrow.FCM.V1.Notification.add_android(android)
+
+:ok = Sparrow.API.push(notification)
+```
+
+The resulting FCM request body is:
+
+```json
+{
+  "message": {
+    "token": "android-device-fcm-token",
+    "android": {
+      "priority": "high",
+      "ttl": "30s",
+      "collapse_key": "jmi-ca3cf894-5325-482f-a412-a6e9f832298d"
+    },
+    "data": {
+      "type": "jmi",
+      "jmi-sid": "ca3cf894-5325-482f-a412-a6e9f832298d",
+      "jmi-from": "romeo@montague.example/orchard"
+    }
+  }
+}
+```
+
+The data fields, TTL, and collapse key are application choices. The client is
+responsible for presenting and deduplicating the call.
+
+## APNS
+
+APNS VoIP notifications require a PushKit token, the `voip` push type, and a
+topic ending in `.voip`. A JMI payload can be constructed as follows:
+
+```elixir
+sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
+caller = "romeo@montague.example/orchard"
+
+notification =
+  "voip_pushkit_device_token"
+  |> Sparrow.APNS.Notification.new(:dev)
+  |> Sparrow.APNS.Notification.add_apns_push_type("voip")
+  |> Sparrow.APNS.Notification.add_apns_topic("com.example.app.voip")
+  |> Sparrow.APNS.Notification.add_apns_expiration("0")
+  |> Sparrow.APNS.Notification.add_custom_data("type", "jmi")
+  |> Sparrow.APNS.Notification.add_custom_data("jmi-sid", sid)
+  |> Sparrow.APNS.Notification.add_custom_data("jmi-from", caller)
+
+:ok = Sparrow.API.push(notification)
+```
+
+Sparrow sends the `apns-push-type: voip`, `apns-topic: com.example.app.voip`, and
+`apns-expiration: 0` headers with this JSON payload:
+
+```json
+{
+  "type": "jmi",
+  "jmi-sid": "ca3cf894-5325-482f-a412-a6e9f832298d",
+  "jmi-from": "romeo@montague.example/orchard"
+}
+```
+
+With no alert or APS options, Sparrow sends only the custom data and omits `aps`.
+Expiration `0` prevents APNS from storing a stale call notification.
+
+***
+
 ## How to obtain and use APNS certificate for certificate based authorization?
 
 Pre Requirements:
