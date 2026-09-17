@@ -1,4 +1,6 @@
 defmodule Sparrow.FCM.V1.Android do
+  alias Sparrow.Util
+
   @moduledoc """
   Struct reflecting FCM object(AndroidConfig).
   See: https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages#AndroidConfig
@@ -40,6 +42,9 @@ defmodule Sparrow.FCM.V1.Android do
 
   @doc """
   Changes `Sparrow.FCM.V1.Android` to map for easier change to json.
+
+  Omits an empty display notification to support data-only messages.
+  Priority atoms are serialized as `"normal"` and `"high"`.
   """
   @spec to_map(t) :: map
   def to_map(android) do
@@ -47,9 +52,13 @@ defmodule Sparrow.FCM.V1.Android do
       Sparrow.FCM.V1.Android.Notification.to_map(android.notification)
 
     android.fields
-    |> Map.new()
-    |> Map.put(:notification, notification)
+    |> Map.new(&serialize_field/1)
+    |> Util.add_if_not_empty(:notification, notification)
   end
+
+  defp serialize_field({:priority, :NORMAL}), do: {:priority, "normal"}
+  defp serialize_field({:priority, :HIGH}), do: {:priority, "high"}
+  defp serialize_field(field), do: field
 
   @doc """
   Adds collapse_key to `Sparrow.FCM.V1.Android`.
