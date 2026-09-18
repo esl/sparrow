@@ -146,6 +146,80 @@ defmodule Sparrow.FCM.V1Test do
       end
     end
 
+    test "JMI proposal is sent as a data-only high priority Android message with TTL" do
+      sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
+      caller = "romeo@montague.example/orchard"
+
+      with_mock Sparrow.H2Worker.Pool,
+        send_request: fn _, request, _, _, _ ->
+          send(self(), {:request, request})
+          {:ok, {[{":status", "200"}], "{}"}}
+        end do
+        android =
+          Android.new()
+          |> Android.add_priority(:HIGH)
+          |> Android.add_ttl(30)
+          |> Android.add_collapse_key("jmi-" <> sid)
+
+        data = %{"type" => "jmi", "jmi-sid" => sid, "jmi-from" => caller}
+
+        notification =
+          Notification.new(:token, @notification_target, nil, nil, data)
+          |> Notification.add_android(android)
+
+        assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
+        assert_receive {:request, request}
+        assert request.path == "/v1/projects/#{@project_id}/messages:send"
+
+        expected = %{
+          "message" => %{
+            "token" => @notification_target,
+            "android" => %{
+              "priority" => "high",
+              "ttl" => "30s",
+              "collapse_key" => "jmi-" <> sid
+            },
+            "data" => data
+          }
+        }
+
+        assert expected == Jason.decode!(request.body)
+      end
+    end
+
+    test "regular data messages retain normal priority" do
+      with_mock Sparrow.H2Worker.Pool,
+        send_request: fn _, request, _, _, _ ->
+          send(self(), {:request, request})
+          {:ok, {[{":status", "200"}], "{}"}}
+        end do
+        data = %{
+          "last-message-sender" => "romeo@montague.example",
+          "last-message-body" => "Hello",
+          "message-count" => "1"
+        }
+
+        notification =
+          Notification.new(:token, @notification_target, nil, nil, data)
+          |> Notification.add_android(
+            Android.add_priority(Android.new(), :NORMAL)
+          )
+
+        assert :ok == Sparrow.FCM.V1.push(@pool_name, notification)
+        assert_receive {:request, request}
+
+        expected = %{
+          "message" => %{
+            "token" => @notification_target,
+            "android" => %{"priority" => "normal"},
+            "data" => data
+          }
+        }
+
+        assert expected == Jason.decode!(request.body)
+      end
+    end
+
     test "invalid notification error is reported" do
       with_mock Sparrow.H2Worker.Pool,
         send_request: fn _, r, _, _, _ ->
