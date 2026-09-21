@@ -38,6 +38,10 @@ defmodule Sparrow.FCM.V1.AndroidTest do
     assert Enum.empty?(config.notification.fields)
   end
 
+  test "empty Android config has no display notification or explicit priority" do
+    assert Android.to_map(Android.new()) == %{}
+  end
+
   test "android notification field are added" do
     config =
       Android.new()

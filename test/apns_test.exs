@@ -308,6 +308,47 @@ defmodule Sparrow.APNSTest do
     end
   end
 
+  test "VoIP notification contains the session ID and required APNS headers" do
+    with_mock Sparrow.H2Worker.Pool,
+      send_request: fn _, request, _, _, _ ->
+        send(self(), {:request, request})
+        {:ok, {[{":status", "200"}], request.body}}
+      end do
+      sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
+      caller = "romeo@montague.example/orchard"
+      device_token = "voip device token"
+      topic = "com.example.app.voip"
+      expiration = "0"
+
+      notification =
+        device_token
+        |> Notification.new(:dev)
+        |> Notification.add_apns_push_type("voip")
+        |> Notification.add_apns_topic(topic)
+        |> Notification.add_apns_expiration(expiration)
+        |> Notification.add_custom_data("type", "jmi")
+        |> Notification.add_custom_data("jmi-from", caller)
+        |> Notification.add_custom_data("jmi-sid", sid)
+
+      assert :ok == Sparrow.APNS.push(@pool_name, notification)
+
+      request =
+        receive do
+          {:request, request} -> request
+        after
+          1_000 -> assert false
+        end
+
+      assert @path <> device_token == request.path
+      assert {"apns-push-type", "voip"} in request.headers
+      assert {"apns-topic", topic} in request.headers
+      assert {"apns-expiration", expiration} in request.headers
+
+      expected_data = %{"type" => "jmi", "jmi-from" => caller, "jmi-sid" => sid}
+      assert expected_data == Jason.decode!(request.body)
+    end
+  end
+
   test "notification custom data" do
     with_mock Sparrow.H2Worker.Pool,
       send_request: fn _, r, _, _, _ ->
