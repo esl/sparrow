@@ -18,8 +18,8 @@ defmodule Sparrow do
       Application.get_env(:sparrow, Sparrow.PoolsWarden)
 
     children =
-      is_enabled
-      |> maybe_start_pools_warden()
+      [{Finch, name: Sparrow.Finch}]
+      |> maybe_start_pools_warden(is_enabled)
       |> maybe_append({Sparrow.FCM.V1.Supervisor, raw_fcm_config})
       |> maybe_append({Sparrow.APNS.Supervisor, raw_apns_config})
 
@@ -31,6 +31,8 @@ defmodule Sparrow do
   defp maybe_append(list, {_, nil}), do: list
   defp maybe_append(list, elem), do: list ++ [elem]
 
-  defp maybe_start_pools_warden(true), do: [Sparrow.PoolsWarden]
-  defp maybe_start_pools_warden(false), do: []
+  defp maybe_start_pools_warden(children, true),
+    do: children ++ [Sparrow.PoolsWarden]
+
+  defp maybe_start_pools_warden(children, false), do: children
 end

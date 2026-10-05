@@ -1,6 +1,8 @@
 defmodule Sparrow.H2ClientAdapter.Chatterbox do
   @behaviour Sparrow.H2ClientAdapter
 
+  alias Sparrow.H2Worker.RequestSet
+
   @moduledoc false
   require Logger
 
@@ -100,6 +102,49 @@ defmodule Sparrow.H2ClientAdapter.Chatterbox do
 
         {:error, :connection_lost}
     end
+  end
+
+  def handle_message({:PONG, from}, _) do
+    _ =
+      Logger.debug("Received ping response",
+        what: :ping_response,
+        from: inspect(from)
+      )
+
+    :ok
+  end
+
+  def handle_message({:END_STREAM, stream_id}, requests) do
+    _ =
+      Logger.debug("Received H2 response",
+        what: :h2_response_received,
+        stream_id: inspect(stream_id)
+      )
+
+    case RequestSet.get_request(requests, stream_id) do
+      {:error, :not_found} ->
+        _ =
+          Logger.info("Received H2 response for unknown request",
+            what: :unknown_h2_response_received,
+            stream_id: inspect(stream_id)
+          )
+
+        :ok
+
+      {:ok, request} ->
+        _ = cancel_timer(request)
+        response = get_response(state.connection_ref, stream_id)
+        send_response(request.from, response)
+    end
+
+    {:reply, stream_id}
+
+    {:noreply,
+     State.new(
+       state.connection_ref,
+       RequestSet.remove(state.requests, stream_id),
+       state.config
+     )}
   end
 
   @doc """

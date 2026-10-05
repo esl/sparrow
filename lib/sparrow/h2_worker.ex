@@ -136,50 +136,8 @@ defmodule Sparrow.H2Worker do
     {:noreply, state}
   end
 
-  @spec handle_info(incomming_message, state) :: {:noreply, state}
   def handle_info({:ping, _}, state) do
     {:noreply, state}
-  end
-
-  def handle_info({:PONG, from}, state) do
-    _ =
-      Logger.debug("Received ping response",
-        what: :ping_response,
-        from: inspect(from)
-      )
-
-    {:noreply, state}
-  end
-
-  def handle_info({:END_STREAM, stream_id}, state) do
-    _ =
-      Logger.debug("Received H2 response",
-        what: :h2_response_received,
-        stream_id: inspect(stream_id)
-      )
-
-    case RequestSet.get_request(state.requests, stream_id) do
-      {:error, :not_found} ->
-        _ =
-          Logger.info("Received H2 response for unknown request",
-            what: :unknown_h2_response_received,
-            stream_id: inspect(stream_id)
-          )
-
-        :ok
-
-      {:ok, request} ->
-        _ = cancel_timer(request)
-        response = H2ClientAdapter.get_response(state.connection_ref, stream_id)
-        send_response(request.from, response)
-    end
-
-    {:noreply,
-     State.new(
-       state.connection_ref,
-       RequestSet.remove(state.requests, stream_id),
-       state.config
-     )}
   end
 
   def handle_info({:timeout_request, stream_id}, state) do
@@ -250,14 +208,62 @@ defmodule Sparrow.H2Worker do
     {:noreply, %State{state | restart_connection_timer: nil}}
   end
 
-  def handle_info(unknown, state) do
+  def handle_info(message, state) do
+    case H2ClientAdapter.handle_message() do
+      {:ok, new_state} ->
+        {:noreply, new_state}
+
+      :error ->
+        _ =
+          Logger.warning("Unknown info message",
+            what: :unknown_info,
+            value: unknown
+          )
+
+        {:noreply, state}
+    end
+  end
+
+  @spec handle_info(incomming_message, state) :: {:noreply, state}
+  def handle_info({:PONG, from}, state) do
     _ =
-      Logger.warning("Unknown info message",
-        what: :unknown_info,
-        value: unknown
+      Logger.debug("Received ping response",
+        what: :ping_response,
+        from: inspect(from)
       )
 
     {:noreply, state}
+  end
+
+  def handle_info({:END_STREAM, stream_id}, state) do
+    _ =
+      Logger.debug("Received H2 response",
+        what: :h2_response_received,
+        stream_id: inspect(stream_id)
+      )
+
+    case RequestSet.get_request(state.requests, stream_id) do
+      {:error, :not_found} ->
+        _ =
+          Logger.info("Received H2 response for unknown request",
+            what: :unknown_h2_response_received,
+            stream_id: inspect(stream_id)
+          )
+
+        :ok
+
+      {:ok, request} ->
+        _ = cancel_timer(request)
+        response = H2ClientAdapter.get_response(state.connection_ref, stream_id)
+        send_response(request.from, response)
+    end
+
+    {:noreply,
+     State.new(
+       state.connection_ref,
+       RequestSet.remove(state.requests, stream_id),
+       state.config
+     )}
   end
 
   @doc !"""
