@@ -1,8 +1,8 @@
 defmodule Sparrow.H2Worker.State do
   @moduledoc false
-  @type connection_ref :: pid
-  @type stream_id :: non_neg_integer
-  @type requests :: %{required(stream_id) => %Sparrow.H2Worker.Request{}}
+  @type connection_ref :: Sparrow.H2ClientAdapter.connection_ref()
+  @type stream_id :: Sparrow.H2ClientAdapter.stream_id()
+  @type requests :: Sparrow.H2Worker.RequestSet.requests()
   @type config :: %Sparrow.H2Worker.Config{}
 
   @type t :: %__MODULE__{

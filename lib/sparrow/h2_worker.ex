@@ -17,7 +17,7 @@ defmodule Sparrow.H2Worker do
           {:ok, pid} | :ignore | {:error, {:already_started, pid} | term}
   @type init_args :: [any]
   @type state :: Sparrow.H2Worker.State.t()
-  @type stream_id :: non_neg_integer
+  @type stream_id :: term
   @type reason :: any
   @type incomming_message ::
           :ping
@@ -144,7 +144,7 @@ defmodule Sparrow.H2Worker do
     _ =
       Logger.debug("H2 request timeout",
         what: :h2_request_timeout,
-        stream_id: "#{stream_id}"
+        stream_id: inspect(stream_id)
       )
 
     case RequestSet.get_request(state.requests, stream_id) do
@@ -165,7 +165,7 @@ defmodule Sparrow.H2Worker do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
-    case state.connection_ref == pid do
+    case connection_pid(state.connection_ref) == pid do
       true ->
         _ =
           Logger.debug("Connection process down",
@@ -208,34 +208,44 @@ defmodule Sparrow.H2Worker do
     {:noreply, %State{state | restart_connection_timer: nil}}
   end
 
+  @spec handle_info(incomming_message, state) :: {:noreply, state}
   def handle_info(message, state) do
-    case H2ClientAdapter.handle_message() do
-      {:ok, new_state} ->
-        {:noreply, new_state}
+    case H2ClientAdapter.handle_message(message, state.connection_ref) do
+      {:response_ready, stream_id} ->
+        finish_request(stream_id, state, fn _request ->
+          H2ClientAdapter.get_response(state.connection_ref, stream_id)
+        end)
 
-      :error ->
+      {:response_part, stream_id, part} ->
+        requests = RequestSet.add_response_part(state.requests, stream_id, part)
+        {:noreply, %{state | requests: requests}}
+
+      {:done, stream_id} ->
+        finish_request(stream_id, state, &InnerRequest.response/1)
+
+      {:error, stream_id, reason} ->
+        finish_request(stream_id, state, fn _request -> {:error, reason} end)
+
+      :ok ->
+        {:noreply, state}
+
+      :unknown ->
         _ =
           Logger.warning("Unknown info message",
             what: :unknown_info,
-            value: unknown
+            value: message
           )
 
         {:noreply, state}
     end
   end
 
-  @spec handle_info(incomming_message, state) :: {:noreply, state}
-  def handle_info({:PONG, from}, state) do
-    _ =
-      Logger.debug("Received ping response",
-        what: :ping_response,
-        from: inspect(from)
-      )
-
-    {:noreply, state}
-  end
-
-  def handle_info({:END_STREAM, stream_id}, state) do
+  @doc !"""
+       Sends response to the caller waiting for given stream and forgets the request.
+       """
+  @spec finish_request(stream_id, state, (InnerRequest.t() -> term)) ::
+          {:noreply, state}
+  defp finish_request(stream_id, state, get_response) do
     _ =
       Logger.debug("Received H2 response",
         what: :h2_response_received,
@@ -254,8 +264,7 @@ defmodule Sparrow.H2Worker do
 
       {:ok, request} ->
         _ = cancel_timer(request)
-        response = H2ClientAdapter.get_response(state.connection_ref, stream_id)
-        send_response(request.from, response)
+        send_response(request.from, get_response.(request))
     end
 
     {:noreply,
@@ -468,7 +477,7 @@ defmodule Sparrow.H2Worker do
           {:error,
            :not_ready
            | byte()
-           | {:request_timeout, non_neg_integer()}
+           | {:request_timeout, stream_id}
            | {:unable_to_connect, term()}}
           | {:ok, {[any()], binary()}}
         ) :: :ok
@@ -502,7 +511,7 @@ defmodule Sparrow.H2Worker do
           Logger.warning("Sending response to caller",
             what: :h2_send_reponse,
             item: :request_response,
-            stream_id: "#{stream_id}",
+            stream_id: inspect(stream_id),
             status: :error,
             reason: :timeout
           )
@@ -651,13 +660,16 @@ defmodule Sparrow.H2Worker do
         _ =
           schedule_message_after({:ping, connection_ref}, config.ping_interval)
 
-        Process.monitor(connection_ref)
+        Process.monitor(connection_pid(connection_ref))
         {:ok, State.new(connection_ref, config)}
 
       {:error, reason} ->
         {:error, reason}
     end
   end
+
+  defp connection_pid(%{pid: pid}), do: pid
+  defp connection_pid(connection_ref), do: connection_ref
 
   defp backoff_stream(%Config{
          backoff_base: base,

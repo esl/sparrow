@@ -4,9 +4,9 @@ defmodule Sparrow.H2Worker.RequestSet do
   """
   alias Sparrow.H2Worker.RequestState
 
-  @type stream_id :: non_neg_integer
+  @type stream_id :: term
   @type from :: {pid, tag :: term}
-  @type requests :: %{required(stream_id) => %Sparrow.H2Worker.Request{}}
+  @type requests :: %{required(stream_id) => RequestState.t()}
 
   @doc """
   Creates new requests collection.
@@ -48,6 +48,22 @@ defmodule Sparrow.H2Worker.RequestSet do
     case Map.get(requests, stream_id, :not_found) do
       :not_found -> {:error, :not_found}
       request -> {:ok, request}
+    end
+  end
+
+  @doc """
+  Adds a part of a streamed response to the request with given `stream_id`.
+  Does nothing when there is no such request.
+  """
+  @spec add_response_part(requests, stream_id, RequestState.response_part()) ::
+          requests
+  def add_response_part(requests, stream_id, part) do
+    case requests do
+      %{^stream_id => request} ->
+        %{requests | stream_id => RequestState.add_response_part(request, part)}
+
+      _ ->
+        requests
     end
   end
 end

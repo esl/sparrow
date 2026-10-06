@@ -53,7 +53,7 @@ defmodule Sparrow.H2WorkerTest do
       request_timeout = 300
       headers = Enum.zip([headersA, headersB])
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           send(self(), {:PONG, ponger})
@@ -100,7 +100,7 @@ defmodule Sparrow.H2WorkerTest do
       request_timeout = 3_000
       headers = Enum.zip([headersA, headersB])
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           send(self(), {:PONG, ponger})
@@ -154,7 +154,7 @@ defmodule Sparrow.H2WorkerTest do
       request_timeout = 300
       headers = Enum.zip([headersA, headersB])
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           send(self(), {:PONG, ponger})
@@ -207,7 +207,7 @@ defmodule Sparrow.H2WorkerTest do
       request_timeout = 300
       headers = Enum.zip([headersA, headersB])
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           send(self(), {:PONG, ponger})
@@ -259,7 +259,7 @@ defmodule Sparrow.H2WorkerTest do
       request_timeout = 300
       headers = Enum.zip([headersA, headersB])
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           send(self(), {:PONG, ponger})
@@ -366,7 +366,7 @@ defmodule Sparrow.H2WorkerTest do
       request_timeout = 200
       headers = Enum.zip([headersA, headersB])
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           send(self(), {:PONG, ponger})
@@ -419,7 +419,7 @@ defmodule Sparrow.H2WorkerTest do
       ponger = pid()
       ping_interval = 100
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           send(self(), {:PONG, ponger})
@@ -458,7 +458,7 @@ defmodule Sparrow.H2WorkerTest do
           repeat_for: @repeats do
       ping_interval = nil
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
@@ -485,7 +485,7 @@ defmodule Sparrow.H2WorkerTest do
             port: int(min: 0, max: 65_535)
           ],
           repeat_for: @repeats do
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           :ok
@@ -517,7 +517,7 @@ defmodule Sparrow.H2WorkerTest do
       conn_pid = pid()
       not_conn_pid = pid()
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, conn_pid} end,
         ping: fn _ ->
           send(self(), {:PONG, conn_pid})
@@ -565,7 +565,7 @@ defmodule Sparrow.H2WorkerTest do
       request_timeout = 1_000
       headers = Enum.zip([headersA, headersB])
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         post: fn _, _, _, _, _ ->
           {:ok, stream_id}
@@ -608,7 +608,7 @@ defmodule Sparrow.H2WorkerTest do
           repeat_for: @repeats do
       ping_interval = 123
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
@@ -661,7 +661,7 @@ defmodule Sparrow.H2WorkerTest do
           repeat_for: 1 do
       ping_interval = 12_300
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ ->
           case :erlang.get(:key) do
             :undefined ->
@@ -717,7 +717,7 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 12_300
       headers = Enum.zip([headersA, headersB])
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ ->
           {:ok, context[:connection_ref]}
         end,
@@ -757,7 +757,7 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 123
       ponger = pid()
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           send(self(), {:PONG, ponger})
@@ -797,7 +797,7 @@ defmodule Sparrow.H2WorkerTest do
           repeat_for: @repeats do
       ping_interval = 123
 
-      with_mock H2Adapter,
+      with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:error, reason} end,
         close: fn _ -> :ok end do
         config =
@@ -825,8 +825,7 @@ defmodule Sparrow.H2WorkerTest do
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
           repeat_for: @repeats do
-      with_mock H2Adapter,
-        close: fn _ -> :ok end do
+      with_mock H2Adapter, [:passthrough], close: fn _ -> :ok end do
         reason = "test reason"
         ping_interval = 123
 
@@ -861,7 +860,7 @@ defmodule Sparrow.H2WorkerTest do
             repeat_for: @repeats do
         ping_interval = 123
 
-        with_mock H2Adapter,
+        with_mock H2Adapter, [:passthrough],
           open: fn _, _, _ -> {:error, reason} end,
           close: fn _ -> :ok end do
           config =
@@ -891,7 +890,7 @@ defmodule Sparrow.H2WorkerTest do
         ping_interval = 123
         ponger = pid()
 
-        with_mock H2Adapter,
+        with_mock H2Adapter, [:passthrough],
           open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
           ping: fn _ ->
             send(self(), {:PONG, ponger})

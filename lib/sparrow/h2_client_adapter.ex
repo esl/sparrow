@@ -3,11 +3,20 @@ defmodule Sparrow.H2ClientAdapter do
 
   @default %{adapter: Sparrow.H2ClientAdapter.Chatterbox}
 
-  @type connection_ref :: pid
-  @type stream_id :: non_neg_integer
+  @type connection_ref :: term
+  @type stream_id :: term
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
   @type reason :: term
+  @type response_part ::
+          {:status, non_neg_integer} | {:headers, headers} | {:data, binary}
+  @type event ::
+          {:response_ready, stream_id}
+          | {:response_part, stream_id, response_part}
+          | {:done, stream_id}
+          | {:error, stream_id, reason}
+          | :ok
+          | :unknown
 
   @doc """
   Starts a new connection.
@@ -38,6 +47,18 @@ defmodule Sparrow.H2ClientAdapter do
   """
   @callback ping(connection_ref) :: :ok
 
+  @doc """
+    Translates a message received by the process owning the connection.
+
+    * `{:response_ready, stream_id}` - response can be read with `get_response/2`
+    * `{:response_part, stream_id, part}` - a piece of a streamed response
+    * `{:done, stream_id}` - streamed response is complete
+    * `{:error, stream_id, reason}` - request failed
+    * `:ok` - message handled, nothing to do
+    * `:unknown` - message doesn't come from the connection
+  """
+  @callback handle_message(message :: term, connection_ref) :: event
+
   def open(domain, port, opts \\ []) do
     adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
     adapter.open(domain, port, opts)
@@ -61,5 +82,10 @@ defmodule Sparrow.H2ClientAdapter do
   def ping(conn) do
     adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
     adapter.ping(conn)
+  end
+
+  def handle_message(message, conn) do
+    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
+    adapter.handle_message(message, conn)
   end
 end

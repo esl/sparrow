@@ -132,7 +132,6 @@ defmodule H2ClientAdapter.ChatterboxTest do
           repeat_for: @repeats do
       conn = pid("0.2.3")
       headers = Enum.zip([headersA1, headersB1])
-      IO.inspect(domain)
 
       with_mock :h2_connection,
         new_stream: fn _ -> stream_id end,
