@@ -204,6 +204,71 @@ defmodule H2Integration.FinchClientServerTest do
     end
   end
 
+  test "requests above the stream limit of the server are sent again",
+       context do
+    :ok = :cowboy.stop_listener(context[:cowboys_name])
+
+    dispatch =
+      :cowboy_router.compile([
+        {":_",
+         [{"/EchoBodyHandler", Helpers.CowboyHandlers.EchoBodyHandler, []}]}
+      ])
+
+    {:ok, _pid} =
+      :cowboy.start_tls(
+        context[:cowboys_name],
+        [
+          port: context[:port],
+          certfile: "priv/ssl/fake_cert.pem",
+          keyfile: "priv/ssl/fake_key.pem"
+        ],
+        %{env: %{dispatch: dispatch}, max_concurrent_streams: 10}
+      )
+
+    pool_name = start_pool(context)
+
+    results =
+      1..200
+      |> Task.async_stream(
+        fn i ->
+          body = "body #{i}"
+
+          request =
+            OuterRequest.new(
+              Setup.default_headers(),
+              body,
+              "/EchoBodyHandler",
+              5_000
+            )
+
+          {body, Sparrow.H2Worker.Pool.send_request(pool_name, request)}
+        end,
+        max_concurrency: 200
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
+
+    for {body, result} <- results do
+      assert {:ok, {_headers, ^body}} = result
+    end
+  end
+
+  test "request which cannot be sent fails when its time is up", context do
+    pool_name = start_pool(context)
+
+    request =
+      OuterRequest.new(Setup.default_headers(), @body, "/ConnTestHandler", 300)
+
+    assert {:ok, _} = Sparrow.H2Worker.Pool.send_request(pool_name, request)
+    :ok = :cowboy.stop_listener(context[:cowboys_name])
+
+    assert_eventually(
+      match?(
+        {:error, reason} when reason in [:pool_not_available, :disconnected],
+        Sparrow.H2Worker.Pool.send_request(pool_name, request)
+      )
+    )
+  end
+
   test "requests fail when server is gone and work again when it's back",
        context do
     pool_name = start_pool(context)

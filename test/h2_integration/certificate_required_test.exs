@@ -99,19 +99,10 @@ defmodule H2Integration.CerificateRequiredTest do
 
     worker_pid = start_supervised!(Setup.h2_worker_spec(config))
 
-    assert {:error, {:unable_to_connect, reason}} =
+    # No CA certificates are given, so the default ones are used and the
+    # self-signed certificate of the server is not trusted
+    assert {:error, {:unable_to_connect, {:tls_alert, {:bad_certificate, _}}}} =
              GenServer.call(worker_pid, {:send_request, notification})
-
-    assert Enum.member?(
-             [
-               # OTP 25 and below
-               {:options, {:cacertfile, []}},
-               # OTP 26+
-               {:options, :incompatible,
-                [verify: :verify_peer, cacerts: :undefined]}
-             ],
-             reason
-           )
   end
 
   defp assert_response_header(headers, expected_header) do

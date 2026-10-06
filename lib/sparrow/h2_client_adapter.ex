@@ -1,7 +1,7 @@
 defmodule Sparrow.H2ClientAdapter do
   @moduledoc false
 
-  @default %{adapter: Sparrow.H2ClientAdapter.Chatterbox}
+  @default %{adapter: Sparrow.H2ClientAdapter.Finch}
 
   @type connection_ref :: term
   @type stream_id :: term
@@ -11,10 +11,10 @@ defmodule Sparrow.H2ClientAdapter do
   @type response_part ::
           {:status, non_neg_integer} | {:headers, headers} | {:data, binary}
   @type event ::
-          {:response_ready, stream_id}
-          | {:response_part, stream_id, response_part}
+          {:response_part, stream_id, response_part}
           | {:done, stream_id}
           | {:error, stream_id, reason}
+          | {:retry, stream_id, reason}
           | :ok
           | :unknown
 
@@ -32,15 +32,12 @@ defmodule Sparrow.H2ClientAdapter do
   @doc """
     Opens a new stream and sends request through it.
     DONT PASS PSEUDO HEADERS IN `headers`!!!
+
+    Returns `{:retry, reason}` when the request was not sent, but it may
+    succeed when sent again.
   """
   @callback post(connection_ref, String.t(), String.t(), headers, body) ::
-              {:error, byte()} | {:ok, stream_id}
-
-  @doc """
-    Allows to read answer to notification.
-  """
-  @callback get_response(connection_ref, stream_id) ::
-              {:ok, {headers, body}} | {:error, :not_ready}
+              {:error, reason} | {:retry, reason} | {:ok, stream_id}
 
   @doc """
     Sends ping to given connection.
@@ -50,10 +47,11 @@ defmodule Sparrow.H2ClientAdapter do
   @doc """
     Translates a message received by the process owning the connection.
 
-    * `{:response_ready, stream_id}` - response can be read with `get_response/2`
-    * `{:response_part, stream_id, part}` - a piece of a streamed response
-    * `{:done, stream_id}` - streamed response is complete
+    * `{:response_part, stream_id, part}` - a piece of the response
+    * `{:done, stream_id}` - response is complete
     * `{:error, stream_id, reason}` - request failed
+    * `{:retry, stream_id, reason}` - request was not sent, but it may succeed
+      when sent again
     * `:ok` - message handled, nothing to do
     * `:unknown` - message doesn't come from the connection
   """
@@ -72,11 +70,6 @@ defmodule Sparrow.H2ClientAdapter do
   def post(conn, domain, path, headers, body) do
     adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
     adapter.post(conn, domain, path, headers, body)
-  end
-
-  def get_response(conn, stream_id) do
-    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
-    adapter.get_response(conn, stream_id)
   end
 
   def ping(conn) do

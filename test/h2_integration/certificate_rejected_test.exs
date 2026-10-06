@@ -50,6 +50,11 @@ defmodule H2Integration.CerificateRejectedTest do
       {:unable_to_connect, {:tls_alert, ~c"bad certificate"}} -> :ok
       {:unable_to_connect, {:tls_alert, {:bad_certificate, _}}} -> :ok
       :connection_lost -> :ok
+      # Server closes the connection after the handshake
+      :closed -> :ok
+      :connection_closed -> :ok
+      :pool_not_available -> :ok
+      :disconnected -> :ok
       _ -> flunk("Wrong error code: #{inspect(reason)}")
     end
   end

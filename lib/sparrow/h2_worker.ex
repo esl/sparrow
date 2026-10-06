@@ -7,6 +7,7 @@ defmodule Sparrow.H2Worker do
 
   alias Sparrow.H2ClientAdapter
   alias Sparrow.H2Worker.Config
+  alias Sparrow.H2Worker.Request, as: OuterRequest
   alias Sparrow.H2Worker.RequestSet
   alias Sparrow.H2Worker.RequestState, as: InnerRequest
   alias Sparrow.H2Worker.State
@@ -21,14 +22,15 @@ defmodule Sparrow.H2Worker do
   @type reason :: any
   @type incomming_message ::
           :ping
-          | {:PONG, pid}
-          | {charlist, stream_id}
           | {:timeout_request, stream_id}
           | any
   @type request :: Sparrow.H2Worker.Request.t()
   @type from :: {pid, tag :: term}
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
+
+  # Time to wait before sending again a request which was not sent
+  @retry_delay 25
 
   def start_link(config) do
     GenServer.start_link(__MODULE__, config)
@@ -182,6 +184,9 @@ defmodule Sparrow.H2Worker do
           |> Map.put(:reason, reason)
         )
 
+        # The adapter may keep resources of the lost connection
+        _ = H2ClientAdapter.close(state.connection_ref)
+
         {:noreply, connection_closed_action(state),
          {:continue, :start_conn_backoff}}
 
@@ -208,14 +213,14 @@ defmodule Sparrow.H2Worker do
     {:noreply, %State{state | restart_connection_timer: nil}}
   end
 
-  @spec handle_info(incomming_message, state) :: {:noreply, state}
+  def handle_info({:retry_request, request, from}, state) do
+    try_handle(request, from, state)
+  end
+
+  @spec handle_info(incomming_message, state) ::
+          {:noreply, state} | {:noreply, state, {:continue, term}}
   def handle_info(message, state) do
     case H2ClientAdapter.handle_message(message, state.connection_ref) do
-      {:response_ready, stream_id} ->
-        finish_request(stream_id, state, fn _request ->
-          H2ClientAdapter.get_response(state.connection_ref, stream_id)
-        end)
-
       {:response_part, stream_id, part} ->
         requests = RequestSet.add_response_part(state.requests, stream_id, part)
         {:noreply, %{state | requests: requests}}
@@ -225,6 +230,9 @@ defmodule Sparrow.H2Worker do
 
       {:error, stream_id, reason} ->
         finish_request(stream_id, state, fn _request -> {:error, reason} end)
+
+      {:retry, stream_id, reason} ->
+        retry_request(stream_id, reason, state)
 
       :ok ->
         {:noreply, state}
@@ -273,6 +281,56 @@ defmodule Sparrow.H2Worker do
        RequestSet.remove(state.requests, stream_id),
        state.config
      )}
+  end
+
+  @doc !"""
+       Sends again a request which was not sent, as long as it has time left.
+       """
+  @spec retry_request(stream_id, reason, state) :: {:noreply, state}
+  defp retry_request(stream_id, reason, state) do
+    case RequestSet.get_request(state.requests, stream_id) do
+      {:error, :not_found} ->
+        {:noreply, state}
+
+      {:ok, request} ->
+        time_left = :erlang.cancel_timer(request.timeout_reference)
+
+        outer_request =
+          OuterRequest.new(
+            request.headers,
+            request.body,
+            request.path,
+            time_left
+          )
+
+        schedule_retry(outer_request, request.from, reason)
+
+        {:noreply,
+         %{state | requests: RequestSet.remove(state.requests, stream_id)}}
+    end
+  end
+
+  @spec schedule_retry(request, from | :noreply, reason) :: :ok
+  defp schedule_retry(
+         request = %OuterRequest{timeout: time_left},
+         from,
+         reason
+       )
+       when is_integer(time_left) and time_left > @retry_delay do
+    _ =
+      Logger.debug("H2 request not sent, retrying",
+        what: :h2_request_retry,
+        reason: inspect(reason),
+        time_left: time_left
+      )
+
+    request = %OuterRequest{request | timeout: time_left - @retry_delay}
+    _ = schedule_message_after({:retry_request, request, from}, @retry_delay)
+    :ok
+  end
+
+  defp schedule_retry(_request, from, reason) do
+    send_response(from, {:error, reason})
   end
 
   @doc !"""
@@ -372,23 +430,7 @@ defmodule Sparrow.H2Worker do
   @timed event_tags: [:h2_worker, :handle]
   @spec handle(request, from | :noreply, state) :: {:noreply, state}
   defp handle(request, from, state) do
-    headers =
-      case Config.get_authentication_type(state.config) do
-        :certificate_based ->
-          request.headers
-
-        :token_based ->
-          token_header = state.config.authentication.token_getter.()
-
-          _ =
-            Logger.debug("Auth token added to request headers",
-              what: :add_token_to_headers,
-              result: :success,
-              token_header: inspect(token_header)
-            )
-
-          [token_header | request.headers]
-      end
+    headers = request_headers(request, state.config)
 
     post_result =
       H2ClientAdapter.post(
@@ -400,13 +442,17 @@ defmodule Sparrow.H2Worker do
       )
 
     case post_result do
+      {:retry, reason} ->
+        schedule_retry(request, from, reason)
+        {:noreply, state}
+
       {:error, return_code} ->
         _ =
           Logger.warning("Failed to send H2 request",
             what: :h2_request_failed,
             request: request,
             status: :error,
-            reason: "#{return_code}"
+            reason: inspect(return_code)
           )
 
         :telemetry.execute(
@@ -446,6 +492,26 @@ defmodule Sparrow.H2Worker do
         )
 
         {:noreply, new_state}
+    end
+  end
+
+  @spec request_headers(request, config) :: headers
+  defp request_headers(request, config) do
+    case Config.get_authentication_type(config) do
+      :certificate_based ->
+        request.headers
+
+      :token_based ->
+        token_header = config.authentication.token_getter.()
+
+        _ =
+          Logger.debug("Auth token added to request headers",
+            what: :add_token_to_headers,
+            result: :success,
+            token_header: inspect(token_header)
+          )
+
+        [token_header | request.headers]
     end
   end
 

@@ -11,29 +11,29 @@ defmodule Sparrow.H2ClientAdapter.Finch do
 
   @finch Sparrow.Finch
 
+  # Errors reported before the request is sent to the server: the connection
+  # is being (re)established, closed by the server, or has no free streams.
+  @not_sent_errors [
+    :pool_not_available,
+    :disconnected,
+    :connection_not_ready,
+    :read_only,
+    :unprocessed,
+    :too_many_concurrent_requests
+  ]
+
   @connect_timeout 5_000
   @connect_poll_interval 10
 
   @impl true
   def open(domain, port, opts \\ []) do
-    base_url = "https://#{domain}:#{port}"
-    pool = Finch.Pool.new(base_url, tag: make_ref())
-
-    pool_opts = [
-      protocols: [:http2],
-      count: 1,
-      conn_opts: [transport_opts: opts]
-    ]
-
-    :ok = Finch.start_pool(@finch, pool, pool_opts)
-
-    case await_connected(pool, @connect_timeout) do
-      {:ok, pid} ->
-        {:ok, %{pool: pool, pid: pid, base_url: base_url}}
+    # Finch connects in the background and doesn't report why it failed, so
+    # the connection is checked first to fail fast with the actual reason.
+    case check_connection(domain, port, opts) do
+      :ok ->
+        start_pool(domain, port, opts)
 
       {:error, reason} ->
-        _ = Finch.stop_pool(@finch, pool)
-
         _ =
           Logger.debug("Error while opening HTTP/2 connection",
             what: :http_open,
@@ -75,13 +75,11 @@ defmodule Sparrow.H2ClientAdapter.Finch do
           reason: inspect(error.reason)
         )
 
-      {:error, error.reason}
-  end
-
-  # Responses are streamed to the calling process, there is nothing to read
-  @impl true
-  def get_response(_connection_ref, _stream_id) do
-    {:error, :not_ready}
+      if error.reason in @not_sent_errors do
+        {:retry, error.reason}
+      else
+        {:error, error.reason}
+      end
   end
 
   @impl true
@@ -103,7 +101,10 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   end
 
   def handle_message({{Finch.HTTP2.Pool, _} = ref, {:error, error}}, _conn) do
-    {:error, ref, error_reason(error)}
+    case error_reason(error) do
+      reason when reason in @not_sent_errors -> {:retry, ref, reason}
+      reason -> {:error, ref, reason}
+    end
   end
 
   def handle_message({{Finch.HTTP2.Pool, _} = ref, {kind, _} = part}, _conn)
@@ -113,6 +114,41 @@ defmodule Sparrow.H2ClientAdapter.Finch do
 
   def handle_message(_message, _conn) do
     :unknown
+  end
+
+  defp check_connection(domain, port, opts) do
+    connect_opts = [protocols: [:http2], transport_opts: opts]
+
+    case Mint.HTTP.connect(:https, domain, port, connect_opts) do
+      {:ok, conn} ->
+        {:ok, _conn} = Mint.HTTP.close(conn)
+        :ok
+
+      {:error, error} ->
+        {:error, error_reason(error)}
+    end
+  end
+
+  defp start_pool(domain, port, opts) do
+    base_url = "https://#{domain}:#{port}"
+    pool = Finch.Pool.new(base_url, tag: make_ref())
+
+    pool_opts = [
+      protocols: [:http2],
+      count: 1,
+      conn_opts: [transport_opts: opts]
+    ]
+
+    :ok = Finch.start_pool(@finch, pool, pool_opts)
+
+    case await_connected(pool, @connect_timeout) do
+      {:ok, pid} ->
+        {:ok, %{pool: pool, pid: pid, base_url: base_url}}
+
+      {:error, reason} ->
+        _ = Finch.stop_pool(@finch, pool)
+        {:error, reason}
+    end
   end
 
   defp error_reason(%{reason: reason}), do: reason

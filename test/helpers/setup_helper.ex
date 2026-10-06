@@ -10,9 +10,25 @@ defmodule Helpers.SetupHelper do
 
   def passthrough_h2(state) do
     Sparrow.H2ClientAdapter.Mock
-    |> stub_with(Sparrow.H2ClientAdapter.Chatterbox)
+    |> stub_with(Sparrow.H2ClientAdapter.Finch)
+
+    # Connections live in the Finch instance started by the application,
+    # which is not running in most of the tests.
+    if Process.whereis(Sparrow.Finch) == nil do
+      {:ok, _pid} =
+        ExUnit.Callbacks.start_supervised({Finch, name: Sparrow.Finch})
+    end
 
     state
+  end
+
+  @doc """
+  Stops the Finch instance started by `passthrough_h2/1`, so the application
+  can start its own.
+  """
+  def stop_finch do
+    _ = ExUnit.Callbacks.stop_supervised(Sparrow.Finch)
+    :ok
   end
 
   def h2_worker_spec(config) do
@@ -131,7 +147,7 @@ defmodule Helpers.SetupHelper do
     [
       {"accept", "*/*"},
       {"accept-encoding", "gzip, deflate"},
-      {"user-agent", "chatterbox-client/0.0.1"}
+      {"user-agent", "sparrow-client/0.0.1"}
     ]
   end
 end

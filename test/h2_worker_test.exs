@@ -9,7 +9,7 @@ defmodule Sparrow.H2WorkerTest do
   setup :set_mox_global
   setup :verify_on_exit!
 
-  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
+  alias Sparrow.H2ClientAdapter.Finch, as: H2Adapter
   alias Sparrow.H2Worker.Config
   alias Sparrow.H2Worker.Request, as: OuterRequest
   alias Sparrow.H2Worker.State
@@ -48,19 +48,15 @@ defmodule Sparrow.H2WorkerTest do
             stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
-      ponger = pid()
       ping_interval = 100
       request_timeout = 300
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-        ping: fn _ ->
-          send(self(), {:PONG, ponger})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
-          {:ok, stream_id}
+          {:ok, finch_ref(stream_id)}
         end,
         close: fn _ -> :ok end do
         config =
@@ -95,22 +91,15 @@ defmodule Sparrow.H2WorkerTest do
             stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
-      ponger = pid()
       ping_interval = 100
       request_timeout = 3_000
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-        ping: fn _ ->
-          send(self(), {:PONG, ponger})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
-          {:ok, stream_id}
-        end,
-        get_response: fn _, _ ->
-          {:ok, {headers, body}}
+          {:ok, finch_ref(stream_id)}
         end,
         close: fn _ -> :ok end do
         config =
@@ -124,10 +113,10 @@ defmodule Sparrow.H2WorkerTest do
 
         {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
 
-        :erlang.send_after(1_000, worker_pid, {:END_STREAM, stream_id})
+        send_response_after(1_000, worker_pid, stream_id, headers, body)
         request = OuterRequest.new(headers, body, path, request_timeout)
 
-        assert {:ok, {headers, body}} ==
+        assert {:ok, {[{":status", "200"} | headers], body}} ==
                  GenServer.call(worker_pid, {:send_request, request})
 
         Process.exit(worker_pid, :kill)
@@ -149,22 +138,15 @@ defmodule Sparrow.H2WorkerTest do
             stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
-      ponger = pid()
       ping_interval = 100
       request_timeout = 300
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-        ping: fn _ ->
-          send(self(), {:PONG, ponger})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
           {:error, code}
-        end,
-        get_response: fn _, _ ->
-          {{:ok, {headers, body}}}
         end,
         close: fn _ -> :ok end do
         config =
@@ -178,7 +160,7 @@ defmodule Sparrow.H2WorkerTest do
 
         {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
 
-        :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
+        :erlang.send_after(150, worker_pid, {finch_ref(stream_id), :done})
         request = OuterRequest.new(headers, body, path, request_timeout)
 
         assert {:error, code} ==
@@ -189,7 +171,7 @@ defmodule Sparrow.H2WorkerTest do
     end
   end
 
-  test "server receives request and expexts answer but get response returns not_ready",
+  test "server receives request and expexts answer but response ends before its status",
        context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
@@ -202,22 +184,15 @@ defmodule Sparrow.H2WorkerTest do
             stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: 1 do
-      ponger = pid()
       ping_interval = 100
       request_timeout = 300
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-        ping: fn _ ->
-          send(self(), {:PONG, ponger})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
-          {:ok, stream_id}
-        end,
-        get_response: fn _, _ ->
-          {:error, :not_ready}
+          {:ok, finch_ref(stream_id)}
         end,
         close: fn _ -> :ok end do
         config =
@@ -231,7 +206,7 @@ defmodule Sparrow.H2WorkerTest do
 
         {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
 
-        :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
+        :erlang.send_after(150, worker_pid, {finch_ref(stream_id), :done})
         request = OuterRequest.new(headers, body, path, request_timeout)
 
         assert {:error, :not_ready} ==
@@ -254,19 +229,15 @@ defmodule Sparrow.H2WorkerTest do
             stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
-      ponger = pid()
       ping_interval = 100
       request_timeout = 300
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-        ping: fn _ ->
-          send(self(), {:PONG, ponger})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
-          {:ok, stream_id}
+          {:ok, finch_ref(stream_id)}
         end,
         close: fn _ -> :ok end do
         config =
@@ -280,11 +251,11 @@ defmodule Sparrow.H2WorkerTest do
 
         {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
 
-        :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
+        :erlang.send_after(150, worker_pid, {finch_ref(stream_id), :done})
         request = OuterRequest.new(headers, body, path, request_timeout)
         req_result = GenServer.cast(worker_pid, {:send_request, request})
         state = :sys.get_state(worker_pid)
-        inner_request = Map.get(state.requests, stream_id)
+        inner_request = Map.get(state.requests, finch_ref(stream_id))
         assert :ok == req_result
         assert headers == inner_request.headers
         assert body == inner_request.body
@@ -295,7 +266,7 @@ defmodule Sparrow.H2WorkerTest do
     end
   end
 
-  test "END_STREAM received but request but cannot be found it in state",
+  test "end of response received but request but cannot be found it in state",
        context do
     ptest [
             domain: string(min: 3, max: 10, chars: ?a..?z),
@@ -318,7 +289,10 @@ defmodule Sparrow.H2WorkerTest do
       state = State.new(context[:connection_ref], config)
 
       assert {:noreply, state} ==
-               Sparrow.H2Worker.handle_info({:END_STREAM, stream_id}, state)
+               Sparrow.H2Worker.handle_info(
+                 {finch_ref(stream_id), :done},
+                 state
+               )
     end
   end
 
@@ -361,22 +335,15 @@ defmodule Sparrow.H2WorkerTest do
             stream_id: int(min: 1, max: 65_535)
           ],
           repeat_for: @repeats do
-      ponger = pid()
       ping_interval = 1_000
       request_timeout = 200
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-        ping: fn _ ->
-          send(self(), {:PONG, ponger})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
-          {:ok, stream_id}
-        end,
-        get_response: fn _, _ ->
-          {:ok, {headers, body}}
+          {:ok, finch_ref(stream_id)}
         end,
         close: fn _ -> :ok end do
         config =
@@ -390,14 +357,14 @@ defmodule Sparrow.H2WorkerTest do
 
         {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
 
-        :erlang.send_after(150, worker_pid, {:END_STREAM, stream_id})
-        :erlang.send_after(300, worker_pid, {:END_STREAM, stream_id})
+        send_response_after(150, worker_pid, stream_id, headers, body)
+        send_response_after(300, worker_pid, stream_id, headers, body)
         request = OuterRequest.new(headers, body, path, request_timeout)
 
-        assert {:ok, {headers, body}} ==
+        assert {:ok, {[{":status", "200"} | headers], body}} ==
                  GenServer.call(worker_pid, {:send_request, request})
 
-        assert {:ok, {headers, body}} ==
+        assert {:ok, {[{":status", "200"} | headers], body}} ==
                  GenServer.call(worker_pid, {:send_request, request})
 
         assert {:error, :request_timeout} ==
@@ -416,15 +383,11 @@ defmodule Sparrow.H2WorkerTest do
             tls_options: list(of: atom(), min: 0, max: 3)
           ],
           repeat_for: @repeats do
-      ponger = pid()
       ping_interval = 100
 
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-        ping: fn _ ->
-          send(self(), {:PONG, ponger})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
         config =
           Config.new(%{
@@ -441,7 +404,7 @@ defmodule Sparrow.H2WorkerTest do
         :timer.sleep(ping_interval * 5)
         assert called H2Adapter.ping(context[:connection_ref])
 
-        assert_receive {:trace, ^pid, :receive, {:PONG, _}}
+        assert_receive {:trace, ^pid, :receive, {:ping, _}}
 
         Process.exit(pid, :kill)
       end
@@ -519,10 +482,7 @@ defmodule Sparrow.H2WorkerTest do
 
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, conn_pid} end,
-        ping: fn _ ->
-          send(self(), {:PONG, conn_pid})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
         config =
           Config.new(%{
@@ -568,7 +528,7 @@ defmodule Sparrow.H2WorkerTest do
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
         post: fn _, _, _, _, _ ->
-          {:ok, stream_id}
+          {:ok, finch_ref(stream_id)}
         end do
         config =
           Config.new(%{
@@ -594,7 +554,7 @@ defmodule Sparrow.H2WorkerTest do
         assert context[:connection_ref] == newstate.connection_ref
         assert config == newstate.config
         assert 1 == Enum.count(newstate.requests)
-        assert [stream_id] == Map.keys(newstate.requests)
+        assert [finch_ref(stream_id)] == Map.keys(newstate.requests)
       end
     end
   end
@@ -721,8 +681,7 @@ defmodule Sparrow.H2WorkerTest do
         open: fn _, _, _ ->
           {:ok, context[:connection_ref]}
         end,
-        get_response: fn _, _ -> {:ok, {headers, body}} end,
-        post: fn _, _, _, _, _ -> {:ok, stream_id} end,
+        post: fn _, _, _, _, _ -> {:ok, finch_ref(stream_id)} end,
         close: fn _ -> :ok end do
         config =
           Config.new(%{
@@ -738,7 +697,7 @@ defmodule Sparrow.H2WorkerTest do
 
         assert :ok == GenServer.cast(worker_pid, {:send_request, request})
 
-        send(worker_pid, {:END_STREAM, stream_id})
+        send(worker_pid, {finch_ref(stream_id), :done})
         assert %{} == :sys.get_state(worker_pid).requests
         assert {:messages, []} == :erlang.process_info(self(), :messages)
         assert {:messages, []} == :erlang.process_info(worker_pid, :messages)
@@ -755,14 +714,10 @@ defmodule Sparrow.H2WorkerTest do
           ],
           repeat_for: @repeats do
       ping_interval = 123
-      ponger = pid()
 
       with_mock H2Adapter, [:passthrough],
         open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-        ping: fn _ ->
-          send(self(), {:PONG, ponger})
-          :ok
-        end,
+        ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
         config =
           Config.new(%{
@@ -888,14 +843,10 @@ defmodule Sparrow.H2WorkerTest do
             ],
             repeat_for: @repeats do
         ping_interval = 123
-        ponger = pid()
 
         with_mock H2Adapter, [:passthrough],
           open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
-          ping: fn _ ->
-            send(self(), {:PONG, ponger})
-            :ok
-          end,
+          ping: fn _ -> :ok end,
           close: fn _ -> :ok end do
           config =
             Config.new(%{
@@ -925,5 +876,16 @@ defmodule Sparrow.H2WorkerTest do
   defp stop_h2_worker() do
     Process.get(:id)
     |> stop_supervised!()
+  end
+
+  # Shape of the request reference returned by `Finch.async_request/3`
+  defp finch_ref(stream_id), do: {Finch.HTTP2.Pool, {:pool, stream_id}}
+
+  defp send_response_after(time, worker_pid, stream_id, headers, body) do
+    ref = finch_ref(stream_id)
+
+    for part <- [{:status, 200}, {:headers, headers}, {:data, body}, :done] do
+      :erlang.send_after(time, worker_pid, {ref, part})
+    end
   end
 end

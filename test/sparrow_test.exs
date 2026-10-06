@@ -114,6 +114,7 @@ defmodule SparrowTest do
         ]
       ]
 
+      Setup.stop_finch()
       Application.stop(:sparrow)
       Application.put_env(:sparrow, :apns, nil)
       Application.put_env(:sparrow, :fcm, nil)
@@ -204,6 +205,7 @@ defmodule SparrowTest do
         ]
       ]
 
+      Setup.stop_finch()
       Application.stop(:sparrow)
       Application.put_env(:sparrow, :apns, nil)
       Application.put_env(:sparrow, :fcm, nil)
@@ -277,6 +279,7 @@ defmodule SparrowTest do
       ]
     ]
 
+    Setup.stop_finch()
     Application.stop(:sparrow)
 
     Application.put_env(:sparrow, :apns, nil)
@@ -313,7 +316,7 @@ defmodule SparrowTest do
   end
 
   test "Sparrow checks TLS certificates by default", context do
-    with_mock(Sparrow.H2ClientAdapter.Chatterbox, [:passthrough],
+    with_mock(Sparrow.H2ClientAdapter.Finch, [:passthrough],
       open: fn domain, port, options ->
         assert :verify_peer == options[:verify]
         assert nil != options[:depth]
@@ -368,6 +371,7 @@ defmodule SparrowTest do
         ]
       ]
 
+      Setup.stop_finch()
       Application.stop(:sparrow)
       Application.put_env(:sparrow, :fcm, nil)
       Application.put_env(:sparrow, :apns, apns)

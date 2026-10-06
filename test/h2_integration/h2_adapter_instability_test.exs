@@ -8,7 +8,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
+  alias Sparrow.H2ClientAdapter.Finch, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
   alias Sparrow.H2Worker.State
 
@@ -36,7 +36,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
     {:ok, port: :ranch.get_port(cowboys_name)}
   end
 
-  test "chatterbox process die with custom reason after sending request to cowboy",
+  test "connection process is killed after sending request to cowboy",
        context do
     config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
 
@@ -51,7 +51,8 @@ defmodule H2Integration.H2AdapterInstabilityTest do
 
     spawn(fn ->
       :timer.sleep(500)
-      Process.exit(conn_ref, :custom_reason)
+      # Finch pool traps exits
+      Process.exit(conn_ref.pid, :kill)
     end)
 
     assert {:error, :connection_lost} ==
@@ -72,7 +73,8 @@ defmodule H2Integration.H2AdapterInstabilityTest do
 
     spawn(fn ->
       :timer.sleep(500)
-      Process.exit(conn_ref, :custom_reason)
+      # Finch pool traps exits
+      Process.exit(conn_ref.pid, :kill)
     end)
 
     assert {:error, :connection_lost} ==

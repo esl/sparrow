@@ -50,7 +50,6 @@ defmodule Sparrow.H2Worker.ConnectionTest do
       end)
       |> stub(:ping, fn _ -> :ok end)
       |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
-      |> stub(:get_response, fn _, _ -> {:error, :something} end)
       |> stub(:close, fn _ -> :ok end)
 
       config =
@@ -103,12 +102,8 @@ defmodule Sparrow.H2Worker.ConnectionTest do
         send(me, {:reconnection_success, :os.system_time(:millisecond)})
         {:ok, context[:connection_ref]}
       end)
-      |> stub(:ping, fn ref ->
-        send(self(), {:PONG, ref})
-        :ok
-      end)
+      |> stub(:ping, fn _ -> :ok end)
       |> stub(:post, fn _, _, _, _, _ -> {:error, :something} end)
-      |> stub(:get_response, fn _, _ -> {:error, :something} end)
       |> stub(:close, fn _ -> :ok end)
 
       config =
@@ -168,14 +163,10 @@ defmodule Sparrow.H2Worker.ConnectionTest do
         send(me, :connection_success)
         {:ok, context[:connection_ref]}
       end)
-      |> stub(:ping, fn ref ->
-        send(self(), {:PONG, ref})
-        :ok
-      end)
+      |> stub(:ping, fn _ -> :ok end)
       |> stub(:post, fn _, _, _, _, _ ->
         {:error, {:unable_to_connect, :some_reason}}
       end)
-      |> stub(:get_response, fn _, _ -> {:error, :something} end)
       |> stub(:close, fn _ -> :ok end)
 
       config =

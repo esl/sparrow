@@ -36,11 +36,7 @@ defmodule H2ClientAdapter.FinchTest do
 
   test "messages not sent by finch are unknown" do
     assert :unknown == H2Adapter.handle_message({:ping, make_ref()}, @conn)
-    assert :unknown == H2Adapter.handle_message({:END_STREAM, 1}, @conn)
+    assert :unknown == H2Adapter.handle_message({make_ref(), :done}, @conn)
     assert :unknown == H2Adapter.handle_message("message", @conn)
-  end
-
-  test "there is no response to read" do
-    assert {:error, :not_ready} == H2Adapter.get_response(@conn, make_ref())
   end
 end

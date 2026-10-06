@@ -520,7 +520,7 @@ defmodule Sparrow.FCM.V1Test do
     with_mocks([
       {Sparrow.FCM.V1.TokenBearer, [:passthrough],
        [get_token: fn account -> account end]},
-      {Sparrow.H2ClientAdapter.Chatterbox, [:passthrough],
+      {Sparrow.H2ClientAdapter.Finch, [:passthrough],
        [
          post: fn _, _, _, _, _ -> {:error, 1} end,
          open: fn _, _, _ -> {:ok, self()} end
@@ -541,6 +541,7 @@ defmodule Sparrow.FCM.V1Test do
         ]
       ]
 
+      Setup.stop_finch()
       Application.stop(:sparrow)
       Application.put_env(:sparrow, :fcm, fcm)
       {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)

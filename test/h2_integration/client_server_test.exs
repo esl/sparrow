@@ -4,7 +4,7 @@ defmodule H2Integration.ClientServerTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
+  alias Sparrow.H2ClientAdapter.Finch, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
   @body "test body"
