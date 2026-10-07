@@ -114,7 +114,6 @@ defmodule SparrowTest do
         ]
       ]
 
-      Setup.stop_finch()
       Application.stop(:sparrow)
       Application.put_env(:sparrow, :apns, nil)
       Application.put_env(:sparrow, :fcm, nil)
@@ -205,7 +204,6 @@ defmodule SparrowTest do
         ]
       ]
 
-      Setup.stop_finch()
       Application.stop(:sparrow)
       Application.put_env(:sparrow, :apns, nil)
       Application.put_env(:sparrow, :fcm, nil)
@@ -279,7 +277,6 @@ defmodule SparrowTest do
       ]
     ]
 
-    Setup.stop_finch()
     Application.stop(:sparrow)
 
     Application.put_env(:sparrow, :apns, nil)
@@ -316,19 +313,23 @@ defmodule SparrowTest do
   end
 
   test "Sparrow checks TLS certificates by default", context do
+    # Cowboy uses a self-signed certificate, so the options are only checked
+    without_verification = fn config ->
+      options = config.tls_options
+
+      assert :verify_peer == options[:verify]
+      assert nil != options[:depth]
+      assert nil != options[:cacerts]
+
+      %{config | tls_options: [verify: :verify_none]}
+    end
+
     with_mock(Sparrow.H2ClientAdapter.Finch, [:passthrough],
-      open: fn domain, port, options ->
-        assert :verify_peer == options[:verify]
-        assert nil != options[:depth]
-        assert nil != options[:cacerts]
-
-        no_cert_options =
-          options
-          |> List.keydelete(:verify, 0)
-          |> List.keydelete(:depth, 0)
-          |> List.keydelete(:cacerts, 0)
-
-        :meck.passthrough([domain, port, no_cert_options])
+      child_specs: fn config ->
+        :meck.passthrough([without_verification.(config)])
+      end,
+      open: fn config ->
+        :meck.passthrough([without_verification.(config)])
       end
     ) do
       apns = [
@@ -371,7 +372,6 @@ defmodule SparrowTest do
         ]
       ]
 
-      Setup.stop_finch()
       Application.stop(:sparrow)
       Application.put_env(:sparrow, :fcm, nil)
       Application.put_env(:sparrow, :apns, apns)

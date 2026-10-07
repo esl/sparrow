@@ -51,4 +51,44 @@ defmodule H2Worker.ConfigTest do
                Sparrow.H2Worker.Config.get_authentication_type(config)
     end
   end
+
+  test "connection TLS options contain certificate for certificate based authentication" do
+    auth =
+      Sparrow.H2Worker.Authentication.CertificateBased.new(
+        "path/to/cert.pem",
+        "path/to/key.pem"
+      )
+
+    config =
+      Sparrow.H2Worker.Config.new(%{
+        domain: "domain",
+        port: 443,
+        authentication: auth,
+        tls_options: [verify: :verify_none]
+      })
+
+    assert [
+             certfile: "path/to/cert.pem",
+             keyfile: "path/to/key.pem",
+             verify: :verify_none
+           ] == Sparrow.H2Worker.Config.connection_tls_options(config)
+  end
+
+  test "connection TLS options are not changed for token based authentication" do
+    auth =
+      Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+        {"authorization", "bearer token"}
+      end)
+
+    config =
+      Sparrow.H2Worker.Config.new(%{
+        domain: "domain",
+        port: 443,
+        authentication: auth,
+        tls_options: [verify: :verify_none]
+      })
+
+    assert [verify: :verify_none] ==
+             Sparrow.H2Worker.Config.connection_tls_options(config)
+  end
 end

@@ -12,23 +12,44 @@ defmodule Helpers.SetupHelper do
     Sparrow.H2ClientAdapter.Mock
     |> stub_with(Sparrow.H2ClientAdapter.Finch)
 
-    # Connections live in the Finch instance started by the application,
-    # which is not running in most of the tests.
-    if Process.whereis(Sparrow.Finch) == nil do
-      {:ok, _pid} =
-        ExUnit.Callbacks.start_supervised({Finch, name: Sparrow.Finch})
-    end
-
     state
   end
 
   @doc """
-  Stops the Finch instance started by `passthrough_h2/1`, so the application
-  can start its own.
+  Starts processes needed by connections of a worker started without a pool.
   """
-  def stop_finch do
-    _ = ExUnit.Callbacks.stop_supervised(Sparrow.Finch)
+  def start_connection_processes(config) do
+    for spec <- Sparrow.H2ClientAdapter.Finch.child_specs(config) do
+      case ExUnit.Callbacks.start_supervised(spec) do
+        # `:undefined` for the spec which only attaches the telemetry handler
+        {:ok, _pid_or_undefined} -> :ok
+        {:error, {:already_started, _pid}} -> :ok
+        {:error, {{:already_started, _pid}, _spec}} -> :ok
+      end
+    end
+
     :ok
+  end
+
+  @doc """
+  Sends `{event, measurements, metadata}` to the calling process each time
+  given telemetry event is executed.
+  """
+  def forward_telemetry(event) do
+    test_pid = self()
+    handler_id = {:forward_telemetry, test_pid, event}
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        event,
+        fn event, measurements, metadata, _config ->
+          send(test_pid, {event, measurements, metadata})
+        end,
+        nil
+      )
+
+    ExUnit.Callbacks.on_exit(fn -> :telemetry.detach(handler_id) end)
   end
 
   def h2_worker_spec(config) do

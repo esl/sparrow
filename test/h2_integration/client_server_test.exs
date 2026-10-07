@@ -1,10 +1,7 @@
 defmodule H2Integration.ClientServerTest do
-  import Mock
-
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2ClientAdapter.Finch, as: H2Adapter
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
   @body "test body"
@@ -141,44 +138,6 @@ defmodule H2Integration.ClientServerTest do
 
     assert_response_header(answer_headers, {"content-length", "5"})
     assert answer_body == "Hello"
-  end
-
-  test "first open connection fails, second pases, certificate based authentication",
-       context do
-    with_mock H2Adapter,
-      open: fn a, b, c ->
-        case :erlang.put(:connection_count, 1) do
-          :undefined -> {:error, :my_custom_reason}
-          1 -> :meck.passthrough([a, b, c])
-        end
-      end do
-      config =
-        Setup.create_h2_worker_config(Setup.server_host(), context[:port])
-
-      {:ok, pid} = GenServer.start(Sparrow.H2Worker, config)
-      assert is_pid(pid)
-    end
-  end
-
-  test "first open connection fails, second pases, token based authentication",
-       context do
-    with_mock H2Adapter,
-      open: fn a, b, c ->
-        case :erlang.put(:connection_count, 1) do
-          :undefined -> {:error, :my_custom_reason}
-          1 -> :meck.passthrough([a, b, c])
-        end
-      end do
-      config =
-        Setup.create_h2_worker_config(
-          Setup.server_host(),
-          context[:port],
-          :token_based
-        )
-
-      {:ok, pid} = GenServer.start(Sparrow.H2Worker, config)
-      assert is_pid(pid)
-    end
   end
 
   defp assert_response_header(headers, expected_header) do

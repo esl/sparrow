@@ -14,10 +14,6 @@ defmodule H2Integration.FinchClientServerTest do
   setup do
     stub_with(Sparrow.H2ClientAdapter.Mock, Sparrow.H2ClientAdapter.Finch)
 
-    if Process.whereis(Sparrow.Finch) == nil do
-      start_supervised!({Finch, name: Sparrow.Finch})
-    end
-
     cowboys_name = :"finch_cowboy_#{System.unique_integer([:positive])}"
 
     {:ok, cowboy_pid, ^cowboys_name} =
@@ -313,15 +309,37 @@ defmodule H2Integration.FinchClientServerTest do
     )
   end
 
-  test "connection is not opened when server is unreachable", context do
+  test "worker is not connected when server is unreachable", context do
     :ok = :cowboy.stop_listener(context[:cowboys_name])
+    Setup.forward_telemetry([:sparrow, :h2_worker, :conn_fail])
 
-    assert {:error, _reason} =
-             Sparrow.H2ClientAdapter.Finch.open(
-               Setup.server_host(),
-               context[:port],
-               verify: :verify_none
-             )
+    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+    :ok = Setup.start_connection_processes(config)
+    {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
+
+    port = context[:port]
+
+    assert_receive {[:sparrow, :h2_worker, :conn_fail], _measurements,
+                    %{domain: "localhost", port: ^port, reason: :econnrefused}},
+                   2_000
+
+    refute Sparrow.H2Worker.alive_connection?(worker_pid)
+  end
+
+  test "worker is connected when server is reachable", context do
+    Setup.forward_telemetry([:sparrow, :h2_worker, :conn_success])
+
+    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+    :ok = Setup.start_connection_processes(config)
+    {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
+
+    port = context[:port]
+
+    assert_receive {[:sparrow, :h2_worker, :conn_success], _measurements,
+                    %{domain: "localhost", port: ^port}},
+                   2_000
+
+    assert_eventually(Sparrow.H2Worker.alive_connection?(worker_pid))
   end
 
   defp start_pool(context, authentication \\ :certificate_based) do

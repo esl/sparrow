@@ -27,7 +27,6 @@ defmodule Sparrow.MixProject do
       {:dialyxir, "~> 1.4", runtime: false, only: [:dev, :test]},
       {:credo, "~> 1.7", runtime: false, only: [:dev, :test]},
       {:finch, "~> 0.23"},
-      {:mint, "~> 1.8"},
       {:certifi, "~> 2.12"},
       {:excoveralls, "~> 0.18", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},

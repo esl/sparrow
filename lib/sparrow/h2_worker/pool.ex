@@ -82,7 +82,6 @@ defmodule Sparrow.H2Worker.Pool do
         pool_type,
         tags \\ []
       ) do
-    # We add pool information to worker config only for the telemetry events
     worker_config_with_pool = %Sparrow.H2Worker.Config{
       workers_config
       | pool_type: pool_type,
@@ -90,14 +89,24 @@ defmodule Sparrow.H2Worker.Pool do
         pool_tags: tags
     }
 
-    :wpool.start_pool(
-      config.pool_name,
-      [
-        {:workers, config.worker_num},
-        {:worker, {Sparrow.H2Worker, worker_config_with_pool}}
-        | config.raw_opts
-      ]
-    )
+    wpool_opts = [
+      {:workers, config.worker_num},
+      {:worker, {Sparrow.H2Worker, worker_config_with_pool}}
+      | config.raw_opts
+    ]
+
+    # Workers are restarted when the processes their connections live in are
+    children =
+      Sparrow.H2ClientAdapter.child_specs(worker_config_with_pool) ++
+        [
+          %{
+            id: :wpool,
+            start: {:wpool, :start_pool, [config.pool_name, wpool_opts]},
+            type: :supervisor
+          }
+        ]
+
+    Supervisor.start_link(children, strategy: :rest_for_one)
   end
 
   @doc """

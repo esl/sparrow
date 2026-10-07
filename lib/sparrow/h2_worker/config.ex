@@ -49,7 +49,8 @@ defmodule Sparrow.H2Worker.Config do
     * `authentication` - a struct to provide token based or certificate based authentication
     * `tls_options` - See http://erlang.org/doc/man/ssl.html  ssl_option()
     * `ping_interval` - ping message is send to server periodically after ping_interval miliseconds (default 5_000)
-    * `reconnect_attempts` - number of attempts to start connection before it fails (default 3)
+    * `reconnect_attempts`, `backoff_base`, `backoff_initial_delay`, `backoff_max_delay` - not used,
+      the connection is reestablished by the HTTP/2 client on its own
 
   WARNING! If you use certificate based authentication do not add certfile and/or keyfile to `tls_options`, put them to `authentication`
   """
@@ -98,6 +99,24 @@ defmodule Sparrow.H2Worker.Config do
       pool_name: nil,
       pool_tags: []
     }
+  end
+
+  @doc """
+  TLS options of the connection, including the client certificate
+  for certificate based authentication.
+  """
+  @spec connection_tls_options(t) :: tls_options
+  def connection_tls_options(config) do
+    case get_authentication_type(config) do
+      :certificate_based ->
+        [
+          {:certfile, config.authentication.certfile},
+          {:keyfile, config.authentication.keyfile} | config.tls_options
+        ]
+
+      :token_based ->
+        config.tls_options
+    end
   end
 
   @spec get_authentication_type(__MODULE__.t()) ::

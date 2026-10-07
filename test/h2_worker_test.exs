@@ -53,7 +53,7 @@ defmodule Sparrow.H2WorkerTest do
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
           {:ok, finch_ref(stream_id)}
@@ -96,7 +96,7 @@ defmodule Sparrow.H2WorkerTest do
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
           {:ok, finch_ref(stream_id)}
@@ -143,7 +143,7 @@ defmodule Sparrow.H2WorkerTest do
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
           {:error, code}
@@ -189,7 +189,7 @@ defmodule Sparrow.H2WorkerTest do
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
           {:ok, finch_ref(stream_id)}
@@ -234,7 +234,7 @@ defmodule Sparrow.H2WorkerTest do
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
           {:ok, finch_ref(stream_id)}
@@ -340,7 +340,7 @@ defmodule Sparrow.H2WorkerTest do
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         post: fn _, _, _, _, _ ->
           {:ok, finch_ref(stream_id)}
@@ -386,7 +386,7 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 100
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
         config =
@@ -422,7 +422,7 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = nil
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
         config =
@@ -449,7 +449,7 @@ defmodule Sparrow.H2WorkerTest do
           ],
           repeat_for: @repeats do
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ ->
           :ok
         end,
@@ -481,7 +481,7 @@ defmodule Sparrow.H2WorkerTest do
       not_conn_pid = pid()
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, conn_pid} end,
+        open: fn _ -> {:ok, conn_pid} end,
         ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
         config =
@@ -526,7 +526,7 @@ defmodule Sparrow.H2WorkerTest do
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         post: fn _, _, _, _, _ ->
           {:ok, finch_ref(stream_id)}
         end do
@@ -569,7 +569,7 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 123
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
         config =
@@ -581,82 +581,16 @@ defmodule Sparrow.H2WorkerTest do
             ping_interval: ping_interval
           })
 
-        expected_config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:real_auth],
-            tls_options: [
-              {:certfile, "test/priv/certs/Certificates1.pem"},
-              {:keyfile, "test/priv/certs/key.pem"} | tls_options
-            ],
-            ping_interval: ping_interval
-          })
-
         worker_pid = start_supervised!(Tools.h2_worker_spec(config))
 
         eventually(
           assert Sparrow.H2Worker.State.new(
                    context[:connection_ref],
-                   expected_config
+                   config
                  ) == :sys.get_state(worker_pid, 100)
         )
 
         stop_h2_worker()
-      end
-    end
-  end
-
-  test "inits, succesfull connection with certificate, connection fails on send attempt",
-       context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
-            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            body: string(min: 3, max: 7, chars: :ascii),
-            path: string(min: 3, max: 7, chars: :ascii)
-          ],
-          repeat_for: 1 do
-      ping_interval = 12_300
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ ->
-          case :erlang.get(:key) do
-            :undefined ->
-              :erlang.put(:key, 1)
-              {:ok, context[:connection_ref]}
-
-            1 ->
-              {:error, :my_reason}
-          end
-        end,
-        close: fn _ -> :ok end do
-        headers = Enum.zip([headersA, headersB])
-
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        request = OuterRequest.new(headers, body, path, 1000)
-
-        new_state = %Sparrow.H2Worker.State{
-          connection_ref: nil,
-          requests: [],
-          config: config
-        }
-
-        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-        :sys.replace_state(worker_pid, fn _ -> new_state end)
-
-        reply = GenServer.call(worker_pid, {:send_request, request})
-        assert {:error, {:unable_to_connect, _}} = reply
       end
     end
   end
@@ -678,7 +612,7 @@ defmodule Sparrow.H2WorkerTest do
       headers = Enum.zip([headersA, headersB])
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ ->
+        open: fn _ ->
           {:ok, context[:connection_ref]}
         end,
         post: fn _, _, _, _, _ -> {:ok, finch_ref(stream_id)} end,
@@ -716,7 +650,7 @@ defmodule Sparrow.H2WorkerTest do
       ping_interval = 123
 
       with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+        open: fn _ -> {:ok, context[:connection_ref]} end,
         ping: fn _ -> :ok end,
         close: fn _ -> :ok end do
         config =
@@ -738,37 +672,6 @@ defmodule Sparrow.H2WorkerTest do
         )
 
         stop_h2_worker()
-      end
-    end
-  end
-
-  test "inits, unsuccesfull connection", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            reason: atom(min: 2, max: 5),
-            tls_options: list(of: atom(), min: 0, max: 3)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 123
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _, _, _ -> {:error, reason} end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-
-        %State{connection_ref: connection} = :sys.get_state(worker_pid)
-
-        assert nil == connection
       end
     end
   end
@@ -809,14 +712,15 @@ defmodule Sparrow.H2WorkerTest do
       ptest [
               domain: string(min: 3, max: 10, chars: ?a..?z),
               port: int(min: 0, max: 65_535),
-              reason: atom(min: 2, max: 5),
               tls_options: list(of: atom(), min: 0, max: 3)
             ],
             repeat_for: @repeats do
         ping_interval = 123
 
         with_mock H2Adapter, [:passthrough],
-          open: fn _, _, _ -> {:error, reason} end,
+          open: fn _ -> {:ok, context[:connection_ref]} end,
+          connected?: fn _ -> false end,
+          ping: fn _ -> :ok end,
           close: fn _ -> :ok end do
           config =
             Config.new(%{
@@ -828,7 +732,6 @@ defmodule Sparrow.H2WorkerTest do
             })
 
           worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-          %State{connection_ref: nil} = :sys.get_state(worker_pid)
 
           assert false == Sparrow.H2Worker.alive_connection?(worker_pid)
         end
@@ -845,7 +748,8 @@ defmodule Sparrow.H2WorkerTest do
         ping_interval = 123
 
         with_mock H2Adapter, [:passthrough],
-          open: fn _, _, _ -> {:ok, context[:connection_ref]} end,
+          open: fn _ -> {:ok, context[:connection_ref]} end,
+          connected?: fn _ -> true end,
           ping: fn _ -> :ok end,
           close: fn _ -> :ok end do
           config =

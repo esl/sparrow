@@ -8,6 +8,7 @@ defmodule Sparrow.H2ClientAdapter do
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
   @type reason :: term
+  @type config :: Sparrow.H2Worker.Config.t()
   @type response_part ::
           {:status, non_neg_integer} | {:headers, headers} | {:data, binary}
   @type event ::
@@ -19,10 +20,20 @@ defmodule Sparrow.H2ClientAdapter do
           | :unknown
 
   @doc """
-  Starts a new connection.
+  Specifications of processes needed by connections opened with given config.
+  They are started before the workers of a pool.
   """
-  @callback open(String.t(), non_neg_integer, [any]) ::
-              {:ok, connection_ref} | {:error, :ignore} | {:error, reason}
+  @callback child_specs(config) :: [Supervisor.child_spec() | map]
+
+  @doc """
+  Starts a new connection. It doesn't wait until it's established.
+  """
+  @callback open(config) :: {:ok, connection_ref}
+
+  @doc """
+  Tells if the connection is established.
+  """
+  @callback connected?(connection_ref) :: boolean
 
   @doc """
     Closes the connection.
@@ -57,9 +68,19 @@ defmodule Sparrow.H2ClientAdapter do
   """
   @callback handle_message(message :: term, connection_ref) :: event
 
-  def open(domain, port, opts \\ []) do
+  def child_specs(config) do
     adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
-    adapter.open(domain, port, opts)
+    adapter.child_specs(config)
+  end
+
+  def open(config) do
+    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
+    adapter.open(config)
+  end
+
+  def connected?(conn) do
+    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
+    adapter.connected?(conn)
   end
 
   def close(conn) do

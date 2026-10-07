@@ -30,6 +30,7 @@ defmodule Sparrow.H2Worker.PoolTest do
 
     port = :ranch.get_port(cowboys_name)
     config = Setup.create_h2_worker_config(Setup.server_host(), port)
+    :ok = Setup.start_connection_processes(config)
     :wpool.start()
 
     :wpool.start_pool(

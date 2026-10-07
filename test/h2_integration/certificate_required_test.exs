@@ -3,7 +3,6 @@ defmodule H2Integration.CerificateRequiredTest do
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
-  alias Sparrow.APNS.Notification
 
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
@@ -91,18 +90,28 @@ defmodule H2Integration.CerificateRequiredTest do
         ping_interval: 10_000
       })
 
-    notification =
-      "OkResponseHandler"
-      |> Notification.new(:dev)
-      |> Notification.add_title("")
-      |> Notification.add_body("")
+    request =
+      OuterRequest.new(
+        Setup.default_headers(),
+        "body",
+        "/OkResponseHandler",
+        500
+      )
 
+    Setup.forward_telemetry([:sparrow, :h2_worker, :conn_fail])
+    :ok = Setup.start_connection_processes(config)
     worker_pid = start_supervised!(Setup.h2_worker_spec(config))
 
     # No CA certificates are given, so the default ones are used and the
     # self-signed certificate of the server is not trusted
-    assert {:error, {:unable_to_connect, {:tls_alert, {:bad_certificate, _}}}} =
-             GenServer.call(worker_pid, {:send_request, notification})
+    assert_receive {[:sparrow, :h2_worker, :conn_fail], _measurements,
+                    %{reason: {:tls_alert, {:bad_certificate, _}}}},
+                   2_000
+
+    refute Sparrow.H2Worker.alive_connection?(worker_pid)
+
+    assert {:error, :pool_not_available} ==
+             GenServer.call(worker_pid, {:send_request, request})
   end
 
   defp assert_response_header(headers, expected_header) do

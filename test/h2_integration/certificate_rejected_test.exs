@@ -41,6 +41,7 @@ defmodule H2Integration.CerificateRejectedTest do
     request =
       OuterRequest.new(headers, body, "/RejectCertificateHandler", 3_000)
 
+    :ok = Setup.start_connection_processes(config)
     worker_pid = start_supervised!(Setup.h2_worker_spec(config))
 
     assert {:error, reason} =
