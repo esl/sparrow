@@ -30,19 +30,18 @@ defmodule Helpers.SetupHelper do
   end
 
   @doc """
-  Starts processes needed by connections of a worker started without a pool.
+  Starts a pool with a unique name and given connections config,
+  returns the name.
   """
-  def start_connection_processes(config) do
-    for spec <- Sparrow.H2ClientAdapter.Finch.child_specs(config) do
-      case ExUnit.Callbacks.start_supervised(spec) do
-        # `:undefined` for the spec which only attaches the telemetry handler
-        {:ok, _pid_or_undefined} -> :ok
-        {:error, {:already_started, _pid}} -> :ok
-        {:error, {{:already_started, _pid}, _spec}} -> :ok
-      end
-    end
+  def start_pool_with_config(config, connections \\ 1) do
+    pool_name = :"pool_#{System.unique_integer([:positive])}"
 
-    :ok
+    {:ok, _pid} =
+      config
+      |> Sparrow.H2Worker.Pool.Config.new(pool_name, connections)
+      |> start_pool(:fcm, [])
+
+    pool_name
   end
 
   @doc """
@@ -64,25 +63,6 @@ defmodule Helpers.SetupHelper do
       )
 
     ExUnit.Callbacks.on_exit(fn -> :telemetry.detach(handler_id) end)
-  end
-
-  def h2_worker_spec(config) do
-    id = :crypto.strong_rand_bytes(8) |> Base.encode64()
-    Process.put(:id, id)
-
-    Supervisor.child_spec({Sparrow.H2Worker, config}, id: id)
-  end
-
-  def child_spec(opts) do
-    args = opts[:args]
-    name = opts[:name]
-
-    id = :rand.uniform(100_000)
-
-    %{
-      :id => id,
-      :start => {Sparrow.H2Worker, :start_link, [name, args]}
-    }
   end
 
   def cowboys_name do

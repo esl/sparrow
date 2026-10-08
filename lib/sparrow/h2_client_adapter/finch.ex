@@ -2,16 +2,17 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   @moduledoc """
   Implements the client with Finch.
 
-  Each pool of workers has its own Finch instance, see `child_specs/1`. Its
-  default pool configuration is the configuration of the workers, so every
-  Finch pool of the instance uses it, also the ones Finch starts on its own.
+  Each pool has its own Finch instance, see `child_specs/1`. Its default pool
+  configuration is the configuration of the pool, so every Finch pool of the
+  instance uses it, also the ones Finch starts on its own.
 
-  Each connection is a separate Finch pool with a single HTTP/2 connection,
-  identified by a tag. Finch connects and reconnects it in the background,
-  and keeps it alive with pings.
+  Connections of a pool are a single Finch pool of HTTP/2 connections. Finch
+  connects and reconnects them in the background, and keeps them alive with
+  pings. Requests are spread over the connections evenly.
   """
   @behaviour Sparrow.H2ClientAdapter
 
+  alias Finch.Pool.Strategy.RoundRobin
   alias Sparrow.H2Worker.Config
 
   require Logger
@@ -49,37 +50,38 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   def open(config) do
     finch = finch_name(config)
     base_url = "https://#{config.domain}:#{config.port}"
-    pool = Finch.Pool.new(base_url, tag: connection_tag())
+    pool = Finch.Pool.new(base_url)
 
-    # Doesn't wait for the connection
+    # Doesn't wait for the connections
     :ok = Finch.start_pool(finch, pool, pool_opts(config))
 
-    {:ok, %{finch: finch, pool: pool, base_url: base_url}}
+    {:ok,
+     %{
+       finch: finch,
+       pool: pool,
+       base_url: base_url,
+       strategy: {RoundRobin, RoundRobin.new()}
+     }}
   end
 
   @impl true
-  def close(%{finch: finch, pool: pool}) do
-    _ = Finch.stop_pool(finch, pool)
-    :ok
-  catch
-    # The instance is already stopped
-    :exit, _reason -> :ok
-  end
-
-  @impl true
-  def connected?(%{finch: finch, pool: pool}) do
-    # HTTP/2 pool is registered only when it's connected
-    match?({:ok, _pid}, Finch.find_pool(finch, pool))
+  def connected(%{finch: finch, pool: pool}) do
+    # HTTP/2 connection is registered only when it's established
+    finch |> Registry.lookup(Finch.Pool.to_name(pool)) |> length()
+  rescue
+    # The instance is not running
+    ArgumentError -> 0
   end
 
   @impl true
   def request(conn, path, headers, body, timeout) do
-    %{finch: finch, pool: pool, base_url: base_url} = conn
+    %{finch: finch, base_url: base_url, strategy: strategy} = conn
     headers = [{"content-length", "#{byte_size(body)}"} | headers]
+    opts = [receive_timeout: max(timeout, 1), pool_strategy: strategy]
 
     :post
-    |> Finch.build(base_url <> path, headers, body, pool_tag: pool.tag)
-    |> Finch.request(finch, receive_timeout: max(timeout, 1))
+    |> Finch.build(base_url <> path, headers, body)
+    |> Finch.request(finch, opts)
     |> case do
       {:ok, %Finch.Response{status: status, headers: headers, body: body}} ->
         {:ok, {[{":status", Integer.to_string(status)} | headers], body}}
@@ -106,7 +108,7 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   defp request_error(reason), do: {:error, reason}
 
   @doc """
-  Name of the Finch instance used by workers with given config.
+  Name of the Finch instance used by the pool with given config.
   """
   @spec finch_name(Config.t()) :: atom
   def finch_name(%Config{pool_name: pool_name}) do
@@ -118,13 +120,7 @@ defmodule Sparrow.H2ClientAdapter.Finch do
     finch = finch_name(config)
     handler_id = {__MODULE__, finch}
 
-    worker_info = %{
-      domain: config.domain,
-      port: config.port,
-      pool_type: config.pool_type,
-      pool_name: config.pool_name,
-      pool_tags: config.pool_tags
-    }
+    worker_info = Config.pool_info(config)
 
     _ = :telemetry.detach(handler_id)
 
@@ -170,20 +166,11 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   defp pool_opts(config) do
     [
       protocols: [:http2],
-      count: 1,
+      count: config.connections,
       conn_opts: [transport_opts: Config.connection_tls_options(config)],
       # Sent by Finch after the connection was idle for that long
       http2: [ping_interval: config.ping_interval || :infinity]
     ]
-  end
-
-  # Worker restarted by its pool has the same name, so it takes over
-  # the connection of the previous one.
-  defp connection_tag do
-    case Process.info(self(), :registered_name) do
-      {:registered_name, name} when is_atom(name) -> name
-      _ -> make_ref()
-    end
   end
 
   defp error_reason(%{reason: reason}), do: reason

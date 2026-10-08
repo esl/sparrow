@@ -1,18 +1,16 @@
 defmodule Sparrow.H2Worker do
   @moduledoc false
-  use GenServer
+  # Sends requests through connections of a pool, see `Sparrow.H2Worker.Pool`.
 
   require Logger
 
   alias Sparrow.H2ClientAdapter
   alias Sparrow.H2Worker.Config
-  alias Sparrow.H2Worker.State
 
   @type config :: Sparrow.H2Worker.Config.t()
-  @type state :: Sparrow.H2Worker.State.t()
+  @type connection_ref :: Sparrow.H2ClientAdapter.connection_ref()
   @type reason :: any
   @type request :: Sparrow.H2Worker.Request.t()
-  @type from :: {pid, tag :: term}
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
   @type response :: {:ok, {headers, body}} | {:error, reason}
@@ -20,97 +18,14 @@ defmodule Sparrow.H2Worker do
   # Time to wait before sending again a request which was not sent
   @retry_delay 25
 
-  def start_link(config) do
-    GenServer.start_link(__MODULE__, config)
-  end
-
-  def alive_connection?(pid) do
-    GenServer.call(pid, :is_alive_connection)
-  end
-
-  @spec init(config) :: {:ok, state}
-  def init(config) do
-    # The connection is established in the background
-    {:ok, connection_ref} = H2ClientAdapter.open(config)
-
-    state = State.new(connection_ref, config)
-
-    :telemetry.execute(
-      [:sparrow, :h2_worker, :init],
-      %{},
-      worker_info(config)
-    )
-
-    {:ok, state}
-  end
-
-  @spec terminate(reason, state) :: :ok
-  def terminate(reason, state) do
-    H2ClientAdapter.close(state.connection_ref)
-
-    _ =
-      Logger.info("Connection shutting down",
-        what: :h2_connection_terminate,
-        reason: inspect(reason),
-        connection_ref: inspect(state.connection_ref)
-      )
-
-    :telemetry.execute(
-      [:sparrow, :h2_worker, :terminate],
-      %{},
-      state.config
-      |> worker_info()
-      |> Map.put(:reason, reason)
-    )
-
-    :ok
-  end
-
-  def handle_call(:is_alive_connection, _from, state) do
-    {:reply, H2ClientAdapter.connected?(state.connection_ref), state}
-  end
-
-  @spec handle_call({:send_request, request}, from, state) :: {:noreply, state}
-  def handle_call({:send_request, request}, from, state) do
-    start_request(request, from, state)
-    {:noreply, state}
-  end
-
-  @spec handle_cast({:send_request, request}, state) :: {:noreply, state}
-  def handle_cast({:send_request, request}, state) do
-    start_request(request, :noreply, state)
-    {:noreply, state}
-  end
-
-  @spec handle_info(term, state) :: {:noreply, state}
-  def handle_info(message, state) do
-    _ =
-      Logger.warning("Unknown info message",
-        what: :unknown_info,
-        value: message
-      )
-
-    {:noreply, state}
-  end
-
-  @spec start_request(request, from | :noreply, state) :: :ok
-  defp start_request(request, from, state) do
-    %State{connection_ref: connection_ref, config: config} = state
-    deadline = now() + request.timeout
-
-    # Each request is sent by its own process, which waits for the response.
-    # It's not linked, so the request is completed also when the worker stops.
-    {:ok, _pid} =
-      Task.start(fn ->
-        send_request(request, from, connection_ref, config, deadline)
-      end)
-
-    :ok
-  end
-
-  # Runs in a process started for the request
-  defp send_request(request, from, connection_ref, config, deadline) do
+  @doc """
+  Sends the request and waits for the response, for at most the timeout
+  of the request. A request which was not sent is sent again until then.
+  """
+  @spec send_request(connection_ref, config, request) :: response
+  def send_request(connection_ref, config, request) do
     started_at = System.monotonic_time(:microsecond)
+    deadline = now() + request.timeout
 
     response =
       try do
@@ -122,11 +37,11 @@ defmodule Sparrow.H2Worker do
       end
 
     time = System.monotonic_time(:microsecond) - started_at
-    report(response, time, from, config)
-    reply(from, response)
+    report(response, time, config)
+    response
   end
 
-  @spec send_with_retry(request, headers, term, integer) :: response
+  @spec send_with_retry(request, headers, connection_ref, integer) :: response
   defp send_with_retry(request, headers, connection_ref, deadline) do
     time_left = deadline - now()
 
@@ -167,13 +82,13 @@ defmodule Sparrow.H2Worker do
     end
   end
 
-  defp report(response, time, from, config) do
-    worker_info = worker_info(config)
+  defp report(response, time, config) do
+    pool_info = Config.pool_info(config)
 
     :telemetry.execute(
       [:sparrow, :h2_worker, :handle],
       %{time: time},
-      worker_info
+      pool_info
     )
 
     case response do
@@ -181,7 +96,7 @@ defmodule Sparrow.H2Worker do
         :telemetry.execute(
           [:sparrow, :h2_worker, :request_success],
           %{},
-          worker_info
+          pool_info
         )
 
       {:error, reason} ->
@@ -195,25 +110,10 @@ defmodule Sparrow.H2Worker do
         :telemetry.execute(
           [:sparrow, :h2_worker, :request_error],
           %{},
-          worker_info
-          |> Map.put(:from, from)
-          |> Map.put(:return_code, reason)
+          Map.put(pool_info, :return_code, reason)
         )
     end
   end
 
-  defp reply(:noreply, _response), do: :ok
-  defp reply(from, response), do: GenServer.reply(from, response)
-
   defp now, do: System.monotonic_time(:millisecond)
-
-  defp worker_info(config) do
-    %{
-      domain: config.domain,
-      port: config.port,
-      pool_type: config.pool_type,
-      pool_name: config.pool_name,
-      pool_tags: config.pool_tags
-    }
-  end
 end

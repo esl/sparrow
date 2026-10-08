@@ -30,16 +30,11 @@ defmodule Sparrow.H2Worker.PoolTest do
 
     port = :ranch.get_port(cowboys_name)
     config = Setup.create_h2_worker_config(Setup.server_host(), port)
-    :ok = Setup.start_connection_processes(config)
-    :wpool.start()
 
-    :wpool.start_pool(
-      @pool_name,
-      [
-        {:workers, 4},
-        {:worker, {Sparrow.H2Worker, config}}
-      ]
-    )
+    {:ok, _pid} =
+      config
+      |> Sparrow.H2Worker.Pool.Config.new(@pool_name, 4)
+      |> Setup.start_pool(:fcm, [])
 
     on_exit(fn ->
       case Process.alive?(cowboy_pid) do
@@ -60,7 +55,7 @@ defmodule Sparrow.H2Worker.PoolTest do
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      :wpool.call(@pool_name, {:send_request, request})
+      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
 
     length_header = {"content-length", Integer.to_string(String.length(@body))}
 
@@ -79,7 +74,7 @@ defmodule Sparrow.H2Worker.PoolTest do
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      :wpool.call(@pool_name, {:send_request, request})
+      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
 
     length_header = {"content-length", Integer.to_string(String.length(@body))}
 
@@ -95,7 +90,7 @@ defmodule Sparrow.H2Worker.PoolTest do
     request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      :wpool.call(@pool_name, {:send_request, request})
+      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
 
     assert_response_header(answer_headers, {":status", "200"})
 
@@ -116,6 +111,16 @@ defmodule Sparrow.H2Worker.PoolTest do
     assert :ok == Sparrow.H2Worker.Pool.send_request(@pool_name, request, false)
   end
 
+  test "pool reports its connections" do
+    assert %{pool: @pool_name, connections: 4} =
+             Sparrow.H2Worker.Pool.stats(@pool_name)
+
+    assert HelperMacros.wait_for(
+             fn -> Sparrow.H2Worker.Pool.stats(@pool_name).connected == 4 end,
+             5_000
+           )
+  end
+
   @messages_for_pool 1_000
   @moduletag :capture_log
   test "cowboy replies Hello n times" do
@@ -125,7 +130,7 @@ defmodule Sparrow.H2Worker.PoolTest do
 
     sending_with_response = fn ->
       for _ <- 1..@messages_for_pool do
-        async_wpool_call(@pool_name, {:send_request, request})
+        async_send_request(@pool_name, request)
       end
 
       for _ <- 1..@messages_for_pool do
@@ -148,11 +153,11 @@ defmodule Sparrow.H2Worker.PoolTest do
     assert Enum.any?(headers, &(&1 == expected_header))
   end
 
-  defp async_wpool_call(pool_name, request) do
+  defp async_send_request(pool_name, request) do
     pid = self()
 
     spawn(fn ->
-      send(pid, :wpool.call(pool_name, request))
+      send(pid, Sparrow.H2Worker.Pool.send_request(pool_name, request))
     end)
   end
 

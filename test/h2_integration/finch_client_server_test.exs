@@ -309,40 +309,82 @@ defmodule H2Integration.FinchClientServerTest do
     )
   end
 
-  test "worker is not connected when server is unreachable", context do
+  test "pool is not connected when server is unreachable", context do
     :ok = :cowboy.stop_listener(context[:cowboys_name])
     Setup.forward_telemetry([:sparrow, :h2_worker, :conn_fail])
 
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
-    :ok = Setup.start_connection_processes(config)
-    {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
-
+    pool_name = start_pool(context)
     port = context[:port]
 
     assert_receive {[:sparrow, :h2_worker, :conn_fail], _measurements,
-                    %{domain: "localhost", port: ^port, reason: :econnrefused}},
+                    %{
+                      domain: "localhost",
+                      port: ^port,
+                      pool_name: ^pool_name,
+                      reason: :econnrefused
+                    }},
                    2_000
 
-    refute Sparrow.H2Worker.alive_connection?(worker_pid)
+    assert %{pool: pool_name, connections: 1, connected: 0} ==
+             Sparrow.H2Worker.Pool.stats(pool_name)
   end
 
-  test "worker is connected when server is reachable", context do
+  test "pool is connected when server is reachable", context do
     Setup.forward_telemetry([:sparrow, :h2_worker, :conn_success])
 
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
-    :ok = Setup.start_connection_processes(config)
-    {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
-
+    pool_name = start_pool(context, :certificate_based, 3)
     port = context[:port]
 
-    assert_receive {[:sparrow, :h2_worker, :conn_success], _measurements,
-                    %{domain: "localhost", port: ^port}},
-                   2_000
+    for _ <- 1..3 do
+      assert_receive {[:sparrow, :h2_worker, :conn_success], _measurements,
+                      %{domain: "localhost", port: ^port, pool_name: ^pool_name}},
+                     2_000
+    end
 
-    assert_eventually(Sparrow.H2Worker.alive_connection?(worker_pid))
+    assert_eventually(
+      %{pool: pool_name, connections: 3, connected: 3} ==
+        Sparrow.H2Worker.Pool.stats(pool_name)
+    )
   end
 
-  defp start_pool(context, authentication \\ :certificate_based) do
+  test "request to not existing pool fails" do
+    request =
+      OuterRequest.new(Setup.default_headers(), @body, "/ConnTestHandler", 300)
+
+    assert {:error, :pool_not_found} ==
+             Sparrow.H2Worker.Pool.send_request(:no_such_pool, request)
+
+    assert {:error, :pool_not_found} ==
+             Sparrow.H2Worker.Pool.send_request(:no_such_pool, request, false)
+
+    assert nil == Sparrow.H2Worker.Pool.stats(:no_such_pool)
+  end
+
+  test "requests are spread over connections", context do
+    pool_name = start_pool(context, :certificate_based, 3)
+
+    assert_eventually(
+      match?(%{connected: 3}, Sparrow.H2Worker.Pool.stats(pool_name))
+    )
+
+    request =
+      OuterRequest.new(
+        Setup.default_headers(),
+        @body,
+        "/ConnTestHandler",
+        2_000
+      )
+
+    for _ <- 1..30 do
+      assert {:ok, _} = Sparrow.H2Worker.Pool.send_request(pool_name, request)
+    end
+  end
+
+  defp start_pool(
+         context,
+         authentication \\ :certificate_based,
+         connections \\ 1
+       ) do
     config =
       Setup.create_h2_worker_config(
         Setup.server_host(),
@@ -352,7 +394,7 @@ defmodule H2Integration.FinchClientServerTest do
 
     {:ok, _pid} =
       config
-      |> Sparrow.H2Worker.Pool.Config.new(context[:pool_name], 1)
+      |> Sparrow.H2Worker.Pool.Config.new(context[:pool_name], connections)
       |> Helpers.SetupHelper.start_pool(:fcm, [])
 
     context[:pool_name]

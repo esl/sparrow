@@ -30,6 +30,19 @@ defmodule Sparrow.PoolsWarden do
   end
 
   @doc """
+  Function to get all registered pools.
+  """
+  @spec pools :: [{pool_type, atom, [any]}]
+  def pools do
+    for {pool_type, {pool_name, tags}} <- :ets.tab2list(@tab_name) do
+      {pool_type, pool_name, tags}
+    end
+  rescue
+    # Pools warden is not running
+    ArgumentError -> []
+  end
+
+  @doc """
   Function to get all pools of certain `pool_type`.
 
   ## Arguments

@@ -7,8 +7,9 @@ defmodule H2ClientAdapter.FinchTest do
 
   @conn %{
     finch: Sparrow.Finch.Pool,
-    pool: Finch.Pool.new("https://localhost:443", tag: :tag),
-    base_url: "https://localhost:443"
+    pool: Finch.Pool.new("https://localhost:443"),
+    base_url: "https://localhost:443",
+    strategy: {Finch.Pool.Strategy.RoundRobin, :counter}
   }
 
   describe "request" do
@@ -24,7 +25,11 @@ defmodule H2ClientAdapter.FinchTest do
         request(250)
 
         assert_receive {:request, request, Sparrow.Finch.Pool,
-                        [receive_timeout: 250]}
+                        [
+                          receive_timeout: 250,
+                          pool_strategy:
+                            {Finch.Pool.Strategy.RoundRobin, :counter}
+                        ]}
 
         assert %Finch.Request{
                  method: "POST",
@@ -33,8 +38,7 @@ defmodule H2ClientAdapter.FinchTest do
                  port: 443,
                  path: "/path",
                  headers: [{"content-length", "4"}, {"header", "value"}],
-                 body: "body",
-                 pool_tag: :tag
+                 body: "body"
                } = request
       end
     end
@@ -128,6 +132,12 @@ defmodule H2ClientAdapter.FinchTest do
     } do
       config = Sparrow.H2Worker.Config.new(config)
       assert 5_000 == default_pool_opts(config)[:http2][:ping_interval]
+    end
+
+    test "number of connections is passed to finch", %{config: config} do
+      config = Sparrow.H2Worker.Config.new(Map.put(config, :connections, 7))
+      assert 7 == default_pool_opts(config)[:count]
+      assert [:http2] == default_pool_opts(config)[:protocols]
     end
 
     test "ping is switched off with nil interval", %{config: config} do

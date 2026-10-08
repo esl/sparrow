@@ -21,7 +21,8 @@ defmodule Sparrow.H2Worker.Config do
           backoff_base: pos_integer,
           pool_type: Sparrow.PoolsWarden.pool_type(),
           pool_name: atom,
-          pool_tags: [atom]
+          pool_tags: [atom],
+          connections: pos_integer
         }
 
   defstruct [
@@ -36,7 +37,8 @@ defmodule Sparrow.H2Worker.Config do
     :backoff_base,
     :pool_type,
     :pool_name,
-    :pool_tags
+    :pool_tags,
+    :connections
   ]
 
   @doc """
@@ -50,6 +52,7 @@ defmodule Sparrow.H2Worker.Config do
     * `tls_options` - See http://erlang.org/doc/man/ssl.html  ssl_option()
     * `ping_interval` - ping is sent to server after the connection was idle for ping_interval miliseconds,
       `nil` switches it off (default 5_000)
+    * `connections` - number of connections, set by `Sparrow.H2Worker.Pool` to the size of the pool (default 1)
     * `reconnect_attempts`, `backoff_base`, `backoff_initial_delay`, `backoff_max_delay` - not used,
       the connection is reestablished by the HTTP/2 client on its own
 
@@ -69,7 +72,8 @@ defmodule Sparrow.H2Worker.Config do
       backoff_base: backoff_base,
       pool_type: pool_type,
       pool_name: pool_name,
-      pool_tags: pool_tags
+      pool_tags: pool_tags,
+      connections: connections
     } = Map.merge(default(), specific)
 
     %__MODULE__{
@@ -84,7 +88,8 @@ defmodule Sparrow.H2Worker.Config do
       backoff_base: backoff_base,
       pool_type: pool_type,
       pool_name: pool_name,
-      pool_tags: pool_tags
+      pool_tags: pool_tags,
+      connections: connections
     }
   end
 
@@ -98,7 +103,22 @@ defmodule Sparrow.H2Worker.Config do
       backoff_max_delay: 5000,
       pool_type: nil,
       pool_name: nil,
-      pool_tags: []
+      pool_tags: [],
+      connections: 1
+    }
+  end
+
+  @doc """
+  Description of the pool the config belongs to, used in telemetry events.
+  """
+  @spec pool_info(t) :: map
+  def pool_info(config) do
+    %{
+      domain: config.domain,
+      port: config.port,
+      pool_type: config.pool_type,
+      pool_name: config.pool_name,
+      pool_tags: config.pool_tags
     }
   end
 

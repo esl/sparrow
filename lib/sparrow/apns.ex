@@ -11,7 +11,6 @@ defmodule Sparrow.APNS do
   @type reason :: atom
   @type headers :: Request.headers()
   @type body :: String.t()
-  @type state :: Sparrow.H2Worker.State.t()
   @type push_opts :: [{:is_sync, boolean()} | {:timeout, non_neg_integer}]
   @type http_status :: non_neg_integer
   @type authentication :: Sparrow.H2Worker.Config.authentication()

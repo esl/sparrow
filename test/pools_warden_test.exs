@@ -17,6 +17,19 @@ defmodule Sparrow.PoolsWardenTest do
     assert nil == Sparrow.PoolsWarden.choose_pool({:apns, :prod})
   end
 
+  test "registered pools are listed" do
+    assert [] == Sparrow.PoolsWarden.pools()
+
+    {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
+    assert [] == Sparrow.PoolsWarden.pools()
+
+    Sparrow.PoolsWarden.add_new_pool(self(), :fcm, :fcm_name, @pool_tags)
+    Sparrow.PoolsWarden.add_new_pool(self(), {:apns, :dev}, :apns_name, [])
+
+    assert [{:fcm, :fcm_name, @pool_tags}, {{:apns, :dev}, :apns_name, []}] ==
+             Enum.sort(Sparrow.PoolsWarden.pools())
+  end
+
   test "fcm pool is added correctly" do
     {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
 

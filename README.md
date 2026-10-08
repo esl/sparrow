@@ -126,8 +126,8 @@ config :sparrow,
 ### Connection pool config
 - `:pool_name` - defines pool name, not recommended - please use [tags](#tags) instead 
 - `:tags` - see the [tags](#tags) section
-- `:worker_num` - number of workers in a pool
-- `:raw_opts` - opts passed directly to [wpool](github.com/inaka/worker_pool)
+- `:worker_num` - number of connections in a pool
+- `:raw_opts` - not used
 
 ### FCM config example
 ```elixir
@@ -145,7 +145,7 @@ fcm_config =
             # Pool config 
             tags: [], # optional
             worker_num: 3, # optional
-            raw_opts: [] # optional, options passed directly to wpool
+            raw_opts: [] # optional, not used
         ]
     ]
 ```
@@ -272,9 +272,6 @@ If you pass `[:not_existing, :set_of_tags]`, `{:error, :configuration_error}` is
 ## Telemetry
 Sparrow supports [telemetry](https://github.com/beam-telemetry/telemetry). Emitted events are defined with following tags:
 
-- `[:sparrow, :h2_worker, :init]`
-- `[:sparrow, :h2_worker, :terminate]`
-- `[:sparrow, :h2_worker, :conn_lost]`
 - `[:sparrow, :h2_worker, :request_error]`
 - `[:sparrow, :h2_worker, :request_success]`
 - `[:sparrow, :h2_worker, :conn_success]`
@@ -291,6 +288,15 @@ There are also events measuring the duration of a few chosen function calls:
 - `[:sparrow, :push, :apns]`
 - `[:sparrow, :push, :fcm]`
 - `[:sparrow, :h2_worker, :handle]`
+
+## Pool statistics
+
+`Sparrow.H2Worker.Pool.stats/0` returns the number of connections of each pool and how many of them are established:
+
+```elixir
+Sparrow.H2Worker.Pool.stats()
+# [%{pool: :pool_name, connections: 3, connected: 3}]
+```
 
 # Send your first push notification
 

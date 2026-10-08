@@ -1,6 +1,6 @@
 defmodule Sparrow.H2Worker.Pool do
   @moduledoc """
-  Module providing functions to work on (`Sparrow.H2Worker`) worker pools and not single workers.
+  Module providing functions to work on pools of HTTP/2 connections.
   """
   @type request :: Sparrow.H2Worker.Request.t()
   @type strategy ::
@@ -14,59 +14,59 @@ defmodule Sparrow.H2Worker.Pool do
   @type reason :: atom
   @type worker_config :: Sparrow.H2Worker.Config.t()
   @type pool_type :: Sparrow.PoolsWarden.pool_type()
+  @type stats :: %{
+          pool: atom,
+          connections: pos_integer,
+          connected: non_neg_integer
+        }
+
+  alias Sparrow.H2ClientAdapter
+
+  require Logger
+
   @doc """
   Sends the request and, if `is_sync` is `true`, awaits the response.
 
   ## Arguments
 
-    * `worker_pool` - H2Workers pool name you want to send message with
+    * `pool` - name of the pool you want to send message with
     * `request` - HTTP2 request, see Sparrow.H2Worker.Request
     * `is_sync` - if `is_sync` is `true`, awaits the response, otherwize returns `:ok`
-    * `genserver_timeout` -  timeout of genserver call, works only if `is_sync` is `true`
-    * `worker_choice_strategy` - worker selection strategy. See https://github.com/inaka/worker_pool section: "Choosing a Strategy"
+    * `timeout` - time to wait for the response, works only if `is_sync` is `true`.
+      The request itself fails after its own timeout, see `Sparrow.H2Worker.Request`
+    * `strategy` - not used, requests are spread over the connections evenly
   """
-  require Logger
-
   @spec send_request(atom, request, boolean(), non_neg_integer, strategy) ::
           {:error, :connection_lost}
           | {:ok, {headers, body}}
           | {:error, :request_timeout}
-          | {:error, :not_ready}
+          | {:error, :pool_not_found}
           | {:error, reason}
           | :ok
   def send_request(
-        worker_pool,
+        pool,
         request,
         is_sync \\ true,
-        genserver_timeout \\ 60_000,
-        worker_choice_strategy \\ :random_worker
+        timeout \\ 60_000,
+        strategy \\ :random_worker
       )
 
-  def send_request(worker_pool, request, false, _, strategy) do
-    _ =
-      Logger.debug("Dispatching request to worker pool",
-        worker_pool: inspect(worker_pool),
-        request: request,
-        type: :cast
-      )
-
-    :wpool.cast(worker_pool, {:send_request, request}, strategy)
+  def send_request(pool, request, false, _timeout, _strategy) do
+    with {:ok, send_fun} <- send_fun(pool, request),
+         {:ok, _pid} <-
+           start_task(pool, &Task.Supervisor.start_child/2, send_fun) do
+      :ok
+    end
   end
 
-  def send_request(worker_pool, request, true, genserver_timeout, strategy) do
-    _ =
-      Logger.debug("Dispatching request to worker pool",
-        worker_pool: inspect(worker_pool),
-        request: request,
-        type: :call
-      )
-
-    :wpool.call(
-      worker_pool,
-      {:send_request, request},
-      strategy,
-      genserver_timeout
-    )
+  def send_request(pool, request, true, timeout, _strategy) do
+    # The request is sent by another process, so it's completed also when
+    # the calling one stops waiting for the response.
+    with {:ok, send_fun} <- send_fun(pool, request),
+         {:ok, task} <-
+           start_task(pool, &Task.Supervisor.async_nolink/2, send_fun) do
+      Task.await(task, timeout)
+    end
   end
 
   @doc """
@@ -82,28 +82,21 @@ defmodule Sparrow.H2Worker.Pool do
         pool_type,
         tags \\ []
       ) do
-    worker_config_with_pool = %Sparrow.H2Worker.Config{
+    config = %Sparrow.H2Worker.Config{
       workers_config
       | pool_type: pool_type,
         pool_name: config.pool_name,
-        pool_tags: tags
+        pool_tags: tags,
+        connections: config.worker_num
     }
 
-    wpool_opts = [
-      {:workers, config.worker_num},
-      {:worker, {Sparrow.H2Worker, worker_config_with_pool}}
-      | config.raw_opts
-    ]
-
-    # Workers are restarted when the processes their connections live in are
     children =
-      Sparrow.H2ClientAdapter.child_specs(worker_config_with_pool) ++
+      H2ClientAdapter.child_specs(config) ++
         [
-          %{
-            id: :wpool,
-            start: {:wpool, :start_pool, [config.pool_name, wpool_opts]},
-            type: :supervisor
-          }
+          {PartitionSupervisor,
+           child_spec: Task.Supervisor, name: tasks_name(config.pool_name)},
+          # Not a process, it's run each time the processes above are started
+          %{id: :connections, start: {__MODULE__, :open_connections, [config]}}
         ]
 
     Supervisor.start_link(children, strategy: :rest_for_one)
@@ -120,4 +113,73 @@ defmodule Sparrow.H2Worker.Pool do
     Sparrow.PoolsWarden.add_new_pool(pid, pool_type, pool_name, tags)
     {:ok, pid}
   end
+
+  @doc """
+  Returns the number of connections of the pool and how many of them are
+  established, or `nil` when there is no such pool.
+  """
+  @spec stats(atom) :: stats | nil
+  def stats(pool) do
+    case :persistent_term.get({__MODULE__, pool}, nil) do
+      nil ->
+        nil
+
+      {connection_ref, config} ->
+        %{
+          pool: pool,
+          connections: config.connections,
+          connected: H2ClientAdapter.connected(connection_ref)
+        }
+    end
+  end
+
+  @doc """
+  Returns `stats/1` of all pools registered in `Sparrow.PoolsWarden`.
+  """
+  @spec stats :: [stats]
+  def stats do
+    for {_pool_type, pool, _tags} <- Sparrow.PoolsWarden.pools(),
+        stats = stats(pool),
+        do: stats
+  end
+
+  @doc false
+  def open_connections(config) do
+    # The connections are established in the background
+    {:ok, connection_ref} = H2ClientAdapter.open(config)
+
+    :persistent_term.put(
+      {__MODULE__, config.pool_name},
+      {connection_ref, config}
+    )
+
+    :ignore
+  end
+
+  defp send_fun(pool, request) do
+    case :persistent_term.get({__MODULE__, pool}, nil) do
+      nil ->
+        {:error, :pool_not_found}
+
+      {connection_ref, config} ->
+        {:ok,
+         fn ->
+           Sparrow.H2Worker.send_request(connection_ref, config, request)
+         end}
+    end
+  end
+
+  defp start_task(pool, start_fun, send_fun) do
+    supervisor = {:via, PartitionSupervisor, {tasks_name(pool), self()}}
+
+    case start_fun.(supervisor, send_fun) do
+      {:ok, pid} -> {:ok, pid}
+      task = %Task{} -> {:ok, task}
+    end
+  catch
+    # The pool is not running anymore
+    :exit, _reason -> {:error, :pool_not_found}
+  end
+
+  defp tasks_name(pool), do: Module.concat(__MODULE__.Tasks, pool)
 end

@@ -99,8 +99,7 @@ defmodule H2Integration.CerificateRequiredTest do
       )
 
     Setup.forward_telemetry([:sparrow, :h2_worker, :conn_fail])
-    :ok = Setup.start_connection_processes(config)
-    worker_pid = start_supervised!(Setup.h2_worker_spec(config))
+    pool = Setup.start_pool_with_config(config)
 
     # No CA certificates are given, so the default ones are used and the
     # self-signed certificate of the server is not trusted
@@ -108,10 +107,10 @@ defmodule H2Integration.CerificateRequiredTest do
                     %{reason: {:tls_alert, {:bad_certificate, _}}}},
                    2_000
 
-    refute Sparrow.H2Worker.alive_connection?(worker_pid)
+    assert %{connected: 0} = Sparrow.H2Worker.Pool.stats(pool)
 
     assert {:error, :pool_not_available} ==
-             GenServer.call(worker_pid, {:send_request, request})
+             Sparrow.H2Worker.Pool.send_request(pool, request)
   end
 
   defp assert_response_header(headers, expected_header) do

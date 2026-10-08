@@ -41,11 +41,9 @@ defmodule H2Integration.CerificateRejectedTest do
     request =
       OuterRequest.new(headers, body, "/RejectCertificateHandler", 3_000)
 
-    :ok = Setup.start_connection_processes(config)
-    worker_pid = start_supervised!(Setup.h2_worker_spec(config))
+    pool = Setup.start_pool_with_config(config)
 
-    assert {:error, reason} =
-             GenServer.call(worker_pid, {:send_request, request})
+    assert {:error, reason} = Sparrow.H2Worker.Pool.send_request(pool, request)
 
     case reason do
       {:unable_to_connect, {:tls_alert, ~c"bad certificate"}} -> :ok
