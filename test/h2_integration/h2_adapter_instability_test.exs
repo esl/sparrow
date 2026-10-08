@@ -51,8 +51,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
 
     kill_connection_after(worker_pid, 500)
 
-    # Killed process doesn't report the lost requests
-    assert {:error, :request_timeout} ==
+    assert {:error, :connection_lost} ==
              GenServer.call(worker_pid, {:send_request, request})
   end
 

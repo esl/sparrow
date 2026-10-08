@@ -1,36 +1,31 @@
 defmodule Sparrow.H2Worker do
   @moduledoc false
   use GenServer
-  use Sparrow.Telemetry.Timer
 
   require Logger
 
   alias Sparrow.H2ClientAdapter
   alias Sparrow.H2Worker.Config
-  alias Sparrow.H2Worker.Request, as: OuterRequest
-  alias Sparrow.H2Worker.RequestSet
-  alias Sparrow.H2Worker.RequestState, as: InnerRequest
   alias Sparrow.H2Worker.State
 
-  @type gen_server_name :: atom
   @type config :: Sparrow.H2Worker.Config.t()
-  @type on_start ::
-          {:ok, pid} | :ignore | {:error, {:already_started, pid} | term}
-  @type init_args :: [any]
   @type state :: Sparrow.H2Worker.State.t()
-  @type stream_id :: term
   @type reason :: any
-  @type incomming_message :: {:timeout_request, stream_id} | any
   @type request :: Sparrow.H2Worker.Request.t()
   @type from :: {pid, tag :: term}
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
+  @type response :: {:ok, {headers, body}} | {:error, reason}
 
   # Time to wait before sending again a request which was not sent
   @retry_delay 25
 
   def start_link(config) do
     GenServer.start_link(__MODULE__, config)
+  end
+
+  def alive_connection?(pid) do
+    GenServer.call(pid, :is_alive_connection)
   end
 
   @spec init(config) :: {:ok, state}
@@ -43,7 +38,7 @@ defmodule Sparrow.H2Worker do
     :telemetry.execute(
       [:sparrow, :h2_worker, :init],
       %{},
-      extract_worker_info(state)
+      worker_info(config)
     )
 
     {:ok, state}
@@ -63,241 +58,101 @@ defmodule Sparrow.H2Worker do
     :telemetry.execute(
       [:sparrow, :h2_worker, :terminate],
       %{},
-      state
-      |> extract_worker_info()
+      state.config
+      |> worker_info()
       |> Map.put(:reason, reason)
     )
 
     :ok
   end
 
-  def handle_info({:timeout_request, stream_id}, state) do
-    _ =
-      Logger.debug("H2 request timeout",
-        what: :h2_request_timeout,
-        stream_id: inspect(stream_id)
-      )
-
-    case RequestSet.pop(state.requests, stream_id) do
-      {nil, _requests} ->
-        {:noreply, state}
-
-      {request, requests} ->
-        send_response(request.from, {:error, {:request_timeout, stream_id}})
-        {:noreply, %{state | requests: requests}}
-    end
-  end
-
-  def handle_info({:retry_request, request, from}, state) do
-    handle(request, from, state)
-  end
-
-  @spec handle_info(incomming_message, state) :: {:noreply, state}
-  def handle_info(message, state) do
-    case H2ClientAdapter.handle_message(message, state.connection_ref) do
-      {:response_part, stream_id, part} ->
-        requests = RequestSet.add_response_part(state.requests, stream_id, part)
-        {:noreply, %{state | requests: requests}}
-
-      {:done, stream_id} ->
-        finish_request(stream_id, :done, state)
-
-      {:error, stream_id, reason} ->
-        finish_request(stream_id, {:error, reason}, state)
-
-      {:retry, stream_id, reason} ->
-        retry_request(stream_id, reason, state)
-
-      :ok ->
-        {:noreply, state}
-
-      :unknown ->
-        _ =
-          Logger.warning("Unknown info message",
-            what: :unknown_info,
-            value: message
-          )
-
-        {:noreply, state}
-    end
-  end
-
-  @doc !"""
-       Sends the result to the caller waiting for given stream and forgets the request.
-       """
-  @spec finish_request(stream_id, :done | {:error, reason}, state) ::
-          {:noreply, state}
-  defp finish_request(stream_id, result, state) do
-    case RequestSet.pop(state.requests, stream_id) do
-      {nil, _requests} ->
-        _ =
-          Logger.info("Received H2 response for unknown request",
-            what: :unknown_h2_response_received,
-            stream_id: inspect(stream_id)
-          )
-
-        {:noreply, state}
-
-      {request, requests} ->
-        _ = cancel_timer(request)
-        send_response(request.from, response(result, request))
-        {:noreply, %{state | requests: requests}}
-    end
-  end
-
-  defp response(:done, request), do: InnerRequest.response(request)
-  defp response(error = {:error, _reason}, _request), do: error
-
-  # Sends again a request which was not sent, as long as it has time left.
-  defp retry_request(stream_id, reason, state) do
-    case RequestSet.pop(state.requests, stream_id) do
-      {nil, _requests} ->
-        {:noreply, state}
-
-      {request, requests} ->
-        time_left = :erlang.cancel_timer(request.timeout_reference)
-
-        outer_request =
-          OuterRequest.new(
-            request.headers,
-            request.body,
-            request.path,
-            time_left
-          )
-
-        schedule_retry(outer_request, request.from, reason)
-        {:noreply, %{state | requests: requests}}
-    end
-  end
-
-  @spec schedule_retry(request, from | :noreply, reason) :: :ok
-  defp schedule_retry(
-         request = %OuterRequest{timeout: time_left},
-         from,
-         reason
-       )
-       when is_integer(time_left) and time_left > @retry_delay do
-    _ =
-      Logger.debug("H2 request not sent, retrying",
-        what: :h2_request_retry,
-        reason: inspect(reason),
-        time_left: time_left
-      )
-
-    request = %OuterRequest{request | timeout: time_left - @retry_delay}
-    _ = schedule_message_after({:retry_request, request, from}, @retry_delay)
-    :ok
-  end
-
-  defp schedule_retry(_request, from, reason) do
-    send_response(from, {:error, reason})
-  end
-
-  def alive_connection?(pid) do
-    GenServer.call(pid, :is_alive_connection)
-  end
-
   def handle_call(:is_alive_connection, _from, state) do
     {:reply, H2ClientAdapter.connected?(state.connection_ref), state}
   end
 
-  @spec handle_call({:send_request, request}, from, state) ::
-          {:noreply, state} | {:stop, reason, state}
+  @spec handle_call({:send_request, request}, from, state) :: {:noreply, state}
   def handle_call({:send_request, request}, from, state) do
-    _ =
-      Logger.debug("Attempt to send HTTP request",
-        what: :h2_request_attempt,
-        type: :call,
-        request: request,
-        from: inspect(from),
-        state: state
-      )
-
-    handle(request, from, state)
+    start_request(request, from, state)
+    {:noreply, state}
   end
 
-  @spec handle_cast({:send_request, request}, state) ::
-          {:stop, reason, state} | {:noreply, state}
+  @spec handle_cast({:send_request, request}, state) :: {:noreply, state}
   def handle_cast({:send_request, request}, state) do
-    _ =
-      Logger.debug("Attempt to send HTTP request",
-        what: :h2_request_attempt,
-        type: :cast,
-        request: request,
-        state: state
-      )
-
-    handle(request, :noreply, state)
+    start_request(request, :noreply, state)
+    {:noreply, state}
   end
 
-  @doc !"""
-       Tries to send request, schedulates timeout for it and adds it to state.
-       """
-  @timed event_tags: [:h2_worker, :handle]
-  @spec handle(request, from | :noreply, state) :: {:noreply, state}
-  defp handle(request, from, state) do
-    headers = request_headers(request, state.config)
-
-    post_result =
-      H2ClientAdapter.post(
-        state.connection_ref,
-        state.config.domain,
-        request.path,
-        headers,
-        request.body
+  @spec handle_info(term, state) :: {:noreply, state}
+  def handle_info(message, state) do
+    _ =
+      Logger.warning("Unknown info message",
+        what: :unknown_info,
+        value: message
       )
 
-    case post_result do
-      {:retry, reason} ->
-        schedule_retry(request, from, reason)
-        {:noreply, state}
+    {:noreply, state}
+  end
 
-      {:error, return_code} ->
+  @spec start_request(request, from | :noreply, state) :: :ok
+  defp start_request(request, from, state) do
+    %State{connection_ref: connection_ref, config: config} = state
+    deadline = now() + request.timeout
+
+    # Each request is sent by its own process, which waits for the response.
+    # It's not linked, so the request is completed also when the worker stops.
+    {:ok, _pid} =
+      Task.start(fn ->
+        send_request(request, from, connection_ref, config, deadline)
+      end)
+
+    :ok
+  end
+
+  # Runs in a process started for the request
+  defp send_request(request, from, connection_ref, config, deadline) do
+    started_at = System.monotonic_time(:microsecond)
+
+    response =
+      try do
+        headers = request_headers(request, config)
+        send_with_retry(request, headers, connection_ref, deadline)
+      catch
+        # The caller gets a response no matter what
+        kind, reason -> {:error, {kind, reason}}
+      end
+
+    time = System.monotonic_time(:microsecond) - started_at
+    report(response, time, from, config)
+    reply(from, response)
+  end
+
+  @spec send_with_retry(request, headers, term, integer) :: response
+  defp send_with_retry(request, headers, connection_ref, deadline) do
+    time_left = deadline - now()
+
+    case H2ClientAdapter.request(
+           connection_ref,
+           request.path,
+           headers,
+           request.body,
+           max(time_left, 0)
+         ) do
+      {:retry, reason} when time_left > @retry_delay ->
         _ =
-          Logger.warning("Failed to send H2 request",
-            what: :h2_request_failed,
-            request: request,
-            status: :error,
-            reason: inspect(return_code)
+          Logger.debug("H2 request not sent, retrying",
+            what: :h2_request_retry,
+            reason: inspect(reason),
+            time_left: time_left
           )
 
-        :telemetry.execute(
-          [:sparrow, :h2_worker, :request_error],
-          %{},
-          state
-          |> extract_worker_info()
-          |> Map.put(:from, from)
-          |> Map.put(:return_code, return_code)
-        )
+        Process.sleep(@retry_delay)
+        send_with_retry(request, headers, connection_ref, deadline)
 
-        send_response(from, {:error, return_code})
-        {:noreply, state}
+      {:retry, reason} ->
+        {:error, reason}
 
-      {:ok, stream_id} ->
-        request_timeout_ref =
-          schedule_message_after({:timeout_request, stream_id}, request.timeout)
-
-        new_request =
-          InnerRequest.new(
-            request,
-            from,
-            request_timeout_ref
-          )
-
-        new_state =
-          State.new(
-            state.connection_ref,
-            RequestSet.add(state.requests, stream_id, new_request),
-            state.config
-          )
-
-        :telemetry.execute(
-          [:sparrow, :h2_worker, :request_success],
-          %{},
-          extract_worker_info(state)
-        )
-
-        {:noreply, new_state}
+      response ->
+        response
     end
   end
 
@@ -308,128 +163,51 @@ defmodule Sparrow.H2Worker do
         request.headers
 
       :token_based ->
-        token_header = config.authentication.token_getter.()
-
-        _ =
-          Logger.debug("Auth token added to request headers",
-            what: :add_token_to_headers,
-            result: :success,
-            token_header: inspect(token_header)
-          )
-
-        [token_header | request.headers]
+        [config.authentication.token_getter.() | request.headers]
     end
   end
 
-  @doc !"""
-       Scheduales message to genserver after time miliseconds.
-       """
-  @spec schedule_message_after(
-          {:timeout_request, stream_id}
-          | {:retry_request, request, from | :noreply},
-          non_neg_integer
-        ) :: reference
-  defp schedule_message_after(message, time) do
-    _ =
-      Logger.debug("Scheduling H2 connection message",
-        what: :h2_schedule_message,
-        message: inspect(message),
-        after: inspect(time)
-      )
+  defp report(response, time, from, config) do
+    worker_info = worker_info(config)
 
-    :erlang.send_after(floor(time), self(), message)
-  end
+    :telemetry.execute(
+      [:sparrow, :h2_worker, :handle],
+      %{time: time},
+      worker_info
+    )
 
-  @doc !"""
-       Used for sending response to genserver call.
-       """
-  @spec send_response(
-          :noreply | {pid(), any},
-          {:error,
-           :not_ready
-           | byte()
-           | {:request_timeout, stream_id}
-           | {:unable_to_connect, term()}}
-          | {:ok, {[any()], binary()}}
-        ) :: :ok
-  defp send_response(:noreply, response) do
-    _ =
-      Logger.debug("Sending response to caller",
-        what: :h2_send_reponse,
-        to: nil,
-        response: inspect(response)
-      )
+    case response do
+      {:ok, _response} ->
+        :telemetry.execute(
+          [:sparrow, :h2_worker, :request_success],
+          %{},
+          worker_info
+        )
 
-    :ok
-  end
-
-  defp send_response(addressee, {:ok, {headers, body}}) do
-    _ =
-      Logger.debug("Sending response to caller",
-        what: :h2_send_reponse,
-        to: inspect(addressee),
-        headers: inspect(headers),
-        body: "#{body}"
-      )
-
-    GenServer.reply(addressee, {:ok, {headers, body}})
-  end
-
-  defp send_response(addressee, {:error, reason}) do
-    case reason do
-      {:request_timeout, stream_id} ->
+      {:error, reason} ->
         _ =
-          Logger.warning("Sending response to caller",
-            what: :h2_send_reponse,
-            item: :request_response,
-            stream_id: inspect(stream_id),
+          Logger.warning("H2 request failed",
+            what: :h2_request_failed,
             status: :error,
-            reason: :timeout
+            reason: inspect(reason)
           )
 
-        GenServer.reply(addressee, {:error, :request_timeout})
-
-      :not_ready ->
-        _ =
-          Logger.error("Sending response to caller",
-            what: :h2_send_reponse,
-            status: :error,
-            reason: :response_not_ready
-          )
-
-        GenServer.reply(addressee, {:error, :not_ready})
-
-      other_reason ->
-        _ =
-          Logger.error("Sending response to caller",
-            what: :h2_send_reponse,
-            status: :error,
-            reason: inspect(other_reason)
-          )
-
-        GenServer.reply(addressee, {:error, other_reason})
+        :telemetry.execute(
+          [:sparrow, :h2_worker, :request_error],
+          %{},
+          worker_info
+          |> Map.put(:from, from)
+          |> Map.put(:return_code, reason)
+        )
     end
   end
 
-  @doc !"""
-       Used for canceling timeouts for succesfully received requests.
-       """
-  @spec cancel_timer(Sparrow.H2Worker.RequestState.t()) :: :ok
-  defp cancel_timer(request) do
-    canceling_result = :erlang.cancel_timer(request.timeout_reference)
+  defp reply(:noreply, _response), do: :ok
+  defp reply(from, response), do: GenServer.reply(from, response)
 
-    _ =
-      Logger.debug("Canceling internal H2 timer",
-        what: :h2_canceling_timer,
-        result: inspect(canceling_result)
-      )
+  defp now, do: System.monotonic_time(:millisecond)
 
-    :ok
-  end
-
-  defp extract_worker_info(worker_state) do
-    config = worker_state.config
-
+  defp worker_info(config) do
     %{
       domain: config.domain,
       port: config.port,

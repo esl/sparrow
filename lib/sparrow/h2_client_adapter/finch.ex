@@ -7,7 +7,8 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   Finch pool of the instance uses it, also the ones Finch starts on its own.
 
   Each connection is a separate Finch pool with a single HTTP/2 connection,
-  identified by a tag. Finch connects and reconnects it in the background.
+  identified by a tag. Finch connects and reconnects it in the background,
+  and keeps it alive with pings.
   """
   @behaviour Sparrow.H2ClientAdapter
 
@@ -71,56 +72,38 @@ defmodule Sparrow.H2ClientAdapter.Finch do
     match?({:ok, _pid}, Finch.find_pool(finch, pool))
   end
 
-  # Response is sent to the calling process in parts, see `handle_message/2`
   @impl true
-  def post(conn, _domain, path, headers, body) do
+  def request(conn, path, headers, body, timeout) do
     %{finch: finch, pool: pool, base_url: base_url} = conn
     headers = [{"content-length", "#{byte_size(body)}"} | headers]
 
-    ref =
-      :post
-      |> Finch.build(base_url <> path, headers, body, pool_tag: pool.tag)
-      |> Finch.async_request(finch)
+    :post
+    |> Finch.build(base_url <> path, headers, body, pool_tag: pool.tag)
+    |> Finch.request(finch, receive_timeout: max(timeout, 1))
+    |> case do
+      {:ok, %Finch.Response{status: status, headers: headers, body: body}} ->
+        {:ok, {[{":status", Integer.to_string(status)} | headers], body}}
 
-    {:ok, ref}
-  rescue
-    # Pool is not registered while it's (re)connecting
-    error in Finch.Error ->
-      _ =
-        Logger.debug("Error while sending HTTP request",
-          what: :http_send,
-          method: :post,
-          status: :error,
-          reason: inspect(error.reason)
-        )
-
-      if error.reason in @not_sent_errors do
-        {:retry, error.reason}
-      else
-        {:error, error.reason}
-      end
-  end
-
-  @impl true
-  def handle_message({{Finch.HTTP2.Pool, _} = ref, :done}, _conn) do
-    {:done, ref}
-  end
-
-  def handle_message({{Finch.HTTP2.Pool, _} = ref, {:error, error}}, _conn) do
-    case error_reason(error) do
-      reason when reason in @not_sent_errors -> {:retry, ref, reason}
-      reason -> {:error, ref, reason}
+      {:error, error} ->
+        request_error(error_reason(error))
     end
+  catch
+    # The request is handed over to the connection process with a call
+    :exit, {:noproc, _call} -> {:retry, :disconnected}
+    :exit, _reason -> {:error, :connection_lost}
   end
 
-  def handle_message({{Finch.HTTP2.Pool, _} = ref, {kind, _} = part}, _conn)
-      when kind in [:status, :headers, :data] do
-    {:response_part, ref, part}
+  defp request_error(reason) when reason in @not_sent_errors do
+    {:retry, reason}
   end
 
-  def handle_message(_message, _conn) do
-    :unknown
+  defp request_error(:timeout), do: {:error, :request_timeout}
+
+  defp request_error(:connection_process_went_down) do
+    {:error, :connection_lost}
   end
+
+  defp request_error(reason), do: {:error, reason}
 
   @doc """
   Name of the Finch instance used by workers with given config.

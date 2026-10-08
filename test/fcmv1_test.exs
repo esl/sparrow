@@ -522,7 +522,7 @@ defmodule Sparrow.FCM.V1Test do
        [get_token: fn account -> account end]},
       {Sparrow.H2ClientAdapter.Finch, [:passthrough],
        [
-         post: fn _, _, _, _, _ -> {:error, 1} end,
+         request: fn _, _, _, _, _ -> {:error, 1} end,
          open: fn _ -> {:ok, self()} end
        ]}
     ]) do

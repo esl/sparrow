@@ -3,41 +3,109 @@ defmodule H2ClientAdapter.FinchTest do
 
   alias Sparrow.H2ClientAdapter.Finch, as: H2Adapter
 
-  @conn %{pool: nil, pid: nil, base_url: "https://localhost:443"}
+  import Mock
 
-  setup do
-    {:ok, ref: {Finch.HTTP2.Pool, {self(), make_ref()}}}
-  end
+  @conn %{
+    finch: Sparrow.Finch.Pool,
+    pool: Finch.Pool.new("https://localhost:443", tag: :tag),
+    base_url: "https://localhost:443"
+  }
 
-  test "response parts are translated", %{ref: ref} do
-    assert {:response_part, ref, {:status, 200}} ==
-             H2Adapter.handle_message({ref, {:status, 200}}, @conn)
+  describe "request" do
+    test "is sent to the connection with its timeout" do
+      test_pid = self()
 
-    assert {:response_part, ref, {:headers, [{"apns-id", "1"}]}} ==
-             H2Adapter.handle_message(
-               {ref, {:headers, [{"apns-id", "1"}]}},
-               @conn
-             )
+      respond = fn request, finch, opts ->
+        send(test_pid, {:request, request, finch, opts})
+        {:ok, %Finch.Response{status: 200, headers: [], body: ""}}
+      end
 
-    assert {:response_part, ref, {:data, "body"}} ==
-             H2Adapter.handle_message({ref, {:data, "body"}}, @conn)
-  end
+      with_mock Finch, [:passthrough], request: respond do
+        request(250)
 
-  test "end of response is translated", %{ref: ref} do
-    assert {:done, ref} == H2Adapter.handle_message({ref, :done}, @conn)
-  end
+        assert_receive {:request, request, Sparrow.Finch.Pool,
+                        [receive_timeout: 250]}
 
-  test "error is translated to its reason", %{ref: ref} do
-    error = %Finch.Error{reason: :connection_closed}
+        assert %Finch.Request{
+                 method: "POST",
+                 scheme: :https,
+                 host: "localhost",
+                 port: 443,
+                 path: "/path",
+                 headers: [{"content-length", "4"}, {"header", "value"}],
+                 body: "body",
+                 pool_tag: :tag
+               } = request
+      end
+    end
 
-    assert {:error, ref, :connection_closed} ==
-             H2Adapter.handle_message({ref, {:error, error}}, @conn)
-  end
+    test "returns response with its status as a header" do
+      response = %Finch.Response{
+        status: 410,
+        headers: [{"apns-id", "1"}],
+        body: "response body"
+      }
 
-  test "messages not sent by finch are unknown" do
-    assert :unknown == H2Adapter.handle_message({:ping, make_ref()}, @conn)
-    assert :unknown == H2Adapter.handle_message({make_ref(), :done}, @conn)
-    assert :unknown == H2Adapter.handle_message("message", @conn)
+      with_mock Finch, [:passthrough],
+        request: fn _, _, _ -> {:ok, response} end do
+        assert {:ok, {[{":status", "410"}, {"apns-id", "1"}], "response body"}} ==
+                 request()
+      end
+    end
+
+    test "can be retried when it was not sent" do
+      for reason <- [
+            :pool_not_available,
+            :disconnected,
+            :connection_not_ready,
+            :read_only,
+            :unprocessed,
+            :too_many_concurrent_requests
+          ] do
+        assert {:retry, reason} == request_failing_with(reason)
+      end
+    end
+
+    test "fails when it might have been sent" do
+      assert {:error, :closed} == request_failing_with(:closed)
+
+      assert {:error, :connection_closed} ==
+               request_failing_with(:connection_closed)
+    end
+
+    test "fails with request_timeout when response is not received in time" do
+      assert {:error, :request_timeout} == request_failing_with(:timeout)
+    end
+
+    test "fails with connection_lost when connection process stops" do
+      assert {:error, :connection_lost} ==
+               request_failing_with(:connection_process_went_down)
+
+      with_mock Finch, [:passthrough],
+        request: fn _, _, _ -> exit(:killed) end do
+        assert {:error, :connection_lost} == request()
+      end
+    end
+
+    test "can be retried when connection process is not running" do
+      not_running = fn _, _, _ -> exit({:noproc, {:gen_statem, :call, []}}) end
+
+      with_mock Finch, [:passthrough], request: not_running do
+        assert {:retry, :disconnected} == request()
+      end
+    end
+
+    defp request(timeout \\ 1_000) do
+      H2Adapter.request(@conn, "/path", [{"header", "value"}], "body", timeout)
+    end
+
+    defp request_failing_with(reason) do
+      error = {:error, %Finch.Error{reason: reason}}
+
+      with_mock Finch, [:passthrough], request: fn _, _, _ -> error end do
+        request()
+      end
+    end
   end
 
   describe "connection pool options" do

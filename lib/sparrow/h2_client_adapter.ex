@@ -4,21 +4,10 @@ defmodule Sparrow.H2ClientAdapter do
   @default %{adapter: Sparrow.H2ClientAdapter.Finch}
 
   @type connection_ref :: term
-  @type stream_id :: term
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
   @type reason :: term
   @type config :: Sparrow.H2Worker.Config.t()
-  @type response_part ::
-          {:status, non_neg_integer} | {:headers, headers} | {:data, binary}
-  @type event ::
-          {:response_part, stream_id, response_part}
-          | {:done, stream_id}
-          | {:error, stream_id, reason}
-          | {:retry, stream_id, reason}
-          | :ok
-          | :unknown
-
   @doc """
   Specifications of processes needed by connections opened with given config.
   They are started before the workers of a pool.
@@ -41,27 +30,15 @@ defmodule Sparrow.H2ClientAdapter do
   @callback close(connection_ref) :: :ok
 
   @doc """
-    Opens a new stream and sends request through it.
+    Sends the request and waits for the response for at most `timeout`
+    miliseconds. Status of the response is returned as `":status"` header.
     DONT PASS PSEUDO HEADERS IN `headers`!!!
 
     Returns `{:retry, reason}` when the request was not sent, but it may
     succeed when sent again.
   """
-  @callback post(connection_ref, String.t(), String.t(), headers, body) ::
-              {:error, reason} | {:retry, reason} | {:ok, stream_id}
-
-  @doc """
-    Translates a message received by the process owning the connection.
-
-    * `{:response_part, stream_id, part}` - a piece of the response
-    * `{:done, stream_id}` - response is complete
-    * `{:error, stream_id, reason}` - request failed
-    * `{:retry, stream_id, reason}` - request was not sent, but it may succeed
-      when sent again
-    * `:ok` - message handled, nothing to do
-    * `:unknown` - message doesn't come from the connection
-  """
-  @callback handle_message(message :: term, connection_ref) :: event
+  @callback request(connection_ref, String.t(), headers, body, timeout) ::
+              {:ok, {headers, body}} | {:retry, reason} | {:error, reason}
 
   def child_specs(config) do
     adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
@@ -83,13 +60,8 @@ defmodule Sparrow.H2ClientAdapter do
     adapter.close(conn)
   end
 
-  def post(conn, domain, path, headers, body) do
+  def request(conn, path, headers, body, timeout) do
     adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
-    adapter.post(conn, domain, path, headers, body)
-  end
-
-  def handle_message(message, conn) do
-    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
-    adapter.handle_message(message, conn)
+    adapter.request(conn, path, headers, body, timeout)
   end
 end

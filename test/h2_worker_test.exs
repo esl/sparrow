@@ -1,715 +1,349 @@
 defmodule Sparrow.H2WorkerTest do
-  alias Helpers.SetupHelper, as: Tools
   use ExUnit.Case
-  use Quixir
-  use AssertEventually
 
   import Mock
   import Mox
   setup :set_mox_global
   setup :verify_on_exit!
 
+  alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2ClientAdapter.Finch, as: H2Adapter
+  alias Sparrow.H2Worker.Authentication.CertificateBased
+  alias Sparrow.H2Worker.Authentication.TokenBased
   alias Sparrow.H2Worker.Config
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.H2Worker.Request
   alias Sparrow.H2Worker.State
-
-  alias Sparrow.H2Worker.Authentication.TokenBased, as: TokenBasedAuth
-  @repeats 2
 
   import Helpers.SetupHelper, only: [passthrough_h2: 1]
   setup :passthrough_h2
 
+  @connection_ref :connection_ref
+  @headers [{"header", "value"}]
+  @response {:ok, {[{":status", "200"}], "response body"}}
+
   setup do
-    auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
-        "path/to/exampleName.pem",
-        "path/to/exampleKey.pem"
-      )
+    config =
+      Config.new(%{
+        domain: "domain",
+        port: 443,
+        authentication: CertificateBased.new("cert.pem", "key.pem"),
+        pool_name: :pool,
+        pool_type: :fcm,
+        pool_tags: [:tag]
+      })
 
-    real_auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
-        "test/priv/certs/Certificates1.pem",
-        "test/priv/certs/key.pem"
-      )
-
-    {:ok, connection_ref: pid(), auth: auth, real_auth: real_auth}
+    {:ok,
+     config: config, request: Request.new(@headers, "body", "/path", 1_000)}
   end
 
-  test "server timeouts request", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
-            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            body: string(min: 3, max: 7, chars: :ascii),
-            path: string(min: 3, max: 7, chars: :ascii),
-            stream_id: int(min: 1, max: 65_535)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 100
-      request_timeout = 300
-      headers = Enum.zip([headersA, headersB])
+  describe "start" do
+    test "opens connection with worker config", %{config: config} do
+      with_adapter([], fn ->
+        worker = start_worker(config)
 
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        post: fn _, _, _, _, _ ->
-          {:ok, finch_ref(stream_id)}
-        end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
+        assert called(H2Adapter.open(config))
+        assert State.new(@connection_ref, config) == :sys.get_state(worker)
+      end)
+    end
 
-        {:ok, pid} = GenServer.start(Sparrow.H2Worker, config)
-        request = OuterRequest.new(headers, body, path, request_timeout)
+    test "is reported", %{config: config} do
+      Setup.forward_telemetry([:sparrow, :h2_worker, :init])
 
-        assert {:error, :request_timeout} ==
-                 GenServer.call(pid, {:send_request, request})
+      with_adapter([], fn ->
+        start_worker(config)
 
-        Process.exit(pid, :kill)
-      end
+        assert_receive {[:sparrow, :h2_worker, :init], %{},
+                        %{
+                          domain: "domain",
+                          port: 443,
+                          pool_name: :pool,
+                          pool_type: :fcm,
+                          pool_tags: [:tag]
+                        }}
+      end)
     end
   end
 
-  test "server receives call request and returns answer", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
-            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            body: string(min: 3, max: 15, chars: :ascii),
-            path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65_535)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 100
-      request_timeout = 3_000
-      headers = Enum.zip([headersA, headersB])
+  describe "stop" do
+    test "closes connection and is reported", %{config: config} do
+      Setup.forward_telemetry([:sparrow, :h2_worker, :terminate])
 
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        post: fn _, _, _, _, _ ->
-          {:ok, finch_ref(stream_id)}
-        end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
+      with_adapter([], fn ->
+        state = State.new(@connection_ref, config)
 
-        {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
+        assert :ok == Sparrow.H2Worker.terminate(:reason, state)
+        assert called(H2Adapter.close(@connection_ref))
 
-        send_response_after(1_000, worker_pid, stream_id, headers, body)
-        request = OuterRequest.new(headers, body, path, request_timeout)
-
-        assert {:ok, {[{":status", "200"} | headers], body}} ==
-                 GenServer.call(worker_pid, {:send_request, request})
-
-        Process.exit(worker_pid, :kill)
-      end
+        assert_receive {[:sparrow, :h2_worker, :terminate], %{},
+                        %{pool_name: :pool, reason: :reason}}
+      end)
     end
-  end
-
-  test "server receives request and returns answer posts gets error and errorcode",
-       context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            code: int(min: 0, max: 1000),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
-            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            body: string(min: 3, max: 15, chars: :ascii),
-            path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65_535)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 100
-      request_timeout = 300
-      headers = Enum.zip([headersA, headersB])
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        post: fn _, _, _, _, _ ->
-          {:error, code}
-        end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
-
-        :erlang.send_after(150, worker_pid, {finch_ref(stream_id), :done})
-        request = OuterRequest.new(headers, body, path, request_timeout)
-
-        assert {:error, code} ==
-                 GenServer.call(worker_pid, {:send_request, request})
-
-        Process.exit(worker_pid, :kill)
-      end
-    end
-  end
-
-  test "server receives request and expexts answer but response ends before its status",
-       context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
-            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            body: string(min: 3, max: 15, chars: :ascii),
-            path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65_535)
-          ],
-          repeat_for: 1 do
-      ping_interval = 100
-      request_timeout = 300
-      headers = Enum.zip([headersA, headersB])
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        post: fn _, _, _, _, _ ->
-          {:ok, finch_ref(stream_id)}
-        end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
-
-        :erlang.send_after(150, worker_pid, {finch_ref(stream_id), :done})
-        request = OuterRequest.new(headers, body, path, request_timeout)
-
-        assert {:error, :not_ready} ==
-                 GenServer.call(worker_pid, {:send_request, request})
-
-        Process.exit(worker_pid, :kill)
-      end
-    end
-  end
-
-  test "server receives request as cast but does not return answer", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
-            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            body: string(min: 3, max: 15, chars: :ascii),
-            path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65_535)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 100
-      request_timeout = 300
-      headers = Enum.zip([headersA, headersB])
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        post: fn _, _, _, _, _ ->
-          {:ok, finch_ref(stream_id)}
-        end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
-
-        :erlang.send_after(150, worker_pid, {finch_ref(stream_id), :done})
-        request = OuterRequest.new(headers, body, path, request_timeout)
-        req_result = GenServer.cast(worker_pid, {:send_request, request})
-        state = :sys.get_state(worker_pid)
-        inner_request = Map.get(state.requests, finch_ref(stream_id))
-        assert :ok == req_result
-        assert headers == inner_request.headers
-        assert body == inner_request.body
-        assert path == inner_request.path
-
-        Process.exit(worker_pid, :kill)
-      end
-    end
-  end
-
-  test "end of response received but request but cannot be found it in state",
-       context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            stream_id: int(min: 1, max: 65_535)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 200
-
-      config =
-        Config.new(%{
-          domain: domain,
-          port: port,
-          authentication: context[:auth],
-          tls_options: tls_options,
-          ping_interval: ping_interval
-        })
-
-      state = State.new(context[:connection_ref], config)
-
-      assert {:noreply, state} ==
-               Sparrow.H2Worker.handle_info(
-                 {finch_ref(stream_id), :done},
-                 state
-               )
-    end
-  end
-
-  test "unexpected message received but request but cannot be found it in state",
-       context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            random_message: string(min: 10, max: 20, chars: ?a..?z)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 200
-
-      config =
-        Config.new(%{
-          domain: domain,
-          port: port,
-          authentication: context[:auth],
-          tls_options: tls_options,
-          ping_interval: ping_interval
-        })
-
-      state = State.new(context[:connection_ref], config)
-
-      assert {:noreply, state} ==
-               Sparrow.H2Worker.handle_info(random_message, state)
-    end
-  end
-
-  test "server cancel timeout on older request", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
-            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            body: string(min: 3, max: 15, chars: :ascii),
-            path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65_535)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 1_000
-      request_timeout = 200
-      headers = Enum.zip([headersA, headersB])
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        post: fn _, _, _, _, _ ->
-          {:ok, finch_ref(stream_id)}
-        end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
-
-        send_response_after(150, worker_pid, stream_id, headers, body)
-        send_response_after(300, worker_pid, stream_id, headers, body)
-        request = OuterRequest.new(headers, body, path, request_timeout)
-
-        assert {:ok, {[{":status", "200"} | headers], body}} ==
-                 GenServer.call(worker_pid, {:send_request, request})
-
-        assert {:ok, {[{":status", "200"} | headers], body}} ==
-                 GenServer.call(worker_pid, {:send_request, request})
-
-        assert {:error, :request_timeout} ==
-                 GenServer.call(worker_pid, {:send_request, request})
-
-        Process.exit(worker_pid, :kill)
-      end
-    end
-  end
-
-  test "default ping_inerval is set correctly",
-       context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535)
-          ],
-          repeat_for: @repeats do
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth]
-          })
-
-        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-        state = :sys.get_state(worker_pid)
-
-        assert 5000 == state.config.ping_interval
-      end
-    end
-  end
-
-  test "server receives down message with not conn pid", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            reason: atom(min: 2, max: 5),
-            tls_options: list(of: atom(), min: 0, max: 3)
-          ],
-          repeat_for: @repeats do
-      conn_pid = pid()
-      not_conn_pid = pid()
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, conn_pid} end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options
-          })
-
-        message = {:DOWN, make_ref(), :process, not_conn_pid, reason}
-
-        {:ok, pid} = GenServer.start(Sparrow.H2Worker, config)
-        :erlang.trace(pid, true, [:receive])
-
-        before_down_message_state = :sys.get_state(pid)
-
-        send(pid, message)
-
-        assert_receive {:trace, ^pid, :receive, _}
-        after_down_message_state = :sys.get_state(pid)
-        assert before_down_message_state == after_down_message_state
-        Process.exit(pid, :kill)
-      end
-    end
-  end
-
-  test "request is added to state", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            body: string(min: 3, max: 15, chars: :ascii),
-            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
-            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            port: int(min: 0, max: 65_535),
-            path: string(min: 3, max: 15, chars: :ascii),
-            stream_id: int(min: 1, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 100
-      request_timeout = 1_000
-      headers = Enum.zip([headersA, headersB])
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        post: fn _, _, _, _, _ ->
-          {:ok, finch_ref(stream_id)}
-        end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        outer_request = OuterRequest.new(headers, body, path, request_timeout)
-
-        {:noreply, newstate} =
-          Sparrow.H2Worker.handle_call(
-            {:send_request, outer_request},
-            {self(), make_ref()},
-            Sparrow.H2Worker.State.new(
-              context[:connection_ref],
-              config
-            )
-          )
-
-        assert context[:connection_ref] == newstate.connection_ref
-        assert config == newstate.config
-        assert 1 == Enum.count(newstate.requests)
-        assert [finch_ref(stream_id)] == Map.keys(newstate.requests)
-      end
-    end
-  end
-
-  test "inits, succesfull connection with certificate", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 123
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:real_auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-
-        eventually(
-          assert Sparrow.H2Worker.State.new(
-                   context[:connection_ref],
-                   config
-                 ) == :sys.get_state(worker_pid, 100)
-        )
-
-        stop_h2_worker()
-      end
-    end
-  end
-
-  test "inits, succesfull connection with certificate, :noreply request is handled correctly",
-       context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3),
-            headersA: list(of: string(), min: 2, max: 2, chars: :ascii),
-            headersB: list(of: string(), min: 2, max: 2, chars: :ascii),
-            body: string(min: 3, max: 7, chars: :ascii),
-            path: string(min: 3, max: 7, chars: :ascii),
-            stream_id: int(min: 1, max: 65_535)
-          ],
-          repeat_for: 1 do
-      ping_interval = 12_300
-      headers = Enum.zip([headersA, headersB])
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ ->
-          {:ok, context[:connection_ref]}
-        end,
-        post: fn _, _, _, _, _ -> {:ok, finch_ref(stream_id)} end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        request = OuterRequest.new(headers, body, path, 1000)
-        {:ok, worker_pid} = GenServer.start(Sparrow.H2Worker, config)
-
-        assert :ok == GenServer.cast(worker_pid, {:send_request, request})
-
-        send(worker_pid, {finch_ref(stream_id), :done})
-        assert %{} == :sys.get_state(worker_pid).requests
-        assert {:messages, []} == :erlang.process_info(self(), :messages)
-        assert {:messages, []} == :erlang.process_info(worker_pid, :messages)
-        Process.exit(worker_pid, :kill)
-      end
-    end
-  end
-
-  test "inits, succesfull connection with token", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3)
-          ],
-          repeat_for: @repeats do
-      ping_interval = 123
-
-      with_mock H2Adapter, [:passthrough],
-        open: fn _ -> {:ok, context[:connection_ref]} end,
-        close: fn _ -> :ok end do
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: TokenBasedAuth.new(fn -> "dummyToken" end),
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-
-        eventually(
-          assert Sparrow.H2Worker.State.new(
-                   context[:connection_ref],
-                   config
-                 ) == :sys.get_state(worker_pid, 100)
-        )
-
-        stop_h2_worker()
-      end
-    end
-  end
-
-  test "terminate closes connection", context do
-    ptest [
-            domain: string(min: 3, max: 10, chars: ?a..?z),
-            port: int(min: 0, max: 65_535),
-            tls_options: list(of: atom(), min: 0, max: 3)
-          ],
-          repeat_for: @repeats do
-      with_mock H2Adapter, [:passthrough], close: fn _ -> :ok end do
-        reason = "test reason"
-        ping_interval = 123
-
-        config =
-          Config.new(%{
-            domain: domain,
-            port: port,
-            authentication: context[:auth],
-            tls_options: tls_options,
-            ping_interval: ping_interval
-          })
-
-        state = Sparrow.H2Worker.State.new(context[:connection_ref], config)
-        assert :ok == Sparrow.H2Worker.terminate(reason, state)
-        # assert called H2Adapter.close(context[:connection_ref])
-      end
-    end
-  end
-
-  defp pid do
-    spawn(fn -> :timer.sleep(5_000) end)
   end
 
   describe "alive_connection?/1" do
-    test "returns false when connection is not alive", context do
-      ptest [
-              domain: string(min: 3, max: 10, chars: ?a..?z),
-              port: int(min: 0, max: 65_535),
-              tls_options: list(of: atom(), min: 0, max: 3)
-            ],
-            repeat_for: @repeats do
-        ping_interval = 123
-
-        with_mock H2Adapter, [:passthrough],
-          open: fn _ -> {:ok, context[:connection_ref]} end,
-          connected?: fn _ -> false end,
-          close: fn _ -> :ok end do
-          config =
-            Config.new(%{
-              domain: domain,
-              port: port,
-              authentication: context[:auth],
-              tls_options: tls_options,
-              ping_interval: ping_interval
-            })
-
-          worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-
-          assert false == Sparrow.H2Worker.alive_connection?(worker_pid)
-        end
-      end
+    test "returns true when connection is established", %{config: config} do
+      with_adapter([connected?: fn @connection_ref -> true end], fn ->
+        assert Sparrow.H2Worker.alive_connection?(start_worker(config))
+      end)
     end
 
-    test "returns true when connection is alive", context do
-      ptest [
-              domain: string(min: 3, max: 10, chars: ?a..?z),
-              port: int(min: 0, max: 65_535),
-              tls_options: list(of: atom(), min: 0, max: 3)
-            ],
-            repeat_for: @repeats do
-        ping_interval = 123
-
-        with_mock H2Adapter, [:passthrough],
-          open: fn _ -> {:ok, context[:connection_ref]} end,
-          connected?: fn _ -> true end,
-          close: fn _ -> :ok end do
-          config =
-            Config.new(%{
-              domain: domain,
-              port: port,
-              authentication: TokenBasedAuth.new(fn -> "dummyToken" end),
-              tls_options: tls_options,
-              ping_interval: ping_interval
-            })
-
-          worker_pid = start_supervised!(Tools.h2_worker_spec(config))
-
-          eventually(
-            assert Sparrow.H2Worker.State.new(
-                     context[:connection_ref],
-                     config
-                   ) == :sys.get_state(worker_pid, 100)
-          )
-
-          assert true == Sparrow.H2Worker.alive_connection?(worker_pid)
-          stop_h2_worker()
-        end
-      end
+    test "returns false when connection is not established", %{config: config} do
+      with_adapter([connected?: fn @connection_ref -> false end], fn ->
+        refute Sparrow.H2Worker.alive_connection?(start_worker(config))
+      end)
     end
   end
 
-  defp stop_h2_worker() do
-    Process.get(:id)
-    |> stop_supervised!()
+  describe "request sent with call" do
+    test "returns response", %{config: config, request: request} do
+      with_adapter([request: fn _, _, _, _, _ -> @response end], fn ->
+        worker = start_worker(config)
+
+        assert @response == GenServer.call(worker, {:send_request, request})
+
+        assert called(
+                 H2Adapter.request(
+                   @connection_ref,
+                   "/path",
+                   @headers,
+                   "body",
+                   :_
+                 )
+               )
+      end)
+    end
+
+    test "returns error", %{config: config, request: request} do
+      with_adapter([request: fn _, _, _, _, _ -> {:error, :reason} end], fn ->
+        worker = start_worker(config)
+
+        assert {:error, :reason} ==
+                 GenServer.call(worker, {:send_request, request})
+      end)
+    end
+
+    test "is given the time it has left", %{config: config, request: request} do
+      test_pid = self()
+
+      send_timeout = fn _, _, _, _, timeout ->
+        send(test_pid, {:timeout, timeout})
+        @response
+      end
+
+      with_adapter([request: send_timeout], fn ->
+        worker = start_worker(config)
+        GenServer.call(worker, {:send_request, request})
+
+        assert_receive {:timeout, timeout}
+        assert timeout <= 1_000
+        assert timeout > 900
+      end)
+    end
+
+    test "doesn't block other requests", %{config: config, request: request} do
+      slow_response = fn _, _, _, _, _ ->
+        Process.sleep(300)
+        @response
+      end
+
+      with_adapter([request: slow_response], fn ->
+        worker = start_worker(config)
+
+        {time, responses} =
+          :timer.tc(fn ->
+            1..10
+            |> Enum.map(fn _ ->
+              Task.async(fn ->
+                GenServer.call(worker, {:send_request, request})
+              end)
+            end)
+            |> Task.await_many()
+          end)
+
+        assert Enum.all?(responses, &(&1 == @response))
+        assert time < 1_000_000
+      end)
+    end
+
+    test "returns error when sending raises", %{
+      config: config,
+      request: request
+    } do
+      with_adapter([request: fn _, _, _, _, _ -> raise "error" end], fn ->
+        worker = start_worker(config)
+
+        assert {:error, {:error, %RuntimeError{message: "error"}}} ==
+                 GenServer.call(worker, {:send_request, request})
+
+        assert Process.alive?(worker)
+      end)
+    end
   end
 
-  # Shape of the request reference returned by `Finch.async_request/3`
-  defp finch_ref(stream_id), do: {Finch.HTTP2.Pool, {:pool, stream_id}}
+  describe "request sent with cast" do
+    test "is sent", %{config: config, request: request} do
+      test_pid = self()
 
-  defp send_response_after(time, worker_pid, stream_id, headers, body) do
-    ref = finch_ref(stream_id)
+      notify = fn _, _, _, _, _ ->
+        send(test_pid, :request_sent)
+        @response
+      end
 
-    for part <- [{:status, 200}, {:headers, headers}, {:data, body}, :done] do
-      :erlang.send_after(time, worker_pid, {ref, part})
+      with_adapter([request: notify], fn ->
+        worker = start_worker(config)
+
+        assert :ok == GenServer.cast(worker, {:send_request, request})
+        assert_receive :request_sent
+        refute_receive _response, 100
+      end)
     end
+  end
+
+  describe "request which was not sent" do
+    test "is sent again", %{config: config, request: request} do
+      {:ok, attempts} = Agent.start_link(fn -> 0 end)
+
+      second_attempt_succeeds = fn _, _, _, _, _ ->
+        case Agent.get_and_update(attempts, &{&1, &1 + 1}) do
+          0 -> {:retry, :pool_not_available}
+          _ -> @response
+        end
+      end
+
+      with_adapter([request: second_attempt_succeeds], fn ->
+        worker = start_worker(config)
+
+        assert @response == GenServer.call(worker, {:send_request, request})
+        assert 2 == Agent.get(attempts, & &1)
+      end)
+    end
+
+    test "fails with the last reason when its time is up", %{config: config} do
+      request = Request.new(@headers, "body", "/path", 200)
+      not_sent = fn _, _, _, _, _ -> {:retry, :pool_not_available} end
+
+      with_adapter([request: not_sent], fn ->
+        worker = start_worker(config)
+
+        {time, response} =
+          :timer.tc(fn -> GenServer.call(worker, {:send_request, request}) end)
+
+        assert {:error, :pool_not_available} == response
+        assert time >= 150_000
+        assert time < 1_000_000
+      end)
+    end
+  end
+
+  describe "authentication" do
+    test "token is added to headers", %{config: config, request: request} do
+      auth = TokenBased.new(fn -> {"authorization", "bearer token"} end)
+      config = %{config | authentication: auth}
+
+      with_adapter([request: fn _, _, _, _, _ -> @response end], fn ->
+        worker = start_worker(config)
+        GenServer.call(worker, {:send_request, request})
+
+        assert called(
+                 H2Adapter.request(
+                   @connection_ref,
+                   "/path",
+                   [{"authorization", "bearer token"} | @headers],
+                   "body",
+                   :_
+                 )
+               )
+      end)
+    end
+
+    test "request fails when token cannot be obtained", %{
+      config: config,
+      request: request
+    } do
+      auth = TokenBased.new(fn -> exit(:no_token) end)
+      config = %{config | authentication: auth}
+
+      with_adapter([request: fn _, _, _, _, _ -> @response end], fn ->
+        worker = start_worker(config)
+
+        assert {:error, {:exit, :no_token}} ==
+                 GenServer.call(worker, {:send_request, request})
+
+        assert_not_called(H2Adapter.request(:_, :_, :_, :_, :_))
+      end)
+    end
+  end
+
+  describe "telemetry" do
+    setup do
+      Setup.forward_telemetry([:sparrow, :h2_worker, :handle])
+      Setup.forward_telemetry([:sparrow, :h2_worker, :request_success])
+      Setup.forward_telemetry([:sparrow, :h2_worker, :request_error])
+    end
+
+    test "successful request is reported with its time", %{
+      config: config,
+      request: request
+    } do
+      slow_response = fn _, _, _, _, _ ->
+        Process.sleep(50)
+        @response
+      end
+
+      with_adapter([request: slow_response], fn ->
+        worker = start_worker(config)
+        GenServer.call(worker, {:send_request, request})
+
+        assert_receive {[:sparrow, :h2_worker, :handle], %{time: time},
+                        %{pool_name: :pool}}
+
+        assert time >= 50_000
+
+        assert_receive {[:sparrow, :h2_worker, :request_success], %{},
+                        %{pool_name: :pool}}
+
+        refute_receive {[:sparrow, :h2_worker, :request_error], _, _}, 50
+      end)
+    end
+
+    test "failed request is reported with its reason", %{
+      config: config,
+      request: request
+    } do
+      with_adapter([request: fn _, _, _, _, _ -> {:error, :reason} end], fn ->
+        worker = start_worker(config)
+        GenServer.call(worker, {:send_request, request})
+
+        assert_receive {[:sparrow, :h2_worker, :handle], %{time: _time}, _}
+
+        assert_receive {[:sparrow, :h2_worker, :request_error], %{},
+                        %{pool_name: :pool, return_code: :reason}}
+
+        refute_receive {[:sparrow, :h2_worker, :request_success], _, _}, 50
+      end)
+    end
+  end
+
+  test "unexpected message is ignored", %{config: config} do
+    state = State.new(@connection_ref, config)
+
+    assert {:noreply, state} == Sparrow.H2Worker.handle_info(:message, state)
+  end
+
+  defp with_adapter(mocks, test_fun) do
+    defaults = [
+      open: fn _config -> {:ok, @connection_ref} end,
+      close: fn _connection_ref -> :ok end
+    ]
+
+    with_mock H2Adapter, [:passthrough], Keyword.merge(defaults, mocks) do
+      test_fun.()
+    end
+  end
+
+  defp start_worker(config) do
+    {:ok, worker} = GenServer.start(Sparrow.H2Worker, config)
+    on_exit(fn -> Process.exit(worker, :kill) end)
+    worker
   end
 end
