@@ -46,7 +46,7 @@ defmodule Sparrow.APNSTest do
       )
 
     Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Sparrow.H2Worker.Pool.start_unregistered({:apns, :dev}, [])
+    |> Helpers.SetupHelper.start_pool({:apns, :dev}, [])
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)

@@ -113,7 +113,7 @@ defmodule H2Integration.WildcardCertificateTest do
 
       config
       |> Sparrow.H2Worker.Pool.Config.new(@pool_name)
-      |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
+      |> Helpers.SetupHelper.start_pool(:fcm, [])
 
       request =
         OuterRequest.new(

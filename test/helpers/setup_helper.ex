@@ -16,6 +16,20 @@ defmodule Helpers.SetupHelper do
   end
 
   @doc """
+  Starts a pool which is stopped before the next test starts, so its name
+  can be used again.
+  """
+  def start_pool(pool_config, pool_type, tags \\ []) do
+    ExUnit.Callbacks.start_supervised(%{
+      id: {Sparrow.H2Worker.Pool, pool_config.pool_name},
+      start:
+        {Sparrow.H2Worker.Pool, :start_unregistered,
+         [pool_config, pool_type, tags]},
+      type: :supervisor
+    })
+  end
+
+  @doc """
   Starts processes needed by connections of a worker started without a pool.
   """
   def start_connection_processes(config) do

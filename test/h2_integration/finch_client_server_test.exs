@@ -353,7 +353,7 @@ defmodule H2Integration.FinchClientServerTest do
     {:ok, _pid} =
       config
       |> Sparrow.H2Worker.Pool.Config.new(context[:pool_name], 1)
-      |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
+      |> Helpers.SetupHelper.start_pool(:fcm, [])
 
     context[:pool_name]
   end
