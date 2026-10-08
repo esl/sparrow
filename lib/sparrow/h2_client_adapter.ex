@@ -51,11 +51,6 @@ defmodule Sparrow.H2ClientAdapter do
               {:error, reason} | {:retry, reason} | {:ok, stream_id}
 
   @doc """
-    Sends ping to given connection.
-  """
-  @callback ping(connection_ref) :: :ok
-
-  @doc """
     Translates a message received by the process owning the connection.
 
     * `{:response_part, stream_id, part}` - a piece of the response
@@ -91,11 +86,6 @@ defmodule Sparrow.H2ClientAdapter do
   def post(conn, domain, path, headers, body) do
     adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
     adapter.post(conn, domain, path, headers, body)
-  end
-
-  def ping(conn) do
-    adapter = Application.get_env(:sparrow, __MODULE__, @default)[:adapter]
-    adapter.ping(conn)
   end
 
   def handle_message(message, conn) do

@@ -48,7 +48,8 @@ defmodule Sparrow.H2Worker.Config do
     * `port` - port service works on,
     * `authentication` - a struct to provide token based or certificate based authentication
     * `tls_options` - See http://erlang.org/doc/man/ssl.html  ssl_option()
-    * `ping_interval` - ping message is send to server periodically after ping_interval miliseconds (default 5_000)
+    * `ping_interval` - ping is sent to server after the connection was idle for ping_interval miliseconds,
+      `nil` switches it off (default 5_000)
     * `reconnect_attempts`, `backoff_base`, `backoff_initial_delay`, `backoff_max_delay` - not used,
       the connection is reestablished by the HTTP/2 client on its own
 

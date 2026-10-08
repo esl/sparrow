@@ -120,7 +120,7 @@ config :sparrow,
 - `:endpoint` - service uri
 - `:port` - service port
 - `:tls_opts` - passed to erlang [ssl](http://erlang.org/doc/man/ssl.html) module (see DATA TYPES -> ssl_option())
-- `:ping_interval` - number of miliseconds between each [ping](https://http2.github.io/http2-spec/#PING), to switch ping off set `:ping_interval` to `nil`
+- `:ping_interval` - number of miliseconds of connection inactivity after which a [ping](https://http2.github.io/http2-spec/#PING) is sent, to switch ping off set `:ping_interval` to `nil`
 - `:reconnect_attempts` - not used, lost connections are reestablished automatically
 
 ### Connection pool config

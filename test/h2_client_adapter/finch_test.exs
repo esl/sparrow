@@ -39,4 +39,39 @@ defmodule H2ClientAdapter.FinchTest do
     assert :unknown == H2Adapter.handle_message({make_ref(), :done}, @conn)
     assert :unknown == H2Adapter.handle_message("message", @conn)
   end
+
+  describe "connection pool options" do
+    setup do
+      auth =
+        Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+          {"authorization", "bearer token"}
+        end)
+
+      {:ok, config: %{domain: "localhost", port: 443, authentication: auth}}
+    end
+
+    test "ping interval is passed to finch", %{config: config} do
+      config = Sparrow.H2Worker.Config.new(Map.put(config, :ping_interval, 123))
+      assert 123 == default_pool_opts(config)[:http2][:ping_interval]
+    end
+
+    test "ping is sent every 5 seconds of inactivity by default", %{
+      config: config
+    } do
+      config = Sparrow.H2Worker.Config.new(config)
+      assert 5_000 == default_pool_opts(config)[:http2][:ping_interval]
+    end
+
+    test "ping is switched off with nil interval", %{config: config} do
+      config = Sparrow.H2Worker.Config.new(Map.put(config, :ping_interval, nil))
+      assert :infinity == default_pool_opts(config)[:http2][:ping_interval]
+    end
+
+    defp default_pool_opts(config) do
+      [%{start: {Finch, :start_link, [opts]}} | _] =
+        H2Adapter.child_specs(config)
+
+      opts[:pools][:default]
+    end
+  end
 end

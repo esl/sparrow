@@ -102,17 +102,6 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   end
 
   @impl true
-  def ping(conn = %{finch: finch, pool: pool}) do
-    # `Finch.ping/2` waits for the pong, don't block the caller
-    {:ok, _pid} =
-      Task.start(fn ->
-        if connected?(conn), do: Finch.ping(finch, pool)
-      end)
-
-    :ok
-  end
-
-  @impl true
   def handle_message({{Finch.HTTP2.Pool, _} = ref, :done}, _conn) do
     {:done, ref}
   end
@@ -199,7 +188,9 @@ defmodule Sparrow.H2ClientAdapter.Finch do
     [
       protocols: [:http2],
       count: 1,
-      conn_opts: [transport_opts: Config.connection_tls_options(config)]
+      conn_opts: [transport_opts: Config.connection_tls_options(config)],
+      # Sent by Finch after the connection was idle for that long
+      http2: [ping_interval: config.ping_interval || :infinity]
     ]
   end
 
