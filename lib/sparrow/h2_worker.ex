@@ -323,13 +323,12 @@ defmodule Sparrow.H2Worker do
 
   @doc !"""
        Scheduales message to genserver after time miliseconds.
-       When time is nil scheduling is ignored.
        """
-  @spec schedule_message_after(any, nil | non_neg_integer) :: reference
-  defp schedule_message_after(_message, nil) do
-    :ok
-  end
-
+  @spec schedule_message_after(
+          {:timeout_request, stream_id}
+          | {:retry_request, request, from | :noreply},
+          non_neg_integer
+        ) :: reference
   defp schedule_message_after(message, time) do
     _ =
       Logger.debug("Scheduling H2 connection message",
