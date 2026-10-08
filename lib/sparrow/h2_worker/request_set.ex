@@ -40,6 +40,15 @@ defmodule Sparrow.H2Worker.RequestSet do
   end
 
   @doc """
+  Removes request from requests collection and returns it,
+  `nil` is returned when there is no such request.
+  """
+  @spec pop(requests, stream_id) :: {RequestState.t() | nil, requests}
+  def pop(requests, stream_id) do
+    Map.pop(requests, stream_id)
+  end
+
+  @doc """
   Gets request from requests collection by `stream_id` as search key.
   """
   @spec get_request(requests, stream_id) ::

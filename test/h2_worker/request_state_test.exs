@@ -48,4 +48,11 @@ defmodule H2Worker.RequestStateTest do
 
     assert {:ok, {[{":status", "200"}], ""}} == RequestState.response(request)
   end
+
+  test "request set pops existing request", %{request: request} do
+    requests = RequestSet.add(RequestSet.new(), :stream, request)
+
+    assert {nil, requests} == RequestSet.pop(requests, :other)
+    assert {request, RequestSet.new()} == RequestSet.pop(requests, :stream)
+  end
 end

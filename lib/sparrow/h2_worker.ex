@@ -20,10 +20,7 @@ defmodule Sparrow.H2Worker do
   @type state :: Sparrow.H2Worker.State.t()
   @type stream_id :: term
   @type reason :: any
-  @type incomming_message ::
-          :ping
-          | {:timeout_request, stream_id}
-          | any
+  @type incomming_message :: {:timeout_request, stream_id} | any
   @type request :: Sparrow.H2Worker.Request.t()
   @type from :: {pid, tag :: term}
   @type headers :: [{String.t(), String.t()}]
@@ -40,7 +37,6 @@ defmodule Sparrow.H2Worker do
   def init(config) do
     # The connection is established in the background
     {:ok, connection_ref} = H2ClientAdapter.open(config)
-    _ = schedule_message_after({:ping, connection_ref}, config.ping_interval)
 
     state = State.new(connection_ref, config)
 
@@ -75,27 +71,6 @@ defmodule Sparrow.H2Worker do
     :ok
   end
 
-  def handle_info(
-        {:ping, connection_ref},
-        state = %State{connection_ref: connection_ref}
-      ) do
-    _ =
-      if state.config.ping_interval do
-        H2ClientAdapter.ping(state.connection_ref)
-
-        schedule_message_after(
-          {:ping, connection_ref},
-          state.config.ping_interval
-        )
-      end
-
-    {:noreply, state}
-  end
-
-  def handle_info({:ping, _}, state) do
-    {:noreply, state}
-  end
-
   def handle_info({:timeout_request, stream_id}, state) do
     _ =
       Logger.debug("H2 request timeout",
@@ -103,21 +78,14 @@ defmodule Sparrow.H2Worker do
         stream_id: inspect(stream_id)
       )
 
-    case RequestSet.get_request(state.requests, stream_id) do
-      {:error, :not_found} ->
-        :ok
+    case RequestSet.pop(state.requests, stream_id) do
+      {nil, _requests} ->
+        {:noreply, state}
 
-      {:ok, request} ->
-        response = {:error, {:request_timeout, stream_id}}
-        send_response(request.from, response)
+      {request, requests} ->
+        send_response(request.from, {:error, {:request_timeout, stream_id}})
+        {:noreply, %{state | requests: requests}}
     end
-
-    {:noreply,
-     State.new(
-       state.connection_ref,
-       RequestSet.remove(state.requests, stream_id),
-       state.config
-     )}
   end
 
   def handle_info({:retry_request, request, from}, state) do
@@ -132,10 +100,10 @@ defmodule Sparrow.H2Worker do
         {:noreply, %{state | requests: requests}}
 
       {:done, stream_id} ->
-        finish_request(stream_id, state, &InnerRequest.response/1)
+        finish_request(stream_id, :done, state)
 
       {:error, stream_id, reason} ->
-        finish_request(stream_id, state, fn _request -> {:error, reason} end)
+        finish_request(stream_id, {:error, reason}, state)
 
       {:retry, stream_id, reason} ->
         retry_request(stream_id, reason, state)
@@ -155,50 +123,38 @@ defmodule Sparrow.H2Worker do
   end
 
   @doc !"""
-       Sends response to the caller waiting for given stream and forgets the request.
+       Sends the result to the caller waiting for given stream and forgets the request.
        """
-  @spec finish_request(stream_id, state, (InnerRequest.t() -> term)) ::
+  @spec finish_request(stream_id, :done | {:error, reason}, state) ::
           {:noreply, state}
-  defp finish_request(stream_id, state, get_response) do
-    _ =
-      Logger.debug("Received H2 response",
-        what: :h2_response_received,
-        stream_id: inspect(stream_id)
-      )
-
-    case RequestSet.get_request(state.requests, stream_id) do
-      {:error, :not_found} ->
+  defp finish_request(stream_id, result, state) do
+    case RequestSet.pop(state.requests, stream_id) do
+      {nil, _requests} ->
         _ =
           Logger.info("Received H2 response for unknown request",
             what: :unknown_h2_response_received,
             stream_id: inspect(stream_id)
           )
 
-        :ok
-
-      {:ok, request} ->
-        _ = cancel_timer(request)
-        send_response(request.from, get_response.(request))
-    end
-
-    {:noreply,
-     State.new(
-       state.connection_ref,
-       RequestSet.remove(state.requests, stream_id),
-       state.config
-     )}
-  end
-
-  @doc !"""
-       Sends again a request which was not sent, as long as it has time left.
-       """
-  @spec retry_request(stream_id, reason, state) :: {:noreply, state}
-  defp retry_request(stream_id, reason, state) do
-    case RequestSet.get_request(state.requests, stream_id) do
-      {:error, :not_found} ->
         {:noreply, state}
 
-      {:ok, request} ->
+      {request, requests} ->
+        _ = cancel_timer(request)
+        send_response(request.from, response(result, request))
+        {:noreply, %{state | requests: requests}}
+    end
+  end
+
+  defp response(:done, request), do: InnerRequest.response(request)
+  defp response(error = {:error, _reason}, _request), do: error
+
+  # Sends again a request which was not sent, as long as it has time left.
+  defp retry_request(stream_id, reason, state) do
+    case RequestSet.pop(state.requests, stream_id) do
+      {nil, _requests} ->
+        {:noreply, state}
+
+      {request, requests} ->
         time_left = :erlang.cancel_timer(request.timeout_reference)
 
         outer_request =
@@ -210,9 +166,7 @@ defmodule Sparrow.H2Worker do
           )
 
         schedule_retry(outer_request, request.from, reason)
-
-        {:noreply,
-         %{state | requests: RequestSet.remove(state.requests, stream_id)}}
+        {:noreply, %{state | requests: requests}}
     end
   end
 
