@@ -52,7 +52,7 @@ defmodule Sparrow.MixProject do
         :error_handling,
         :underspecs
       ],
-      plt_add_apps: [:mix, :goth]
+      plt_add_apps: [:mix, :goth, :ex_unit]
     ]
   end
 
