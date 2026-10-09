@@ -276,11 +276,7 @@ Sparrow supports [telemetry](https://github.com/beam-telemetry/telemetry). Emitt
 - `[:sparrow, :h2_worker, :request_success]`
 - `[:sparrow, :h2_worker, :conn_success]`
 - `[:sparrow, :h2_worker, :conn_fail]`
-- `[:sparrow, :pools_warden, :init]`
-- `[:sparrow, :pools_warden, :terminate]`
 - `[:sparrow, :pools_warden, :choose_pool]`
-- `[:sparrow, :pools_warden, :pool_down]`
-- `[:sparrow, :pools_warden, :add_pool]`
 
 There are also events measuring the duration of a few chosen function calls:
 

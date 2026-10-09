@@ -25,11 +25,9 @@ defmodule SparrowTest do
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
     on_exit(fn ->
-      Application.stop(:sparrow)
+      TestHelper.restore_app_env()
       :cowboy.stop_listener(cowboys_name)
     end)
-
-    {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
 
     {:ok, port: :ranch.get_port(cowboys_name), cowboy_pid: cowboy_pid}
   end

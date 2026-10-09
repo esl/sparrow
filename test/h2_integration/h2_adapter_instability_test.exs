@@ -122,7 +122,10 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   end
 
   defp pool_data(pool) do
-    :persistent_term.get({Sparrow.Pool, pool})
+    [{_owner, {connection_ref, config, _order}}] =
+      Registry.lookup(Sparrow.Pool.Registry, pool)
+
+    {connection_ref, config}
   end
 
   defp connection_pid(pool) do

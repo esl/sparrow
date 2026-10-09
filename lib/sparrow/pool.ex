@@ -21,6 +21,8 @@ defmodule Sparrow.Pool do
 
   require Logger
 
+  @registry Sparrow.Pool.Registry
+
   # Time to wait before sending again a request which was not sent
   @retry_delay 25
 
@@ -71,10 +73,20 @@ defmodule Sparrow.Pool do
   end
 
   @doc """
-  Function to start pool.
+  Function to start pool. `Sparrow` application must be running.
+
+  The pool is registered under its name, which is used to send requests
+  with it. It may be also found by its type and tags, see `choose/2`.
   """
-  @spec start_unregistered(config) :: {:error, any} | {:ok, pid}
-  def start_unregistered(config = %Config{}) do
+  @spec start_link(config) :: Supervisor.on_start()
+  def start_link(config = %Config{}) do
+    case registered(config.name) do
+      nil -> start_supervisor(config)
+      {owner, _value} -> {:error, {:already_started, owner}}
+    end
+  end
+
+  defp start_supervisor(config) do
     children =
       Connections.child_specs(config) ++
         [
@@ -87,21 +99,47 @@ defmodule Sparrow.Pool do
     Supervisor.start_link(children, strategy: :rest_for_one)
   end
 
-  @doc """
-  Function to start pool and "register" it in pool warden.
-  """
-  @spec start_link(config) :: {:ok, pid}
-  def start_link(config = %Config{}) do
-    {:ok, pid} = start_unregistered(config)
+  @doc false
+  @deprecated "Use Sparrow.Pool.start_link/1 instead"
+  def start_unregistered(config), do: start_link(config)
 
-    Sparrow.PoolsWarden.add_new_pool(
-      pid,
-      config.type,
-      config.name,
-      config.tags
+  @doc """
+  Function to get name of a pool of certain type.
+
+  ## Arguments
+      * `type` - can be one of:
+          * `:fcm` - to get FCM pool
+          * `{:apns, :dev}` - to get APNS development pool
+          * `{:apns, :prod}` - to get APNS production pool
+      * `tags` - allows to filter pools, only pools with all of these tags are chosen
+
+  Returns `nil` when there is no such pool. When there are many of them,
+  the one which was started first is chosen.
+  """
+  @spec choose(Config.type(), [any]) :: atom | nil
+  def choose(type, tags \\ []) do
+    chosen =
+      for {name, _connection_ref, config = %Config{type: ^type}} <- pools(),
+          Enum.all?(tags, &(&1 in config.tags)) do
+        name
+      end
+
+    chosen_pool = List.first(chosen)
+
+    _ =
+      Logger.debug("Selecting connection pool",
+        what: :choose_pool,
+        result: chosen,
+        result_len: length(chosen)
+      )
+
+    :telemetry.execute(
+      [:sparrow, :pools_warden, :choose_pool],
+      %{},
+      %{pool_name: chosen_pool, pool_type: type, pool_tags: tags}
     )
 
-    {:ok, pid}
+    chosen_pool
   end
 
   @doc """
@@ -110,27 +148,28 @@ defmodule Sparrow.Pool do
   """
   @spec stats(atom) :: stats | nil
   def stats(pool) do
-    case :persistent_term.get({__MODULE__, pool}, nil) do
-      nil ->
-        nil
-
-      {connection_ref, config} ->
-        %{
-          pool: pool,
-          connections: config.connections,
-          connected: Connections.connected(connection_ref)
-        }
+    case lookup(pool) do
+      nil -> nil
+      {connection_ref, config} -> stats(pool, connection_ref, config)
     end
   end
 
   @doc """
-  Returns `stats/1` of all pools registered in `Sparrow.PoolsWarden`.
+  Returns `stats/1` of all pools.
   """
   @spec stats :: [stats]
   def stats do
-    for {_pool_type, pool, _tags} <- Sparrow.PoolsWarden.pools(),
-        stats = stats(pool),
-        do: stats
+    for {name, connection_ref, config} <- pools() do
+      stats(name, connection_ref, config)
+    end
+  end
+
+  defp stats(pool, connection_ref, config) do
+    %{
+      pool: pool,
+      connections: config.connections,
+      connected: Connections.connected(connection_ref)
+    }
   end
 
   @doc false
@@ -138,16 +177,67 @@ defmodule Sparrow.Pool do
     # The connections are established in the background
     {:ok, connection_ref} = Connections.open(config)
 
-    :persistent_term.put(
-      {__MODULE__, config.name},
-      {connection_ref, config}
-    )
+    # It's run by the supervisor of the pool, so the pool is unregistered
+    # when the supervisor stops.
+    case registered(config.name) do
+      nil ->
+        # Pools are chosen in the order they were started
+        order = System.unique_integer([:monotonic])
+        value = {connection_ref, config, order}
 
-    :ignore
+        case Registry.register(@registry, config.name, value) do
+          {:ok, _owner} ->
+            :ignore
+
+          {:error, {:already_registered, owner}} ->
+            {:error, {:already_started, owner}}
+        end
+
+      {owner, {_connection_ref, _config, order}} when owner == self() ->
+        value = {connection_ref, config, order}
+
+        {_new, _old} =
+          Registry.update_value(@registry, config.name, fn _ -> value end)
+
+        :ignore
+
+      {owner, _value} ->
+        {:error, {:already_started, owner}}
+    end
+  end
+
+  # All registered pools, in the order they were started
+  defp pools do
+    @registry
+    |> Registry.select([{{:"$1", :_, :"$2"}, [], [{{:"$1", :"$2"}}]}])
+    |> Enum.sort_by(fn {_name, {_connection_ref, _config, order}} -> order end)
+    |> Enum.map(fn {name, {connection_ref, config, _order}} ->
+      {name, connection_ref, config}
+    end)
+  rescue
+    # `Sparrow` application is not running
+    ArgumentError -> []
+  end
+
+  defp lookup(pool) do
+    case registered(pool) do
+      {_owner, {connection_ref, config, _order}} -> {connection_ref, config}
+      nil -> nil
+    end
+  end
+
+  defp registered(pool) do
+    case Registry.lookup(@registry, pool) do
+      [registered] -> registered
+      [] -> nil
+    end
+  rescue
+    # `Sparrow` application is not running
+    ArgumentError -> nil
   end
 
   defp send_fun(pool, request) do
-    case :persistent_term.get({__MODULE__, pool}, nil) do
+    case lookup(pool) do
       nil ->
         {:error, :pool_not_found}
 

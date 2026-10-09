@@ -9,7 +9,7 @@ defmodule Sparrow.API do
           Sparrow.FCM.V1.Notification.t() | Sparrow.APNS.Notification.t()
   @type sync_push_result ::
           Sparrow.FCM.V1.sync_push_result() | Sparrow.APNS.sync_push_result()
-  @type pool_type :: Sparrow.PoolsWarden.pool_type()
+  @type pool_type :: Sparrow.Pool.Config.type()
 
   @doc """
   Function to FCM and APNS push notifications. Pushes notifcation and waits for response.
@@ -29,7 +29,7 @@ defmodule Sparrow.API do
   def push(notification, tags, opts) do
     pool_type = get_pool_type(notification)
 
-    case Sparrow.PoolsWarden.choose_pool(pool_type, tags) do
+    case Sparrow.Pool.choose(pool_type, tags) do
       nil ->
         _ =
           Logger.error("Unable to select connection pool",

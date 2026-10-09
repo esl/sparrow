@@ -536,7 +536,6 @@ defmodule Sparrow.FCM.V1Test do
 
       Application.stop(:sparrow)
       Application.put_env(:sparrow, :fcm, fcm)
-      {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
       :ok = Application.start(:sparrow)
 
       account1 =
@@ -553,8 +552,8 @@ defmodule Sparrow.FCM.V1Test do
 
       notification = test_notification()
 
-      pool_1 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag1])
-      pool_2 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag2])
+      pool_1 = Sparrow.Pool.choose(:fcm, [:tag1])
+      pool_2 = Sparrow.Pool.choose(:fcm, [:tag2])
 
       Sparrow.FCM.V1.push(pool_1, notification)
 

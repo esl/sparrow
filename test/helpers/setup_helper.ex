@@ -15,7 +15,7 @@ defmodule Helpers.SetupHelper do
 
     ExUnit.Callbacks.start_supervised(%{
       id: {Sparrow.Pool, config.name},
-      start: {Sparrow.Pool, :start_unregistered, [config]},
+      start: {Sparrow.Pool, :start_link, [config]},
       type: :supervisor
     })
   end

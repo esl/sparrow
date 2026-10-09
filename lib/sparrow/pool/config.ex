@@ -9,9 +9,11 @@ defmodule Sparrow.Pool.Config do
           Sparrow.Authentication.TokenBased.t()
           | Sparrow.Authentication.CertificateBased.t()
 
+  @type type :: :fcm | {:apns, :dev} | {:apns, :prod}
+
   @type t :: %__MODULE__{
           name: atom,
-          type: Sparrow.PoolsWarden.pool_type() | nil,
+          type: type | nil,
           tags: [atom],
           domain: String.t(),
           port: port_num,
@@ -42,8 +44,8 @@ defmodule Sparrow.Pool.Config do
     * `port` - port service works on,
     * `authentication` - a struct to provide token based or certificate based authentication
     * `name` - name of the pool, generated when not set
-    * `type` - `:fcm`, `{:apns, :dev}` or `{:apns, :prod}`, allows `Sparrow.API.push/3` to choose the pool
-    * `tags` - tags allowing `Sparrow.API.push/3` to choose the pool (default `[]`)
+    * `type` - `:fcm`, `{:apns, :dev}` or `{:apns, :prod}`, allows `Sparrow.Pool.choose/2` to find the pool
+    * `tags` - tags allowing `Sparrow.Pool.choose/2` to find the pool (default `[]`)
     * `connections` - number of connections (default 3)
     * `tls_options` - See http://erlang.org/doc/man/ssl.html  ssl_option()
     * `ping_interval` - ping is sent to server after a connection was idle for ping_interval miliseconds,

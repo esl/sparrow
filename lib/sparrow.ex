@@ -14,23 +14,17 @@ defmodule Sparrow do
 
   @spec start({Keyword.t(), Keyword.t()}) :: Supervisor.on_start()
   def start({raw_fcm_config, raw_apns_config}) do
-    %{:enabled => is_enabled} =
-      Application.get_env(:sparrow, Sparrow.PoolsWarden)
-
     children =
-      is_enabled
-      |> maybe_start_pools_warden()
+      [{Registry, keys: :unique, name: Sparrow.Pool.Registry}]
       |> maybe_append({Sparrow.FCM.V1.Supervisor, raw_fcm_config})
       |> maybe_append({Sparrow.APNS.Supervisor, raw_apns_config})
 
-    opts = [strategy: :one_for_one]
+    # Pools are registered in the registry, so they are restarted with it
+    opts = [strategy: :rest_for_one]
     Supervisor.start_link(children, opts)
   end
 
   @spec maybe_append([any], {any, nil | list}) :: [any]
   defp maybe_append(list, {_, nil}), do: list
   defp maybe_append(list, elem), do: list ++ [elem]
-
-  defp maybe_start_pools_warden(true), do: [Sparrow.PoolsWarden]
-  defp maybe_start_pools_warden(false), do: []
 end

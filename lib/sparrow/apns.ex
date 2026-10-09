@@ -52,7 +52,7 @@ defmodule Sparrow.APNS do
         |> Sparrow.APNS.get_certificate_based_authentication("path/to/exampleKey.pem")
         |> Sparrow.APNS.get_pool_config_dev()
     {:ok, _pid} =
-        Sparrow.Pool.start_unregistered(%{config | name: :your_apns_pool_name})
+        Sparrow.Pool.start_link(%{config | name: :your_apns_pool_name})
 
     notification =
         @device_token
