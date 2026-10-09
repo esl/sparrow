@@ -1,38 +1,32 @@
 defmodule Helpers.SetupHelper do
   @moduledoc false
 
-  alias Sparrow.H2Worker.Config
+  alias Sparrow.Pool.Config
 
   @path_to_cert "priv/ssl/client_cert.pem"
   @path_to_key "priv/ssl/client_key.pem"
 
   @doc """
-  Starts a pool which is stopped before the next test starts, so its name
-  can be used again.
+  Starts a pool with given config, updated with `fields`. The pool is stopped
+  before the next test starts, so its name can be used again.
   """
-  def start_pool(pool_config, pool_type, tags \\ []) do
+  def start_pool(config, fields \\ []) do
+    config = struct!(config, fields)
+
     ExUnit.Callbacks.start_supervised(%{
-      id: {Sparrow.H2Worker.Pool, pool_config.pool_name},
-      start:
-        {Sparrow.H2Worker.Pool, :start_unregistered,
-         [pool_config, pool_type, tags]},
+      id: {Sparrow.Pool, config.name},
+      start: {Sparrow.Pool, :start_unregistered, [config]},
       type: :supervisor
     })
   end
 
   @doc """
-  Starts a pool with a unique name and given connections config,
-  returns the name.
+  Starts a pool with a unique name and given config, returns the name.
   """
   def start_pool_with_config(config, connections \\ 1) do
-    pool_name = :"pool_#{System.unique_integer([:positive])}"
-
-    {:ok, _pid} =
-      config
-      |> Sparrow.H2Worker.Pool.Config.new(pool_name, connections)
-      |> start_pool(:fcm, [])
-
-    pool_name
+    name = :"pool_#{System.unique_integer([:positive])}"
+    {:ok, _pid} = start_pool(config, name: name, connections: connections)
+    name
   end
 
   @doc """
@@ -60,7 +54,7 @@ defmodule Helpers.SetupHelper do
     :look
   end
 
-  def create_h2_worker_config(
+  def create_pool_config(
         address \\ server_host(),
         port \\ 8080,
         authentication \\ :certificate_based
@@ -68,12 +62,12 @@ defmodule Helpers.SetupHelper do
     auth =
       case authentication do
         :token_based ->
-          Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+          Sparrow.Authentication.TokenBased.new(fn ->
             {"authorization", "bearer dummy_token"}
           end)
 
         :certificate_based ->
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
+          Sparrow.Authentication.CertificateBased.new(
             @path_to_cert,
             @path_to_key
           )
@@ -83,10 +77,6 @@ defmodule Helpers.SetupHelper do
       domain: address,
       port: port,
       authentication: auth,
-      backoff_base: 2,
-      backoff_initial_delay: 100,
-      backoff_max_delay: 400,
-      reconnect_attempts: 0,
       tls_options: [verify: :verify_none]
     })
   end

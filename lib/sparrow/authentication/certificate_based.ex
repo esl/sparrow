@@ -1,7 +1,7 @@
-defmodule Sparrow.H2Worker.Authentication.CertificateBased do
+defmodule Sparrow.Authentication.CertificateBased do
   @moduledoc """
   Structure for cerificate based authentication.
-  Use to create `Sparrow.H2Worker.Config` for `Sparrow.H2Worker`.
+  Use to create `Sparrow.Pool.Config`.
   """
   @type t :: %__MODULE__{
           certfile: Path.t(),

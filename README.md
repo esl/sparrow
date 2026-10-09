@@ -175,7 +175,7 @@ apns_pool = [
     # pool config
     tags: [:first_batch_clients, :beta_users], # optional
     worker_num: 3, # optional
-    raw_opts: [], # optional
+    raw_opts: [], # optional, not used
 ]
 ```
 
@@ -196,7 +196,7 @@ apns_pool = [
     # pool config
     tags: [:another_batch_clients], # optional
     worker_num: 3, # optional
-    raw_opts: [] # optional
+    raw_opts: [] # optional, not used
 ]
 ```
 
@@ -291,10 +291,10 @@ There are also events measuring the duration of a few chosen function calls:
 
 ## Pool statistics
 
-`Sparrow.H2Worker.Pool.stats/0` returns the number of connections of each pool and how many of them are established:
+`Sparrow.Pool.stats/0` returns the number of connections of each pool and how many of them are established:
 
 ```elixir
-Sparrow.H2Worker.Pool.stats()
+Sparrow.Pool.stats()
 # [%{pool: :pool_name, connections: 3, connected: 3}]
 ```
 

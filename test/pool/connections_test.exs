@@ -1,7 +1,7 @@
-defmodule H2ClientAdapter.FinchTest do
+defmodule Sparrow.Pool.ConnectionsTest do
   use ExUnit.Case
 
-  alias Sparrow.H2ClientAdapter.Finch, as: H2Adapter
+  alias Sparrow.Pool.Connections
 
   import Mock
 
@@ -100,7 +100,13 @@ defmodule H2ClientAdapter.FinchTest do
     end
 
     defp request(timeout \\ 1_000) do
-      H2Adapter.request(@conn, "/path", [{"header", "value"}], "body", timeout)
+      Connections.request(
+        @conn,
+        "/path",
+        [{"header", "value"}],
+        "body",
+        timeout
+      )
     end
 
     defp request_failing_with(reason) do
@@ -115,7 +121,7 @@ defmodule H2ClientAdapter.FinchTest do
   describe "connection pool options" do
     setup do
       auth =
-        Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+        Sparrow.Authentication.TokenBased.new(fn ->
           {"authorization", "bearer token"}
         end)
 
@@ -123,31 +129,31 @@ defmodule H2ClientAdapter.FinchTest do
     end
 
     test "ping interval is passed to finch", %{config: config} do
-      config = Sparrow.H2Worker.Config.new(Map.put(config, :ping_interval, 123))
+      config = Sparrow.Pool.Config.new(Map.put(config, :ping_interval, 123))
       assert 123 == default_pool_opts(config)[:http2][:ping_interval]
     end
 
     test "ping is sent every 5 seconds of inactivity by default", %{
       config: config
     } do
-      config = Sparrow.H2Worker.Config.new(config)
+      config = Sparrow.Pool.Config.new(config)
       assert 5_000 == default_pool_opts(config)[:http2][:ping_interval]
     end
 
     test "number of connections is passed to finch", %{config: config} do
-      config = Sparrow.H2Worker.Config.new(Map.put(config, :connections, 7))
+      config = Sparrow.Pool.Config.new(Map.put(config, :connections, 7))
       assert 7 == default_pool_opts(config)[:count]
       assert [:http2] == default_pool_opts(config)[:protocols]
     end
 
     test "ping is switched off with nil interval", %{config: config} do
-      config = Sparrow.H2Worker.Config.new(Map.put(config, :ping_interval, nil))
+      config = Sparrow.Pool.Config.new(Map.put(config, :ping_interval, nil))
       assert :infinity == default_pool_opts(config)[:http2][:ping_interval]
     end
 
     defp default_pool_opts(config) do
       [%{start: {Finch, :start_link, [opts]}} | _] =
-        H2Adapter.child_specs(config)
+        Connections.child_specs(config)
 
       opts[:pools][:default]
     end

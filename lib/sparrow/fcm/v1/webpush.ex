@@ -4,7 +4,7 @@ defmodule Sparrow.FCM.V1.Webpush do
   https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=1#WebpushConfig
   """
 
-  alias Sparrow.H2Worker.Request
+  alias Sparrow.Request
 
   @type headers :: Request.headers()
   @type t :: %__MODULE__{

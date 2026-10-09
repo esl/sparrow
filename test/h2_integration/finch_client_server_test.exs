@@ -3,7 +3,7 @@ defmodule H2Integration.FinchClientServerTest do
   use AssertEventually
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   @body "test body"
 
@@ -53,7 +53,7 @@ defmodule H2Integration.FinchClientServerTest do
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     assert {:ok, {answer_headers, answer_body}} =
-             Sparrow.H2Worker.Pool.send_request(pool_name, request)
+             Sparrow.Pool.send_request(pool_name, request)
 
     assert {":status", "200"} in answer_headers
 
@@ -79,7 +79,7 @@ defmodule H2Integration.FinchClientServerTest do
       )
 
     assert {:ok, {_answer_headers, answer_body}} =
-             Sparrow.H2Worker.Pool.send_request(pool_name, request)
+             Sparrow.Pool.send_request(pool_name, request)
 
     {echoed_headers, []} = Code.eval_string(answer_body)
     assert echoed_headers["authorization"] == "bearer dummy_token"
@@ -97,7 +97,7 @@ defmodule H2Integration.FinchClientServerTest do
       )
 
     assert {:ok, {answer_headers, @body}} =
-             Sparrow.H2Worker.Pool.send_request(pool_name, request)
+             Sparrow.Pool.send_request(pool_name, request)
 
     assert {":status", "200"} in answer_headers
     assert {"content-type", "application/json; charset=UTF-8"} in answer_headers
@@ -115,7 +115,7 @@ defmodule H2Integration.FinchClientServerTest do
       )
 
     assert {:ok, {answer_headers, ""}} =
-             Sparrow.H2Worker.Pool.send_request(pool_name, request)
+             Sparrow.Pool.send_request(pool_name, request)
 
     assert {":status", "200"} in answer_headers
   end
@@ -132,7 +132,7 @@ defmodule H2Integration.FinchClientServerTest do
       )
 
     assert {:ok, {answer_headers, answer_body}} =
-             Sparrow.H2Worker.Pool.send_request(pool_name, request)
+             Sparrow.Pool.send_request(pool_name, request)
 
     assert {":status", "321"} in answer_headers
     assert %{"reason" => "My error reason"} == Jason.decode!(answer_body)
@@ -145,7 +145,7 @@ defmodule H2Integration.FinchClientServerTest do
       OuterRequest.new(Setup.default_headers(), @body, "/TimeoutHandler", 300)
 
     assert {:error, :request_timeout} ==
-             Sparrow.H2Worker.Pool.send_request(pool_name, slow)
+             Sparrow.Pool.send_request(pool_name, slow)
 
     fast =
       OuterRequest.new(
@@ -156,13 +156,13 @@ defmodule H2Integration.FinchClientServerTest do
       )
 
     assert {:ok, {_headers, "Hello"}} =
-             Sparrow.H2Worker.Pool.send_request(pool_name, fast)
+             Sparrow.Pool.send_request(pool_name, fast)
 
     # Late response to the timed out request is dropped
     Process.sleep(2_000)
 
     assert {:ok, {_headers, "Hello"}} =
-             Sparrow.H2Worker.Pool.send_request(pool_name, fast)
+             Sparrow.Pool.send_request(pool_name, fast)
   end
 
   test "concurrent requests on a single connection get their own responses",
@@ -183,7 +183,7 @@ defmodule H2Integration.FinchClientServerTest do
               5_000
             )
 
-          {body, Sparrow.H2Worker.Pool.send_request(pool_name, request)}
+          {body, Sparrow.Pool.send_request(pool_name, request)}
         end,
         max_concurrency: 50
       )
@@ -231,7 +231,7 @@ defmodule H2Integration.FinchClientServerTest do
               5_000
             )
 
-          {body, Sparrow.H2Worker.Pool.send_request(pool_name, request)}
+          {body, Sparrow.Pool.send_request(pool_name, request)}
         end,
         max_concurrency: 200
       )
@@ -248,13 +248,13 @@ defmodule H2Integration.FinchClientServerTest do
     request =
       OuterRequest.new(Setup.default_headers(), @body, "/ConnTestHandler", 300)
 
-    assert {:ok, _} = Sparrow.H2Worker.Pool.send_request(pool_name, request)
+    assert {:ok, _} = Sparrow.Pool.send_request(pool_name, request)
     :ok = :cowboy.stop_listener(context[:cowboys_name])
 
     assert_eventually(
       match?(
         {:error, reason} when reason in [:pool_not_available, :disconnected],
-        Sparrow.H2Worker.Pool.send_request(pool_name, request)
+        Sparrow.Pool.send_request(pool_name, request)
       )
     )
   end
@@ -271,14 +271,14 @@ defmodule H2Integration.FinchClientServerTest do
         2_000
       )
 
-    assert {:ok, _} = Sparrow.H2Worker.Pool.send_request(pool_name, request)
+    assert {:ok, _} = Sparrow.Pool.send_request(pool_name, request)
 
     :ok = :cowboy.stop_listener(context[:cowboys_name])
 
     assert_eventually(
       match?(
         {:error, _},
-        Sparrow.H2Worker.Pool.send_request(pool_name, request)
+        Sparrow.Pool.send_request(pool_name, request)
       )
     )
 
@@ -297,7 +297,7 @@ defmodule H2Integration.FinchClientServerTest do
     assert_eventually(
       match?(
         {:ok, {_, "Hello"}},
-        Sparrow.H2Worker.Pool.send_request(pool_name, request)
+        Sparrow.Pool.send_request(pool_name, request)
       ),
       5_000
     )
@@ -320,7 +320,7 @@ defmodule H2Integration.FinchClientServerTest do
                    2_000
 
     assert %{pool: pool_name, connections: 1, connected: 0} ==
-             Sparrow.H2Worker.Pool.stats(pool_name)
+             Sparrow.Pool.stats(pool_name)
   end
 
   test "pool is connected when server is reachable", context do
@@ -337,7 +337,7 @@ defmodule H2Integration.FinchClientServerTest do
 
     assert_eventually(
       %{pool: pool_name, connections: 3, connected: 3} ==
-        Sparrow.H2Worker.Pool.stats(pool_name)
+        Sparrow.Pool.stats(pool_name)
     )
   end
 
@@ -346,20 +346,18 @@ defmodule H2Integration.FinchClientServerTest do
       OuterRequest.new(Setup.default_headers(), @body, "/ConnTestHandler", 300)
 
     assert {:error, :pool_not_found} ==
-             Sparrow.H2Worker.Pool.send_request(:no_such_pool, request)
+             Sparrow.Pool.send_request(:no_such_pool, request)
 
     assert {:error, :pool_not_found} ==
-             Sparrow.H2Worker.Pool.send_request(:no_such_pool, request, false)
+             Sparrow.Pool.send_request(:no_such_pool, request, false)
 
-    assert nil == Sparrow.H2Worker.Pool.stats(:no_such_pool)
+    assert nil == Sparrow.Pool.stats(:no_such_pool)
   end
 
   test "requests are spread over connections", context do
     pool_name = start_pool(context, :certificate_based, 3)
 
-    assert_eventually(
-      match?(%{connected: 3}, Sparrow.H2Worker.Pool.stats(pool_name))
-    )
+    assert_eventually(match?(%{connected: 3}, Sparrow.Pool.stats(pool_name)))
 
     request =
       OuterRequest.new(
@@ -370,7 +368,7 @@ defmodule H2Integration.FinchClientServerTest do
       )
 
     for _ <- 1..30 do
-      assert {:ok, _} = Sparrow.H2Worker.Pool.send_request(pool_name, request)
+      assert {:ok, _} = Sparrow.Pool.send_request(pool_name, request)
     end
   end
 
@@ -380,7 +378,7 @@ defmodule H2Integration.FinchClientServerTest do
          connections \\ 1
        ) do
     config =
-      Setup.create_h2_worker_config(
+      Setup.create_pool_config(
         Setup.server_host(),
         context[:port],
         authentication
@@ -388,8 +386,11 @@ defmodule H2Integration.FinchClientServerTest do
 
     {:ok, _pid} =
       config
-      |> Sparrow.H2Worker.Pool.Config.new(context[:pool_name], connections)
-      |> Helpers.SetupHelper.start_pool(:fcm, [])
+      |> Helpers.SetupHelper.start_pool(
+        name: context[:pool_name],
+        connections: connections,
+        type: :fcm
+      )
 
     context[:pool_name]
   end

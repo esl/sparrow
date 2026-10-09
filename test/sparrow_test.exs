@@ -318,7 +318,7 @@ defmodule SparrowTest do
       %{config | tls_options: [verify: :verify_none]}
     end
 
-    with_mock(Sparrow.H2ClientAdapter.Finch, [:passthrough],
+    with_mock(Sparrow.Pool.Connections, [:passthrough],
       child_specs: fn config ->
         :meck.passthrough([without_verification.(config)])
       end,

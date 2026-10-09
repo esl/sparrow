@@ -1,4 +1,4 @@
-defmodule H2Worker.RequestTest do
+defmodule Sparrow.RequestTest do
   use ExUnit.Case
   use Quixir
 
@@ -14,8 +14,8 @@ defmodule H2Worker.RequestTest do
           repeat_for: @repeats do
       headers = Enum.zip([headersA, headersB])
 
-      %name{} = Sparrow.H2Worker.Request.new(headers, body, path)
-      assert Sparrow.H2Worker.Request == name
+      %name{} = Sparrow.Request.new(headers, body, path)
+      assert Sparrow.Request == name
     end
   end
 end

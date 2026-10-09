@@ -3,7 +3,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   use AssertEventually
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
@@ -47,7 +47,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
     end)
 
     assert {:error, :connection_lost} ==
-             Sparrow.H2Worker.Pool.send_request(pool, request)
+             Sparrow.Pool.send_request(pool, request)
   end
 
   test "connection is restored after its process was killed", context do
@@ -73,7 +73,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
       )
 
     assert {:ok, {answer_headers, "Hello"}} =
-             Sparrow.H2Worker.Pool.send_request(pool, request)
+             Sparrow.Pool.send_request(pool, request)
 
     assert_response_header(answer_headers, {":status", "200"})
   end
@@ -103,7 +103,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
 
     # With other options TLS handshake fails, as server certificate is not trusted
     assert {:ok, {answer_headers, "Hello"}} =
-             Sparrow.H2Worker.Pool.send_request(pool, request)
+             Sparrow.Pool.send_request(pool, request)
 
     assert_response_header(answer_headers, {":status", "200"})
 
@@ -114,15 +114,15 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   defp start_connected_pool(context) do
     pool =
       Setup.server_host()
-      |> Setup.create_h2_worker_config(context[:port])
+      |> Setup.create_pool_config(context[:port])
       |> Setup.start_pool_with_config()
 
-    eventually(assert %{connected: 1} = Sparrow.H2Worker.Pool.stats(pool))
+    eventually(assert %{connected: 1} = Sparrow.Pool.stats(pool))
     pool
   end
 
   defp pool_data(pool) do
-    :persistent_term.get({Sparrow.H2Worker.Pool, pool})
+    :persistent_term.get({Sparrow.Pool, pool})
   end
 
   defp connection_pid(pool) do

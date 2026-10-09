@@ -1,8 +1,8 @@
-defmodule Sparrow.H2Worker.PoolTest do
+defmodule Sparrow.PoolTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   @pool_name :pool_name
   @body "test body"
@@ -22,12 +22,11 @@ defmodule Sparrow.H2Worker.PoolTest do
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
     port = :ranch.get_port(cowboys_name)
-    config = Setup.create_h2_worker_config(Setup.server_host(), port)
+    config = Setup.create_pool_config(Setup.server_host(), port)
 
     {:ok, _pid} =
       config
-      |> Sparrow.H2Worker.Pool.Config.new(@pool_name, 4)
-      |> Setup.start_pool(:fcm, [])
+      |> Setup.start_pool(name: @pool_name, connections: 4, type: :fcm)
 
     on_exit(fn ->
       case Process.alive?(cowboy_pid) do
@@ -48,7 +47,7 @@ defmodule Sparrow.H2Worker.PoolTest do
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+      Sparrow.Pool.send_request(@pool_name, request)
 
     length_header = {"content-length", Integer.to_string(String.length(@body))}
 
@@ -67,7 +66,7 @@ defmodule Sparrow.H2Worker.PoolTest do
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+      Sparrow.Pool.send_request(@pool_name, request)
 
     length_header = {"content-length", Integer.to_string(String.length(@body))}
 
@@ -83,7 +82,7 @@ defmodule Sparrow.H2Worker.PoolTest do
     request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+      Sparrow.Pool.send_request(@pool_name, request)
 
     assert_response_header(answer_headers, {":status", "200"})
 
@@ -101,15 +100,15 @@ defmodule Sparrow.H2Worker.PoolTest do
 
     request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
 
-    assert :ok == Sparrow.H2Worker.Pool.send_request(@pool_name, request, false)
+    assert :ok == Sparrow.Pool.send_request(@pool_name, request, false)
   end
 
   test "pool reports its connections" do
     assert %{pool: @pool_name, connections: 4} =
-             Sparrow.H2Worker.Pool.stats(@pool_name)
+             Sparrow.Pool.stats(@pool_name)
 
     assert HelperMacros.wait_for(
-             fn -> Sparrow.H2Worker.Pool.stats(@pool_name).connected == 4 end,
+             fn -> Sparrow.Pool.stats(@pool_name).connected == 4 end,
              5_000
            )
   end
@@ -150,7 +149,7 @@ defmodule Sparrow.H2Worker.PoolTest do
     pid = self()
 
     spawn(fn ->
-      send(pid, Sparrow.H2Worker.Pool.send_request(pool_name, request))
+      send(pid, Sparrow.Pool.send_request(pool_name, request))
     end)
   end
 

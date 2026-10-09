@@ -1,14 +1,14 @@
-defmodule Sparrow.H2WorkerTest do
+defmodule Sparrow.Pool.RequestTest do
   use ExUnit.Case
 
   import Mock
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2ClientAdapter.Finch, as: H2Adapter
-  alias Sparrow.H2Worker.Authentication.CertificateBased
-  alias Sparrow.H2Worker.Authentication.TokenBased
-  alias Sparrow.H2Worker.Config
-  alias Sparrow.H2Worker.Request
+  alias Sparrow.Pool.Connections
+  alias Sparrow.Authentication.CertificateBased
+  alias Sparrow.Authentication.TokenBased
+  alias Sparrow.Pool.Config
+  alias Sparrow.Request
 
   @connection_ref :connection_ref
   @headers [{"header", "value"}]
@@ -17,7 +17,7 @@ defmodule Sparrow.H2WorkerTest do
   # The pool is started without real connections
   defmacrop with_request(request_fun, do: block) do
     quote do
-      with_mock H2Adapter, [:passthrough],
+      with_mock Connections, [:passthrough],
         child_specs: fn _config -> [] end,
         open: fn _config -> {:ok, @connection_ref} end,
         request: unquote(request_fun) do
@@ -44,7 +44,7 @@ defmodule Sparrow.H2WorkerTest do
         assert @response == send_request(config, request)
 
         assert called(
-                 H2Adapter.request(
+                 Connections.request(
                    @connection_ref,
                    "/path",
                    @headers,
@@ -128,7 +128,7 @@ defmodule Sparrow.H2WorkerTest do
         send_request(config, request)
 
         assert called(
-                 H2Adapter.request(
+                 Connections.request(
                    @connection_ref,
                    "/path",
                    [{"authorization", "bearer token"} | @headers],
@@ -148,7 +148,7 @@ defmodule Sparrow.H2WorkerTest do
 
       with_request fn _, _, _, _, _ -> @response end do
         assert {:error, {:exit, :no_token}} == send_request(config, request)
-        assert_not_called(H2Adapter.request(:_, :_, :_, :_, :_))
+        assert_not_called(Connections.request(:_, :_, :_, :_, :_))
       end
     end
   end
@@ -210,9 +210,8 @@ defmodule Sparrow.H2WorkerTest do
   defp send_request(config, request) do
     {:ok, _pid} =
       config
-      |> Sparrow.H2Worker.Pool.Config.new(:pool)
-      |> Setup.start_pool(:fcm, [:tag])
+      |> Setup.start_pool(name: :pool, type: :fcm, tags: [:tag])
 
-    Sparrow.H2Worker.Pool.send_request(:pool, request)
+    Sparrow.Pool.send_request(:pool, request)
   end
 end

@@ -161,32 +161,38 @@ defmodule Sparrow.PoolsWardenTest do
 
     pool_1_config =
       Sparrow.APNS.get_token_based_authentication(:token_id)
-      |> Sparrow.APNS.get_h2worker_config_dev()
-      |> Sparrow.H2Worker.Pool.Config.new()
+      |> Sparrow.APNS.get_pool_config_dev()
 
-    pool_1_name = pool_1_config.pool_name
+    pool_1_name = pool_1_config.name
 
     {:ok, _pid} =
-      Sparrow.H2Worker.Pool.start_link(pool_1_config, {:apns, :dev}, [
-        :alpha,
-        :beta,
-        :gamma
-      ])
+      Sparrow.Pool.start_link(%{
+        pool_1_config
+        | type: {:apns, :dev},
+          tags: [
+            :alpha,
+            :beta,
+            :gamma
+          ]
+      })
 
     pool_2_config =
       Sparrow.APNS.get_token_based_authentication(:token_id)
-      |> Sparrow.APNS.get_h2worker_config_dev()
-      |> Sparrow.H2Worker.Pool.Config.new()
+      |> Sparrow.APNS.get_pool_config_dev()
 
-    pool_2_name = pool_2_config.pool_name
+    pool_2_name = pool_2_config.name
 
     {:ok, _pid} =
-      Sparrow.H2Worker.Pool.start_link(pool_2_config, {:apns, :dev}, [
-        :beta,
-        :gamma,
-        :delta,
-        :lambda
-      ])
+      Sparrow.Pool.start_link(%{
+        pool_2_config
+        | type: {:apns, :dev},
+          tags: [
+            :beta,
+            :gamma,
+            :delta,
+            :lambda
+          ]
+      })
 
     assert pool_1_name ==
              Sparrow.PoolsWarden.choose_pool({:apns, :dev}, [:alpha])
@@ -223,32 +229,38 @@ defmodule Sparrow.PoolsWardenTest do
 
     pool_1_config =
       Sparrow.FCM.V1.get_token_based_authentication(:token_id)
-      |> Sparrow.FCM.V1.get_h2worker_config()
-      |> Sparrow.H2Worker.Pool.Config.new()
+      |> Sparrow.FCM.V1.get_pool_config()
 
-    pool_1_name = pool_1_config.pool_name
+    pool_1_name = pool_1_config.name
 
     {:ok, _pid} =
-      Sparrow.H2Worker.Pool.start_link(pool_1_config, :fcm, [
-        :alpha,
-        :beta,
-        :gamma
-      ])
+      Sparrow.Pool.start_link(%{
+        pool_1_config
+        | type: :fcm,
+          tags: [
+            :alpha,
+            :beta,
+            :gamma
+          ]
+      })
 
     pool_2_config =
       Sparrow.FCM.V1.get_token_based_authentication(:token_id)
-      |> Sparrow.FCM.V1.get_h2worker_config()
-      |> Sparrow.H2Worker.Pool.Config.new()
+      |> Sparrow.FCM.V1.get_pool_config()
 
-    pool_2_name = pool_2_config.pool_name
+    pool_2_name = pool_2_config.name
 
     {:ok, _pid} =
-      Sparrow.H2Worker.Pool.start_link(pool_2_config, :fcm, [
-        :beta,
-        :gamma,
-        :delta,
-        :lambda
-      ])
+      Sparrow.Pool.start_link(%{
+        pool_2_config
+        | type: :fcm,
+          tags: [
+            :beta,
+            :gamma,
+            :delta,
+            :lambda
+          ]
+      })
 
     assert pool_1_name ==
              Sparrow.PoolsWarden.choose_pool(:fcm, [:alpha])

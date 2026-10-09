@@ -33,13 +33,15 @@ defmodule Sparrow.APNSTest do
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
     config =
-      Setup.create_h2_worker_config(
+      Setup.create_pool_config(
         @apns_mock_address,
         :ranch.get_port(cowboys_name)
       )
 
-    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Helpers.SetupHelper.start_pool({:apns, :dev}, [])
+    Helpers.SetupHelper.start_pool(config,
+      name: @pool_name,
+      type: {:apns, :dev}
+    )
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)
@@ -49,8 +51,8 @@ defmodule Sparrow.APNSTest do
   end
 
   test "sending request to APNS mock returning success" do
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, r, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, r, _ ->
         headers = [{":status", "200"} | r.headers]
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}
@@ -76,8 +78,8 @@ defmodule Sparrow.APNSTest do
   end
 
   test "sending async request to APNS" do
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, r, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, r, _ ->
         headers = [{":status", "200"} | r.headers]
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}
@@ -116,8 +118,8 @@ defmodule Sparrow.APNSTest do
   end
 
   test "notification json contains sound as dictionary" do
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, r, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, r, _ ->
         headers = [{":status", "200"} | r.headers]
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}
@@ -152,8 +154,8 @@ defmodule Sparrow.APNSTest do
   end
 
   test "notification json contains options aps_dictionary" do
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, r, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, r, _ ->
         headers = [{":status", "200"} | r.headers]
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}
@@ -207,8 +209,8 @@ defmodule Sparrow.APNSTest do
     loc_key = "loc_key value"
     action_loc_key = "my test action loc key"
 
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, r, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, r, _ ->
         headers = [{":status", "200"} | r.headers]
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}
@@ -261,8 +263,8 @@ defmodule Sparrow.APNSTest do
   end
 
   test "notification headers contain added headers" do
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, r, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, r, _ ->
         headers = [{":status", "200"} | r.headers]
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}
@@ -302,8 +304,8 @@ defmodule Sparrow.APNSTest do
   end
 
   test "VoIP notification contains the session ID and required APNS headers" do
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, request, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, request, _ ->
         send(self(), {:request, request})
         {:ok, {[{":status", "200"}], request.body}}
       end do
@@ -343,8 +345,8 @@ defmodule Sparrow.APNSTest do
   end
 
   test "notification custom data" do
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, r, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, r, _ ->
         headers = [{":status", "200"} | r.headers]
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}
@@ -370,8 +372,8 @@ defmodule Sparrow.APNSTest do
   end
 
   test "notification apns example based all levels test" do
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, r, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, r, _ ->
         headers = [{":status", "200"} | r.headers]
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}
@@ -424,7 +426,7 @@ defmodule Sparrow.APNSTest do
 
     auth = Sparrow.APNS.get_token_based_authentication(:token_id)
 
-    config = Sparrow.APNS.get_h2worker_config_prod(auth)
+    config = Sparrow.APNS.get_pool_config_prod(auth)
 
     {header_key, header_value} = auth.token_getter.()
     assert header_key == "authorization"
@@ -433,7 +435,7 @@ defmodule Sparrow.APNSTest do
     assert config.port == 443
     assert config.tls_options == []
     assert config.ping_interval == 5000
-    assert config.reconnect_attempts == 3
+    assert config.type == {:apns, :prod}
     assert config.authentication == auth
   end
 
@@ -449,21 +451,21 @@ defmodule Sparrow.APNSTest do
 
     config =
       auth
-      |> Sparrow.APNS.get_h2worker_config_dev()
+      |> Sparrow.APNS.get_pool_config_dev()
 
     assert config.domain == "api.development.push.apple.com"
     assert config.port == 443
     assert config.tls_options == []
     assert config.ping_interval == 5000
-    assert config.reconnect_attempts == 3
+    assert config.type == {:apns, :dev}
     assert config.authentication == auth
     assert auth.certfile == path_to_cert
     assert auth.keyfile == path_to_key
   end
 
   test "APNS empty alert config" do
-    with_mock Sparrow.H2Worker.Pool,
-      send_request: fn _, r, _, _, _ ->
+    with_mock Sparrow.Pool,
+      send_request: fn _, r, _ ->
         headers = [{":status", "200"} | r.headers]
         send(self(), {:ok, {headers, r.body}})
         {:ok, {headers, r.body}}

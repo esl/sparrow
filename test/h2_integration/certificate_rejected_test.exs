@@ -2,7 +2,7 @@ defmodule H2Integration.CerificateRejectedTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   setup_all do
     {:ok, _cowboy_pid, cowboys_name} =
@@ -26,7 +26,7 @@ defmodule H2Integration.CerificateRejectedTest do
   end
 
   test "cowboy does not accept certificate", context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+    config = Setup.create_pool_config(Setup.server_host(), context[:port])
 
     headers = Setup.default_headers()
     body = "sound of silence, test body"
@@ -36,7 +36,7 @@ defmodule H2Integration.CerificateRejectedTest do
 
     pool = Setup.start_pool_with_config(config)
 
-    assert {:error, reason} = Sparrow.H2Worker.Pool.send_request(pool, request)
+    assert {:error, reason} = Sparrow.Pool.send_request(pool, request)
 
     case reason do
       {:unable_to_connect, {:tls_alert, ~c"bad certificate"}} -> :ok

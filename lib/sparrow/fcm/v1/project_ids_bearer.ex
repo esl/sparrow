@@ -7,23 +7,23 @@ defmodule Sparrow.FCM.V1.ProjectIdBearer do
   @tab_name :fcm_project_ids
 
   @spec get_project_id(atom) :: String.t() | nil
-  def get_project_id(h2_worker_pool) do
-    case :ets.lookup(@tab_name, h2_worker_pool) do
+  def get_project_id(pool) do
+    case :ets.lookup(@tab_name, pool) do
       [{_, project_id}] -> project_id
       _ -> nil
     end
   end
 
   @spec add_project_id(Path.t(), atom) :: true
-  def add_project_id(google_json_path, h2_worker_pool_name) do
+  def add_project_id(google_json_path, pool_name) do
     GenServer.call(
       __MODULE__,
-      {:add_project_id, google_json_path, h2_worker_pool_name}
+      {:add_project_id, google_json_path, pool_name}
     )
   end
 
   def handle_call(
-        {:add_project_id, google_json_path, h2_worker_pool_name},
+        {:add_project_id, google_json_path, pool_name},
         _from,
         _state
       ) do
@@ -48,7 +48,7 @@ defmodule Sparrow.FCM.V1.ProjectIdBearer do
         project_id: inspect(project_id)
       )
 
-    :ets.insert(@tab_name, {h2_worker_pool_name, project_id})
+    :ets.insert(@tab_name, {pool_name, project_id})
     {:reply, :ok, :ok}
   end
 

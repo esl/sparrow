@@ -86,14 +86,13 @@ defmodule Sparrow.FCM.V1Test do
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
     config =
-      Setup.create_h2_worker_config(
+      Setup.create_pool_config(
         @fcm_mock_address,
         :ranch.get_port(cowboys_name),
         :token_based
       )
 
-    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Helpers.SetupHelper.start_pool(:fcm, [])
+    Helpers.SetupHelper.start_pool(config, name: @pool_name, type: :fcm)
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)
@@ -113,8 +112,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "empty notification is built and sent" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -144,8 +143,8 @@ defmodule Sparrow.FCM.V1Test do
       sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
       caller = "romeo@montague.example/orchard"
 
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, request, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, request, _ ->
           send(self(), {:request, request})
           {:ok, {[{":status", "200"}], "{}"}}
         end do
@@ -182,8 +181,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "regular data messages retain normal priority" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, request, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, request, _ ->
           send(self(), {:request, request})
           {:ok, {[{":status", "200"}], "{}"}}
         end do
@@ -215,8 +214,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "invalid notification error is reported" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -229,8 +228,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "invalid android notification error is reported" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body, r.path}})
           {:ok, {headers, r.body}}
@@ -245,8 +244,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "invalid webpush notification is reported" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -261,8 +260,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "android notification is built and sent" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body, r.path}})
           {:ok, {headers, r.body}}
@@ -310,8 +309,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "webpush notification is built and sent" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -351,8 +350,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "apns notification is built and sent" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -399,13 +398,13 @@ defmodule Sparrow.FCM.V1Test do
 
       config =
         auth
-        |> Sparrow.FCM.V1.get_h2worker_config()
+        |> Sparrow.FCM.V1.get_pool_config()
 
       assert config.domain == "fcm.googleapis.com"
       assert config.port == 443
       assert config.tls_options == []
       assert config.ping_interval == 5000
-      assert config.reconnect_attempts == 3
+      assert config.type == :fcm
       assert config.authentication == auth
     end
 
@@ -514,7 +513,7 @@ defmodule Sparrow.FCM.V1Test do
     with_mocks([
       {Sparrow.FCM.V1.TokenBearer, [:passthrough],
        [get_token: fn account -> account end]},
-      {Sparrow.H2ClientAdapter.Finch, [:passthrough],
+      {Sparrow.Pool.Connections, [:passthrough],
        [
          request: fn _, _, _, _, _ -> {:error, 1} end,
          open: fn _ -> {:ok, self()} end

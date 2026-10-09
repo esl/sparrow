@@ -2,7 +2,7 @@ defmodule H2Integration.ClientServerTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   @body "test body"
   @pool_name :name
@@ -32,20 +32,19 @@ defmodule H2Integration.ClientServerTest do
   end
 
   test "cowboy echos headers in body", context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+    config = Setup.create_pool_config(Setup.server_host(), context[:port])
 
     headers = [
       {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
     ]
 
-    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Helpers.SetupHelper.start_pool(:fcm, [])
+    Helpers.SetupHelper.start_pool(config, name: @pool_name, type: :fcm)
 
     request =
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+      Sparrow.Pool.send_request(@pool_name, request)
 
     length_header = {"content-length", Integer.to_string(String.length(@body))}
 
@@ -57,20 +56,19 @@ defmodule H2Integration.ClientServerTest do
 
   test "cowboy echos headers in body, certificate based authentication",
        context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+    config = Setup.create_pool_config(Setup.server_host(), context[:port])
 
     headers = [
       {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
     ]
 
-    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Helpers.SetupHelper.start_pool(:fcm, [])
+    Helpers.SetupHelper.start_pool(config, name: @pool_name, type: :fcm)
 
     request =
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+      Sparrow.Pool.send_request(@pool_name, request)
 
     length_header = {"content-length", Integer.to_string(String.length(@body))}
 
@@ -82,7 +80,7 @@ defmodule H2Integration.ClientServerTest do
 
   test "cowboy echos headers in body, token based authentication", context do
     config =
-      Setup.create_h2_worker_config(
+      Setup.create_pool_config(
         Setup.server_host(),
         context[:port],
         :token_based
@@ -92,14 +90,13 @@ defmodule H2Integration.ClientServerTest do
       {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
     ]
 
-    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Helpers.SetupHelper.start_pool(:fcm, [])
+    Helpers.SetupHelper.start_pool(config, name: @pool_name, type: :fcm)
 
     request =
       OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+      Sparrow.Pool.send_request(@pool_name, request)
 
     length_header = {"content-length", Integer.to_string(String.length(@body))}
     token_auth_header = {"authorization", "bearer dummy_token"}
@@ -111,16 +108,15 @@ defmodule H2Integration.ClientServerTest do
   end
 
   test "cowboy replies Hello", context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+    config = Setup.create_pool_config(Setup.server_host(), context[:port])
     headers = Setup.default_headers()
 
-    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Helpers.SetupHelper.start_pool(:fcm, [])
+    Helpers.SetupHelper.start_pool(config, name: @pool_name, type: :fcm)
 
     request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+      Sparrow.Pool.send_request(@pool_name, request)
 
     assert_response_header(answer_headers, {":status", "200"})
 

@@ -2,7 +2,7 @@ defmodule H2Integration.CerificateRequiredTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
@@ -31,13 +31,13 @@ defmodule H2Integration.CerificateRequiredTest do
   @pool_name :pool
   test "cowboy replies with sent cerificate", context do
     auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         @cert_path,
         @key_path
       )
 
     config =
-      Sparrow.H2Worker.Config.new(%{
+      Sparrow.Pool.Config.new(%{
         domain: Setup.server_host(),
         port: context[:port],
         authentication: auth,
@@ -50,11 +50,10 @@ defmodule H2Integration.CerificateRequiredTest do
     request =
       OuterRequest.new(headers, body, "/EchoClientCerificateHandler", 2_000)
 
-    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Helpers.SetupHelper.start_pool(:fcm, [])
+    Helpers.SetupHelper.start_pool(config, name: @pool_name, type: :fcm)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+      Sparrow.Pool.send_request(@pool_name, request)
 
     {:ok, pem_bin} = File.read(@cert_path)
 
@@ -67,13 +66,13 @@ defmodule H2Integration.CerificateRequiredTest do
 
   test "worker rejects cowboy cerificate", context do
     auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         @cert_path,
         @key_path
       )
 
     config =
-      Sparrow.H2Worker.Config.new(%{
+      Sparrow.Pool.Config.new(%{
         domain: Setup.server_host(),
         port: context[:port],
         authentication: auth,
@@ -100,10 +99,10 @@ defmodule H2Integration.CerificateRequiredTest do
                     %{reason: {:tls_alert, {:bad_certificate, _}}}},
                    2_000
 
-    assert %{connected: 0} = Sparrow.H2Worker.Pool.stats(pool)
+    assert %{connected: 0} = Sparrow.Pool.stats(pool)
 
     assert {:error, :pool_not_available} ==
-             Sparrow.H2Worker.Pool.send_request(pool, request)
+             Sparrow.Pool.send_request(pool, request)
   end
 
   defp assert_response_header(headers, expected_header) do

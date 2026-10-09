@@ -1,6 +1,6 @@
 defmodule Sparrow.PoolsWarden do
   @moduledoc """
-  Module to handle workers pools.
+  Module to handle pools.
   """
 
   use GenServer
@@ -12,7 +12,7 @@ defmodule Sparrow.PoolsWarden do
   @tab_name :sparrow_pools_warden_tab
 
   @doc """
-  Function to "register" new workers pool, allows for `Sparrow.API.push/3` to automatically choose pool.
+  Function to "register" new pool, allows for `Sparrow.API.push/3` to automatically choose pool.
 
   ## Arguments
       * `pid` - PID of pool process. Needed to unregister pool when its process is killed

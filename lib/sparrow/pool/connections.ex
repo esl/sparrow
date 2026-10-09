@@ -1,6 +1,6 @@
-defmodule Sparrow.H2ClientAdapter.Finch do
+defmodule Sparrow.Pool.Connections do
   @moduledoc """
-  Implements the client with Finch.
+  Connections of a `Sparrow.Pool`, implemented with Finch.
 
   Each pool has its own Finch instance, see `child_specs/1`. Its default pool
   configuration is the configuration of the pool, so every Finch pool of the
@@ -11,7 +11,7 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   pings. Requests are spread over the connections evenly.
   """
   alias Finch.Pool.Strategy.RoundRobin
-  alias Sparrow.H2Worker.Config
+  alias Sparrow.Pool.Config
 
   @type connection_ref :: %{
           finch: atom,
@@ -135,8 +135,8 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   Name of the Finch instance used by the pool with given config.
   """
   @spec finch_name(Config.t()) :: atom
-  def finch_name(%Config{pool_name: pool_name}) do
-    Module.concat(Sparrow.Finch, pool_name)
+  def finch_name(%Config{name: name}) do
+    Module.concat(Sparrow.Finch, name)
   end
 
   @doc false

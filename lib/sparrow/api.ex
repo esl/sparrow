@@ -17,12 +17,11 @@ defmodule Sparrow.API do
   ## Arguments
 
     * `notification` - is `Sparrow.APNS.Notification` or `Sparrow.FCM.V1.Notification` struct
-    * `tags` - tags allow to determine which `Sparrow.H2Worker.Pool` is chosen to push notification.
+    * `tags` - tags allow to determine which `Sparrow.Pool` is chosen to push notification.
     Pool type must be the same as notification type (`:fcm` or `{:apns, :dev}` or `{:apns, :prod}`).
     Pool is chosen as first found from collection of pools that have ale tags included.
     * `opts` -
         * `:timeout` - works only if `:is_sync` is `true`, after set `:timeout` miliseconds request is timeouted
-        * `:strategy` - strategy of choosing worker in pool strategy
   """
   @timed event_tags: [:push, :api]
   @spec push(notification, [any], Keyword.t()) ::
@@ -56,11 +55,10 @@ defmodule Sparrow.API do
   ## Arguments
 
       * `notification` - is `Sparrow.APNS.Notification` or `Sparrow.FCM.V1.Notification` struct
-      * `tags` - tags allow to determine which `Sparrow.H2Worker.Pool` is chosen to push notification.
+      * `tags` - tags allow to determine which `Sparrow.Pool` is chosen to push notification.
         Pool type must be the same as notification type (`:fcm` or `{:apns, :dev}` or `{:apns, :prod}`).
         Pool is chosen as first found from collection of pools that have ale tags included.
       * `opts` -
-          * `:strategy` - strategy of choosing worker in pool strategy
   """
   @spec push_async(notification, [any], Keyword.t()) ::
           :ok | {:error, :configuration_error}
