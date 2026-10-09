@@ -2,18 +2,8 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   use ExUnit.Case
   use AssertEventually
 
-  import Mock
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
-
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
-  alias Sparrow.H2Worker.Request, as: OuterRequest
-  alias Sparrow.H2Worker.State
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
+  alias Sparrow.Request, as: OuterRequest
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
@@ -36,72 +26,114 @@ defmodule H2Integration.H2AdapterInstabilityTest do
     {:ok, port: :ranch.get_port(cowboys_name)}
   end
 
-  test "chatterbox process die with custom reason after sending request to cowboy",
+  test "request in progress fails when connection process is killed",
        context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+    pool = start_connected_pool(context)
 
-    headers = Setup.default_headers()
-    body = "sound of silence, test body"
+    request =
+      OuterRequest.new(
+        Setup.default_headers(),
+        "body",
+        "/LostConnHandler",
+        3_000
+      )
 
-    {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
-    eventually(assert :sys.get_state(worker_pid).connection_ref != nil)
-    conn_ref = :sys.get_state(worker_pid).connection_ref
-
-    request = OuterRequest.new(headers, body, "/LostConnHandler", 3_000)
+    connection_pid = connection_pid(pool)
 
     spawn(fn ->
       :timer.sleep(500)
-      Process.exit(conn_ref, :custom_reason)
+      # Finch pool traps exits
+      Process.exit(connection_pid, :kill)
     end)
 
     assert {:error, :connection_lost} ==
-             GenServer.call(worker_pid, {:send_request, request})
+             Sparrow.Pool.send_request(pool, request)
   end
 
-  test "reconnecting works after connection was lost", context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+  test "connection is restored after its process was killed", context do
+    pool = start_connected_pool(context)
+    connection_pid = connection_pid(pool)
 
-    headers = Setup.default_headers()
-    body = "message, test body"
+    # Finch pool traps exits
+    Process.exit(connection_pid, :kill)
 
-    {:ok, worker_pid} = GenServer.start_link(Sparrow.H2Worker, config)
-    eventually(assert :sys.get_state(worker_pid).connection_ref != nil)
-    conn_ref = :sys.get_state(worker_pid).connection_ref
+    eventually(
+      assert match?(
+               new_pid when new_pid != connection_pid,
+               connection_pid(pool)
+             )
+    )
 
-    request = OuterRequest.new(headers, body, "/LostConnHandler", 3_000)
+    request =
+      OuterRequest.new(
+        Setup.default_headers(),
+        "body",
+        "/LostConnHandler",
+        3_000
+      )
 
-    spawn(fn ->
-      :timer.sleep(500)
-      Process.exit(conn_ref, :custom_reason)
-    end)
+    assert {:ok, {answer_headers, "Hello"}} =
+             Sparrow.Pool.send_request(pool, request)
 
-    assert {:error, :connection_lost} ==
-             GenServer.call(worker_pid, {:send_request, request})
+    assert_response_header(answer_headers, {":status", "200"})
+  end
 
-    {:ok, {answer_headers, answer_body}} =
-      GenServer.call(worker_pid, {:send_request, request})
+  test "connection uses the same options after its process was killed many times",
+       context do
+    pool = start_connected_pool(context)
+    {%{finch: finch, pool: finch_pool}, _config} = pool_data(pool)
+
+    # More than the restart limit of the supervisor of the connection
+    for _ <- 1..6 do
+      case connection_pid(pool) do
+        nil -> :ok
+        pid -> Process.exit(pid, :kill)
+      end
+
+      Process.sleep(100)
+    end
+
+    request =
+      OuterRequest.new(
+        Setup.default_headers(),
+        "body",
+        "/LostConnHandler",
+        5_000
+      )
+
+    # With other options TLS handshake fails, as server certificate is not trusted
+    assert {:ok, {answer_headers, "Hello"}} =
+             Sparrow.Pool.send_request(pool, request)
 
     assert_response_header(answer_headers, {":status", "200"})
 
-    assert_response_header(
-      answer_headers,
-      {"content-type", "text/plain; charset=utf-8"}
-    )
-
-    assert_response_header(answer_headers, {"content-length", "5"})
-    assert answer_body == "Hello"
+    assert {_pid, _name, Finch.HTTP2.Pool, 1, _config} =
+             Finch.Pool.Manager.get_pool_supervisor(finch, finch_pool)
   end
 
-  test "connecting fails works after connection was lost", context do
-    with_mock H2Adapter,
-      open: fn _, _, _ -> {:error, :my_custom_reason} end do
-      config =
-        Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+  defp start_connected_pool(context) do
+    pool =
+      Setup.server_host()
+      |> Setup.create_pool_config(context[:port])
+      |> Setup.start_pool_with_config()
 
-      worker_pid = start_supervised!(Setup.h2_worker_spec(config))
+    eventually(assert %{connected: 1} = Sparrow.Pool.stats(pool))
+    pool
+  end
 
-      %State{connection_ref: connection} = :sys.get_state(worker_pid)
-      assert nil == connection
+  defp pool_data(pool) do
+    [{_owner, {connection_ref, config, _order}}] =
+      Registry.lookup(Sparrow.Pool.Registry, pool)
+
+    {connection_ref, config}
+  end
+
+  defp connection_pid(pool) do
+    {%{finch: finch, pool: finch_pool}, _config} = pool_data(pool)
+
+    case Finch.find_pool(finch, finch_pool) do
+      {:ok, pid} -> pid
+      :error -> nil
     end
   end
 

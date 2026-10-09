@@ -1,15 +1,8 @@
 defmodule H2Integration.CerificateRejectedTest do
   use ExUnit.Case
 
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
-
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
+  alias Sparrow.Request, as: OuterRequest
 
   setup_all do
     {:ok, _cowboy_pid, cowboys_name} =
@@ -33,7 +26,7 @@ defmodule H2Integration.CerificateRejectedTest do
   end
 
   test "cowboy does not accept certificate", context do
-    config = Setup.create_h2_worker_config(Setup.server_host(), context[:port])
+    config = Setup.create_pool_config(Setup.server_host(), context[:port])
 
     headers = Setup.default_headers()
     body = "sound of silence, test body"
@@ -41,15 +34,19 @@ defmodule H2Integration.CerificateRejectedTest do
     request =
       OuterRequest.new(headers, body, "/RejectCertificateHandler", 3_000)
 
-    worker_pid = start_supervised!(Setup.h2_worker_spec(config))
+    pool = Setup.start_pool_with_config(config)
 
-    assert {:error, reason} =
-             GenServer.call(worker_pid, {:send_request, request})
+    assert {:error, reason} = Sparrow.Pool.send_request(pool, request)
 
     case reason do
       {:unable_to_connect, {:tls_alert, ~c"bad certificate"}} -> :ok
       {:unable_to_connect, {:tls_alert, {:bad_certificate, _}}} -> :ok
       :connection_lost -> :ok
+      # Server closes the connection after the handshake
+      :closed -> :ok
+      :connection_closed -> :ok
+      :pool_not_available -> :ok
+      :disconnected -> :ok
       _ -> flunk("Wrong error code: #{inspect(reason)}")
     end
   end

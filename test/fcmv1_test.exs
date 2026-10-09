@@ -2,9 +2,6 @@ defmodule Sparrow.FCM.V1Test do
   use ExUnit.Case
 
   import Mock
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.FCM.V1.Notification
@@ -74,9 +71,6 @@ defmodule Sparrow.FCM.V1Test do
   @project_id "sparrow-test-id"
   @path_to_fake_fcm_json "sparrow_token.json"
 
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
-
   setup do
     {:ok, _cowboy_pid, cowboys_name} =
       [
@@ -92,14 +86,13 @@ defmodule Sparrow.FCM.V1Test do
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
     config =
-      Setup.create_h2_worker_config(
+      Setup.create_pool_config(
         @fcm_mock_address,
         :ranch.get_port(cowboys_name),
         :token_based
       )
 
-    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
+    Helpers.SetupHelper.start_pool(config, name: @pool_name, type: :fcm)
 
     on_exit(fn ->
       :cowboy.stop_listener(cowboys_name)
@@ -119,8 +112,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "empty notification is built and sent" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -150,8 +143,8 @@ defmodule Sparrow.FCM.V1Test do
       sid = "ca3cf894-5325-482f-a412-a6e9f832298d"
       caller = "romeo@montague.example/orchard"
 
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, request, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, request, _ ->
           send(self(), {:request, request})
           {:ok, {[{":status", "200"}], "{}"}}
         end do
@@ -188,8 +181,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "regular data messages retain normal priority" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, request, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, request, _ ->
           send(self(), {:request, request})
           {:ok, {[{":status", "200"}], "{}"}}
         end do
@@ -221,8 +214,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "invalid notification error is reported" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -235,8 +228,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "invalid android notification error is reported" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body, r.path}})
           {:ok, {headers, r.body}}
@@ -251,8 +244,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "invalid webpush notification is reported" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -267,8 +260,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "android notification is built and sent" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body, r.path}})
           {:ok, {headers, r.body}}
@@ -316,8 +309,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "webpush notification is built and sent" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -357,8 +350,8 @@ defmodule Sparrow.FCM.V1Test do
     end
 
     test "apns notification is built and sent" do
-      with_mock Sparrow.H2Worker.Pool,
-        send_request: fn _, r, _, _, _ ->
+      with_mock Sparrow.Pool,
+        send_request: fn _, r, _ ->
           headers = [{":status", "200"} | r.headers]
           send(self(), {:ok, {headers, r.body}})
           {:ok, {headers, r.body}}
@@ -405,13 +398,13 @@ defmodule Sparrow.FCM.V1Test do
 
       config =
         auth
-        |> Sparrow.FCM.V1.get_h2worker_config()
+        |> Sparrow.FCM.V1.get_pool_config()
 
       assert config.domain == "fcm.googleapis.com"
       assert config.port == 443
       assert config.tls_options == []
       assert config.ping_interval == 5000
-      assert config.reconnect_attempts == 3
+      assert config.type == :fcm
       assert config.authentication == auth
     end
 
@@ -520,10 +513,10 @@ defmodule Sparrow.FCM.V1Test do
     with_mocks([
       {Sparrow.FCM.V1.TokenBearer, [:passthrough],
        [get_token: fn account -> account end]},
-      {Sparrow.H2ClientAdapter.Chatterbox, [:passthrough],
+      {Sparrow.Pool.Connections, [:passthrough],
        [
-         post: fn _, _, _, _, _ -> {:error, 1} end,
-         open: fn _, _, _ -> {:ok, self()} end
+         request: fn _, _, _, _, _ -> {:error, 1} end,
+         open: fn _ -> {:ok, self()} end
        ]}
     ]) do
       fcm = [
@@ -543,7 +536,6 @@ defmodule Sparrow.FCM.V1Test do
 
       Application.stop(:sparrow)
       Application.put_env(:sparrow, :fcm, fcm)
-      {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
       :ok = Application.start(:sparrow)
 
       account1 =
@@ -560,8 +552,8 @@ defmodule Sparrow.FCM.V1Test do
 
       notification = test_notification()
 
-      pool_1 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag1])
-      pool_2 = Sparrow.PoolsWarden.choose_pool(:fcm, [:tag2])
+      pool_1 = Sparrow.Pool.choose(:fcm, [:tag1])
+      pool_2 = Sparrow.Pool.choose(:fcm, [:tag2])
 
       Sparrow.FCM.V1.push(pool_1, notification)
 

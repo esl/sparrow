@@ -2,18 +2,10 @@ defmodule H2Integration.CerificateRequiredTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
-  alias Sparrow.APNS.Notification
+  alias Sparrow.Request, as: OuterRequest
 
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
-
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
 
   setup do
     {:ok, _cowboy_pid, cowboys_name} =
@@ -39,13 +31,13 @@ defmodule H2Integration.CerificateRequiredTest do
   @pool_name :pool
   test "cowboy replies with sent cerificate", context do
     auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         @cert_path,
         @key_path
       )
 
     config =
-      Sparrow.H2Worker.Config.new(%{
+      Sparrow.Pool.Config.new(%{
         domain: Setup.server_host(),
         port: context[:port],
         authentication: auth,
@@ -58,11 +50,10 @@ defmodule H2Integration.CerificateRequiredTest do
     request =
       OuterRequest.new(headers, body, "/EchoClientCerificateHandler", 2_000)
 
-    Sparrow.H2Worker.Pool.Config.new(config, @pool_name)
-    |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
+    Helpers.SetupHelper.start_pool(config, name: @pool_name, type: :fcm)
 
     {:ok, {answer_headers, answer_body}} =
-      Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+      Sparrow.Pool.send_request(@pool_name, request)
 
     {:ok, pem_bin} = File.read(@cert_path)
 
@@ -75,13 +66,13 @@ defmodule H2Integration.CerificateRequiredTest do
 
   test "worker rejects cowboy cerificate", context do
     auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         @cert_path,
         @key_path
       )
 
     config =
-      Sparrow.H2Worker.Config.new(%{
+      Sparrow.Pool.Config.new(%{
         domain: Setup.server_host(),
         port: context[:port],
         authentication: auth,
@@ -91,27 +82,27 @@ defmodule H2Integration.CerificateRequiredTest do
         ping_interval: 10_000
       })
 
-    notification =
-      "OkResponseHandler"
-      |> Notification.new(:dev)
-      |> Notification.add_title("")
-      |> Notification.add_body("")
+    request =
+      OuterRequest.new(
+        Setup.default_headers(),
+        "body",
+        "/OkResponseHandler",
+        500
+      )
 
-    worker_pid = start_supervised!(Setup.h2_worker_spec(config))
+    Setup.forward_telemetry([:sparrow, :h2_worker, :conn_fail])
+    pool = Setup.start_pool_with_config(config)
 
-    assert {:error, {:unable_to_connect, reason}} =
-             GenServer.call(worker_pid, {:send_request, notification})
+    # No CA certificates are given, so the default ones are used and the
+    # self-signed certificate of the server is not trusted
+    assert_receive {[:sparrow, :h2_worker, :conn_fail], _measurements,
+                    %{reason: {:tls_alert, {:bad_certificate, _}}}},
+                   2_000
 
-    assert Enum.member?(
-             [
-               # OTP 25 and below
-               {:options, {:cacertfile, []}},
-               # OTP 26+
-               {:options, :incompatible,
-                [verify: :verify_peer, cacerts: :undefined]}
-             ],
-             reason
-           )
+    assert %{connected: 0} = Sparrow.Pool.stats(pool)
+
+    assert {:error, :pool_not_available} ==
+             Sparrow.Pool.send_request(pool, request)
   end
 
   defp assert_response_header(headers, expected_header) do

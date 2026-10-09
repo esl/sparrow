@@ -2,9 +2,6 @@ defmodule SparrowTest do
   use ExUnit.Case, async: false
 
   import Mock
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
 
@@ -12,9 +9,6 @@ defmodule SparrowTest do
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
   @project_id "sparrow-test-id"
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
@@ -31,11 +25,9 @@ defmodule SparrowTest do
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
     on_exit(fn ->
-      Application.stop(:sparrow)
+      TestHelper.restore_app_env()
       :cowboy.stop_listener(cowboys_name)
     end)
-
-    {:ok, _pid} = start_supervised(Sparrow.PoolsWarden)
 
     {:ok, port: :ranch.get_port(cowboys_name), cowboy_pid: cowboy_pid}
   end
@@ -313,19 +305,23 @@ defmodule SparrowTest do
   end
 
   test "Sparrow checks TLS certificates by default", context do
-    with_mock(Sparrow.H2ClientAdapter.Chatterbox, [:passthrough],
-      open: fn domain, port, options ->
-        assert :verify_peer == options[:verify]
-        assert nil != options[:depth]
-        assert nil != options[:cacerts]
+    # Cowboy uses a self-signed certificate, so the options are only checked
+    without_verification = fn config ->
+      options = config.tls_options
 
-        no_cert_options =
-          options
-          |> List.keydelete(:verify, 0)
-          |> List.keydelete(:depth, 0)
-          |> List.keydelete(:cacerts, 0)
+      assert :verify_peer == options[:verify]
+      assert nil != options[:depth]
+      assert nil != options[:cacerts]
 
-        :meck.passthrough([domain, port, no_cert_options])
+      %{config | tls_options: [verify: :verify_none]}
+    end
+
+    with_mock(Sparrow.Pool.Connections, [:passthrough],
+      child_specs: fn config ->
+        :meck.passthrough([without_verification.(config)])
+      end,
+      open: fn config ->
+        :meck.passthrough([without_verification.(config)])
       end
     ) do
       apns = [

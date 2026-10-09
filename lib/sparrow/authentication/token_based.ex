@@ -1,7 +1,7 @@
-defmodule Sparrow.H2Worker.Authentication.TokenBased do
+defmodule Sparrow.Authentication.TokenBased do
   @moduledoc """
   Structure for token based authentication.
-  Use to create Config for H2Worker.
+  Use to create `Sparrow.Pool.Config`.
   token_getter is a function returning tuple representing authentication header.
 
   ## Example 1

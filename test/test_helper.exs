@@ -1,4 +1,4 @@
-ExUnit.start(capture_log: true)
+ExUnit.start(capture_log: true, exclude: [:bench])
 
 defmodule TestHelper do
   def restore_app_env() do

@@ -120,14 +120,14 @@ config :sparrow,
 - `:endpoint` - service uri
 - `:port` - service port
 - `:tls_opts` - passed to erlang [ssl](http://erlang.org/doc/man/ssl.html) module (see DATA TYPES -> ssl_option())
-- `:ping_interval` - number of miliseconds between each [ping](https://http2.github.io/http2-spec/#PING), to switch ping off set `:ping_interval` to `nil`
-- `:reconnect_attempts` - number of attempts to reconnect before failing the connection
+- `:ping_interval` - number of miliseconds of connection inactivity after which a [ping](https://http2.github.io/http2-spec/#PING) is sent, to switch ping off set `:ping_interval` to `nil`
+- `:reconnect_attempts` - not used, lost connections are reestablished automatically
 
 ### Connection pool config
 - `:pool_name` - defines pool name, not recommended - please use [tags](#tags) instead 
 - `:tags` - see the [tags](#tags) section
-- `:worker_num` - number of workers in a pool
-- `:raw_opts` - opts passed directly to [wpool](github.com/inaka/worker_pool)
+- `:worker_num` - number of connections in a pool
+- `:raw_opts` - not used
 
 ### FCM config example
 ```elixir
@@ -141,11 +141,11 @@ fcm_config =
             port: 443, # optional
             tls_opts: [], # optional
             ping_interval: 5000, # optional
-            reconnect_attempts: 3, # optional
+            reconnect_attempts: 3, # optional, not used
             # Pool config 
             tags: [], # optional
             worker_num: 3, # optional
-            raw_opts: [] # optional, options passed directly to wpool
+            raw_opts: [] # optional, not used
         ]
     ]
 ```
@@ -171,11 +171,11 @@ apns_pool = [
     port: 443, # optional
     tls_opts: [], # optional
     ping_interval: 5000, # optional
-    reconnect_attempts: 3, # optional
+    reconnect_attempts: 3, # optional, not used
     # pool config
     tags: [:first_batch_clients, :beta_users], # optional
     worker_num: 3, # optional
-    raw_opts: [], # optional
+    raw_opts: [], # optional, not used
 ]
 ```
 
@@ -192,11 +192,11 @@ apns_pool = [
     port: 443, # optional
     tls_opts: [], # optional
     ping_interval: 5000, # optional
-    reconnect_attempts: 3, # optional
+    reconnect_attempts: 3, # optional, not used
     # pool config
     tags: [:another_batch_clients], # optional
     worker_num: 3, # optional
-    raw_opts: [] # optional
+    raw_opts: [] # optional, not used
 ]
 ```
 
@@ -272,18 +272,11 @@ If you pass `[:not_existing, :set_of_tags]`, `{:error, :configuration_error}` is
 ## Telemetry
 Sparrow supports [telemetry](https://github.com/beam-telemetry/telemetry). Emitted events are defined with following tags:
 
-- `[:sparrow, :h2_worker, :init]`
-- `[:sparrow, :h2_worker, :terminate]`
-- `[:sparrow, :h2_worker, :conn_lost]`
 - `[:sparrow, :h2_worker, :request_error]`
 - `[:sparrow, :h2_worker, :request_success]`
 - `[:sparrow, :h2_worker, :conn_success]`
 - `[:sparrow, :h2_worker, :conn_fail]`
-- `[:sparrow, :pools_warden, :init]`
-- `[:sparrow, :pools_warden, :terminate]`
 - `[:sparrow, :pools_warden, :choose_pool]`
-- `[:sparrow, :pools_warden, :pool_down]`
-- `[:sparrow, :pools_warden, :add_pool]`
 
 There are also events measuring the duration of a few chosen function calls:
 
@@ -291,6 +284,15 @@ There are also events measuring the duration of a few chosen function calls:
 - `[:sparrow, :push, :apns]`
 - `[:sparrow, :push, :fcm]`
 - `[:sparrow, :h2_worker, :handle]`
+
+## Pool statistics
+
+`Sparrow.Pool.stats/0` returns the number of connections of each pool and how many of them are established:
+
+```elixir
+Sparrow.Pool.stats()
+# [%{pool: :pool_name, connections: 3, connected: 3}]
+```
 
 # Send your first push notification
 

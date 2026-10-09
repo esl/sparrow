@@ -20,7 +20,7 @@ defmodule Sparrow.APNS.Notification do
         |> add_apns_topic("apns topic of some kind")
     ...
   """
-  alias Sparrow.H2Worker.Request
+  alias Sparrow.Request
 
   @type notification_mode :: :dev | :prod
   @type json_array :: [any]

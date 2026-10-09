@@ -5,7 +5,7 @@ defmodule Sparrow.FCM.V1 do
   use Sparrow.Telemetry.Timer
   require Logger
 
-  alias Sparrow.H2Worker.Request
+  alias Sparrow.Request
   alias Sparrow.Util
 
   @type reason :: atom
@@ -15,9 +15,9 @@ defmodule Sparrow.FCM.V1 do
   @type android :: Sparrow.FCM.V1.Notification.android()
   @type webpush :: Sparrow.FCM.V1.Notification.webpush()
   @type apns :: Sparrow.FCM.V1.Notification.apns()
-  @type authentication :: Sparrow.H2Worker.Config.authentication()
-  @type tls_options :: Sparrow.H2Worker.Config.tls_options()
-  @type time_in_miliseconds :: Sparrow.H2Worker.Config.time_in_miliseconds()
+  @type authentication :: Sparrow.Pool.Config.authentication()
+  @type tls_options :: Sparrow.Pool.Config.tls_options()
+  @type time_in_miliseconds :: Sparrow.Pool.Config.time_in_miliseconds()
   @type http_status :: non_neg_integer
   @type sync_push_result ::
           {:error, :connection_lost}
@@ -32,11 +32,10 @@ defmodule Sparrow.FCM.V1 do
 
   ## Options
 
-  * `:is_sync` - Determines whether the worker should wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
+  * `:is_sync` - Determines whether to wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
       * `:ok` when the response is received.
       * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
       * `{:error, :connection_lost}` when the connection to FCM is lost before the response arrives.
-      * `{:error, :not_ready}` when stream response is not yet ready, but it h2worker tries to get it.
       * `{:error, :invalid_notification}` when data values cannot be normalized.
       * `{:error, :reason}` when error with other reason occures.
     * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
@@ -47,34 +46,33 @@ defmodule Sparrow.FCM.V1 do
           Sparrow.FCM.V1.Notification.t(),
           push_opts
         ) :: sync_push_result | :ok
-  def push(h2_worker_pool, notification, opts) do
+  def push(pool, notification, opts) do
     case Sparrow.FCM.V1.Notification.normalize(notification) do
       {:error, reason} ->
         {:error, reason}
 
       {:ok, notification} ->
-        do_push(h2_worker_pool, notification, opts)
+        do_push(pool, notification, opts)
     end
   end
 
-  def push(h2_worker_pool, notification),
-    do: push(h2_worker_pool, notification, [])
+  def push(pool, notification),
+    do: push(pool, notification, [])
 
   @spec do_push(
           atom,
           Sparrow.FCM.V1.Notification.t(),
           push_opts
         ) :: sync_push_result | :ok
-  def do_push(h2_worker_pool, notification, opts) do
+  def do_push(pool, notification, opts) do
     # Prep FCM's ProjectId
-    project_id = Sparrow.FCM.V1.ProjectIdBearer.get_project_id(h2_worker_pool)
+    project_id = Sparrow.FCM.V1.ProjectIdBearer.get_project_id(pool)
 
     notification =
       Sparrow.FCM.V1.Notification.add_project_id(notification, project_id)
 
     is_sync = Keyword.get(opts, :is_sync, true)
     timeout = Keyword.get(opts, :timeout, 5_000)
-    strategy = Keyword.get(opts, :strategy, :random_worker)
     headers = notification.headers
     json_body = notification |> make_body() |> Jason.encode!()
     path = path(notification.project_id)
@@ -86,13 +84,8 @@ defmodule Sparrow.FCM.V1 do
         request: request
       )
 
-    h2_worker_pool
-    |> Sparrow.H2Worker.Pool.send_request(
-      request,
-      is_sync,
-      timeout,
-      strategy
-    )
+    pool
+    |> Sparrow.Pool.send_request(request, is_sync)
     |> process_response()
   end
 
@@ -154,56 +147,66 @@ defmodule Sparrow.FCM.V1 do
   def process_response({:error, reason}), do: {:error, reason}
 
   @doc """
-  Function providing `Sparrow.H2Worker.Authentication.TokenBased` for FCM pools.
+  Function providing `Sparrow.Authentication.TokenBased` for FCM pools.
   Requres `Sparrow.FCM.TokenBearer` to be started.
   """
   @spec get_token_based_authentication(String.t()) ::
-          Sparrow.H2Worker.Authentication.TokenBased.t()
+          Sparrow.Authentication.TokenBased.t()
   def get_token_based_authentication(account) do
     getter = fn ->
       {"authorization",
        "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token(account)}"}
     end
 
-    Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+    Sparrow.Authentication.TokenBased.new(getter)
   end
 
   @doc """
-  Function providing `Sparrow.H2Worker.Config` for FCM pools.
+  Function providing `Sparrow.Pool.Config` for FCM pools.
 
   ## Example
 
   # Token based authentication:
     config =
       Sparrow.FCM.V1.get_token_based_authentication()
-      |> Sparrow.FCM.V1.get_h2worker_config()
+      |> Sparrow.FCM.V1.get_pool_config()
 
   """
-  @spec get_h2worker_config(
+  @spec get_pool_config(
           authentication,
           String.t(),
           pos_integer,
           tls_options,
-          time_in_miliseconds,
-          pos_integer
-        ) :: Sparrow.H2Worker.Config.t()
+          time_in_miliseconds
+        ) :: Sparrow.Pool.Config.t()
+  def get_pool_config(
+        authentication,
+        uri \\ "fcm.googleapis.com",
+        port \\ 443,
+        tls_opts \\ [],
+        ping_interval \\ 5000
+      ) do
+    Sparrow.Pool.Config.new(%{
+      type: :fcm,
+      domain: uri,
+      port: port,
+      authentication: authentication,
+      tls_options: tls_opts,
+      ping_interval: ping_interval
+    })
+  end
+
+  @doc false
+  @deprecated "Use Sparrow.FCM.V1.get_pool_config/5 instead"
   def get_h2worker_config(
         authentication,
         uri \\ "fcm.googleapis.com",
         port \\ 443,
         tls_opts \\ [],
         ping_interval \\ 5000,
-        reconnect_attempts \\ 3
+        _reconnect_attempts \\ 3
       ) do
-    Sparrow.H2Worker.Config.new(%{
-      domain: uri,
-      port: port,
-      authentication: authentication,
-      tls_options: tls_opts,
-      ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts,
-      pool_type: :fcm
-    })
+    get_pool_config(authentication, uri, port, tls_opts, ping_interval)
   end
 
   @spec make_body(Sparrow.FCM.V1.Notification.t()) :: map

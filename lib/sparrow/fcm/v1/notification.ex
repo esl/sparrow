@@ -6,7 +6,7 @@ defmodule Sparrow.FCM.V1.Notification do
     * https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages
   """
 
-  alias Sparrow.H2Worker.Request
+  alias Sparrow.Request
 
   @type target_type :: :token | :topic | :condition
   @type android :: nil | Sparrow.FCM.V1.Android.t()

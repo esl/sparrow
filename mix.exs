@@ -26,20 +26,18 @@ defmodule Sparrow.MixProject do
     [
       {:dialyxir, "~> 1.4", runtime: false, only: [:dev, :test]},
       {:credo, "~> 1.7", runtime: false, only: [:dev, :test]},
-      {:chatterbox, github: "joedevivo/chatterbox", ref: "c0506c7"},
+      {:finch, "~> 0.23"},
       {:certifi, "~> 2.12"},
       {:excoveralls, "~> 0.18", runtime: false, only: :test},
       {:quixir, "~> 0.9", only: :test},
       {:uuid, "~> 1.1"},
       {:jason, "~> 1.4"},
       {:joken, "~> 2.6"},
-      {:mox, "~> 1.1", only: :test},
       {:mock, "~> 0.3", only: :test},
       {:meck, "~> 1.2", only: :test, override: true},
       {:cowboy, "~> 2.11", only: :test},
       {:plug, "~> 1.15", only: :test},
       {:goth, "~> 1.4"},
-      {:worker_pool, "~> 7.0"},
       {:assert_eventually, "~> 1.0", only: [:test]},
       {:telemetry, "~> 1.2"}
     ]
@@ -53,7 +51,7 @@ defmodule Sparrow.MixProject do
         :error_handling,
         :underspecs
       ],
-      plt_add_apps: [:mix, :goth]
+      plt_add_apps: [:mix, :goth, :ex_unit]
     ]
   end
 

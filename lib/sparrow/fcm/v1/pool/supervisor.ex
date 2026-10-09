@@ -1,6 +1,6 @@
 defmodule Sparrow.FCM.V1.Pool.Supervisor do
   @moduledoc """
-  Supervises a single FCM workers pool.
+  Supervises FCM pools.
   """
   use Supervisor
 
@@ -20,45 +20,25 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
         {single_config[:path_to_json], get_fcm_pool_config(single_config)}
       end)
 
-    for {path_to_json, {pool_config, _pool_tags}} <- pool_configs do
+    for {path_to_json, pool_config} <- pool_configs do
       Sparrow.FCM.V1.ProjectIdBearer.add_project_id(
         path_to_json,
-        pool_config.pool_name
+        pool_config.name
       )
     end
 
     children =
-      for {{_json, {pool_config, pool_tags}}, index} <-
-            Enum.with_index(pool_configs) do
+      for {{_json, pool_config}, index} <- Enum.with_index(pool_configs) do
         id = String.to_atom("Sparrow.Fcm.Pool.ID.#{index}")
 
-        %{
-          id: id,
-          start:
-            {Sparrow.H2Worker.Pool, :start_link, [pool_config, :fcm, pool_tags]}
-        }
+        %{id: id, start: {Sparrow.Pool, :start_link, [pool_config]}}
       end
 
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  @spec get_fcm_pool_config(Keyword.t()) ::
-          {Sparrow.H2Worker.Pool.Config.t(), [atom]}
+  @spec get_fcm_pool_config(Keyword.t()) :: Sparrow.Pool.Config.t()
   defp get_fcm_pool_config(raw_pool_config) do
-    uri = Keyword.get(raw_pool_config, :endpoint, @fcm_default_endpoint)
-    port = Keyword.get(raw_pool_config, :port, 443)
-
-    tls_opts =
-      Keyword.get(raw_pool_config, :tls_opts, setup_default_tls_options())
-
-    ping_interval = Keyword.get(raw_pool_config, :ping_interval, 5000)
-    reconnection_attempts = Keyword.get(raw_pool_config, :reconnect_attempts, 3)
-
-    pool_tags = Keyword.get(raw_pool_config, :tags, [])
-    pool_name = Keyword.get(raw_pool_config, :pool_name)
-    pool_size = Keyword.get(raw_pool_config, :worker_num, 3)
-    pool_opts = Keyword.get(raw_pool_config, :raw_opts, [])
-
     account =
       raw_pool_config
       |> Keyword.get(:path_to_json)
@@ -66,19 +46,18 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
       |> Jason.decode!()
       |> Map.fetch!(@account_key)
 
-    config =
-      account
-      |> Sparrow.FCM.V1.get_token_based_authentication()
-      |> Sparrow.FCM.V1.get_h2worker_config(
-        uri,
-        port,
-        tls_opts,
-        ping_interval,
-        reconnection_attempts
-      )
-      |> Sparrow.H2Worker.Pool.Config.new(pool_name, pool_size, pool_opts)
-
-    {config, pool_tags}
+    Sparrow.Pool.Config.new(%{
+      name: Keyword.get(raw_pool_config, :pool_name),
+      type: :fcm,
+      tags: Keyword.get(raw_pool_config, :tags, []),
+      domain: Keyword.get(raw_pool_config, :endpoint, @fcm_default_endpoint),
+      port: Keyword.get(raw_pool_config, :port, 443),
+      authentication: Sparrow.FCM.V1.get_token_based_authentication(account),
+      tls_options:
+        Keyword.get(raw_pool_config, :tls_opts, setup_default_tls_options()),
+      connections: Keyword.get(raw_pool_config, :worker_num, 3),
+      ping_interval: Keyword.get(raw_pool_config, :ping_interval, 5000)
+    })
   end
 
   defp setup_default_tls_options do
