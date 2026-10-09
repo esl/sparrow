@@ -22,8 +22,6 @@ defmodule Sparrow.H2Worker.Pool do
 
   alias Sparrow.H2ClientAdapter
 
-  require Logger
-
   @doc """
   Sends the request and, if `is_sync` is `true`, awaits the response.
 

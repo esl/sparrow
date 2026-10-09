@@ -15,8 +15,6 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   alias Finch.Pool.Strategy.RoundRobin
   alias Sparrow.H2Worker.Config
 
-  require Logger
-
   # Errors reported before the request is sent to the server: the connection
   # is being (re)established, closed by the server, or has no free streams.
   @not_sent_errors [
