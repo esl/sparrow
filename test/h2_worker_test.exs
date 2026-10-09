@@ -2,9 +2,6 @@ defmodule Sparrow.H2WorkerTest do
   use ExUnit.Case
 
   import Mock
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2ClientAdapter.Finch, as: H2Adapter
@@ -13,16 +10,17 @@ defmodule Sparrow.H2WorkerTest do
   alias Sparrow.H2Worker.Config
   alias Sparrow.H2Worker.Request
 
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
-
   @connection_ref :connection_ref
   @headers [{"header", "value"}]
   @response {:ok, {[{":status", "200"}], "response body"}}
 
+  # The pool is started without real connections
   defmacrop with_request(request_fun, do: block) do
     quote do
-      with_mock H2Adapter, [:passthrough], request: unquote(request_fun) do
+      with_mock H2Adapter, [:passthrough],
+        child_specs: fn _config -> [] end,
+        open: fn _config -> {:ok, @connection_ref} end,
+        request: unquote(request_fun) do
         unquote(block)
       end
     end
@@ -33,10 +31,7 @@ defmodule Sparrow.H2WorkerTest do
       Config.new(%{
         domain: "domain",
         port: 443,
-        authentication: CertificateBased.new("cert.pem", "key.pem"),
-        pool_name: :pool,
-        pool_type: :fcm,
-        pool_tags: [:tag]
+        authentication: CertificateBased.new("cert.pem", "key.pem")
       })
 
     {:ok,
@@ -213,6 +208,11 @@ defmodule Sparrow.H2WorkerTest do
   end
 
   defp send_request(config, request) do
-    Sparrow.H2Worker.send_request(@connection_ref, config, request)
+    {:ok, _pid} =
+      config
+      |> Sparrow.H2Worker.Pool.Config.new(:pool)
+      |> Setup.start_pool(:fcm, [:tag])
+
+    Sparrow.H2Worker.Pool.send_request(:pool, request)
   end
 end

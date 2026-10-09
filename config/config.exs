@@ -29,8 +29,4 @@ config :logger, :default_formatter, metadata: :all
 #
 config :sparrow, Sparrow.PoolsWarden, %{enabled: true}
 
-config :sparrow, Sparrow.H2ClientAdapter, %{
-  adapter: Sparrow.H2ClientAdapter.Finch
-}
-
 import_config "#{Mix.env()}.exs"

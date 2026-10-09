@@ -10,10 +10,17 @@ defmodule Sparrow.H2ClientAdapter.Finch do
   connects and reconnects them in the background, and keeps them alive with
   pings. Requests are spread over the connections evenly.
   """
-  @behaviour Sparrow.H2ClientAdapter
-
   alias Finch.Pool.Strategy.RoundRobin
   alias Sparrow.H2Worker.Config
+
+  @type connection_ref :: %{
+          finch: atom,
+          pool: Finch.Pool.t(),
+          base_url: String.t(),
+          strategy: {module, term}
+        }
+  @type headers :: [{String.t(), String.t()}]
+  @type body :: String.t()
 
   # Errors reported before the request is sent to the server: the connection
   # is being (re)established, closed by the server, or has no free streams.
@@ -26,7 +33,11 @@ defmodule Sparrow.H2ClientAdapter.Finch do
     :too_many_concurrent_requests
   ]
 
-  @impl true
+  @doc """
+  Specifications of processes needed by connections opened with given config.
+  They are started before the connections are opened.
+  """
+  @spec child_specs(Config.t()) :: [Supervisor.child_spec() | map]
   def child_specs(config) do
     finch = finch_name(config)
 
@@ -44,7 +55,10 @@ defmodule Sparrow.H2ClientAdapter.Finch do
     ]
   end
 
-  @impl true
+  @doc """
+  Starts connections of a pool. It doesn't wait until they are established.
+  """
+  @spec open(Config.t()) :: {:ok, connection_ref}
   def open(config) do
     finch = finch_name(config)
     base_url = "https://#{config.domain}:#{config.port}"
@@ -62,7 +76,10 @@ defmodule Sparrow.H2ClientAdapter.Finch do
      }}
   end
 
-  @impl true
+  @doc """
+  Number of established connections.
+  """
+  @spec connected(connection_ref) :: non_neg_integer
   def connected(%{finch: finch, pool: pool}) do
     # HTTP/2 connection is registered only when it's established
     finch |> Registry.lookup(Finch.Pool.to_name(pool)) |> length()
@@ -71,7 +88,16 @@ defmodule Sparrow.H2ClientAdapter.Finch do
     ArgumentError -> 0
   end
 
-  @impl true
+  @doc """
+  Sends the request and waits for the response for at most `timeout`
+  miliseconds. Status of the response is returned as `":status"` header.
+  DONT PASS PSEUDO HEADERS IN `headers`!!!
+
+  Returns `{:retry, reason}` when the request was not sent, but it may
+  succeed when sent again.
+  """
+  @spec request(connection_ref, String.t(), headers, body, timeout) ::
+          {:ok, {headers, body}} | {:retry, term} | {:error, term}
   def request(conn, path, headers, body, timeout) do
     %{finch: finch, base_url: base_url, strategy: strategy} = conn
     headers = [{"content-length", "#{byte_size(body)}"} | headers]

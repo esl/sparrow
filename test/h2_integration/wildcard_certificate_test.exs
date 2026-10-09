@@ -8,12 +8,6 @@ defmodule H2Integration.WildcardCertificateTest do
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
 
-  import Mox
-  setup :set_mox_global
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
-
   @client_cert "priv/ssl/client_cert.pem"
   @client_key "priv/ssl/client_key.pem"
 

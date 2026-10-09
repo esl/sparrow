@@ -3,13 +3,6 @@ defmodule Sparrow.APITest do
 
   import Mock
 
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
-
   test "FCM notification is send correctly" do
     with_mock Sparrow.FCM.V1,
       push: fn _, _, _ ->

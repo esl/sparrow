@@ -33,7 +33,6 @@ defmodule Sparrow.MixProject do
       {:uuid, "~> 1.1"},
       {:jason, "~> 1.4"},
       {:joken, "~> 2.6"},
-      {:mox, "~> 1.1", only: :test},
       {:mock, "~> 0.3", only: :test},
       {:meck, "~> 1.2", only: :test, override: true},
       {:cowboy, "~> 2.11", only: :test},

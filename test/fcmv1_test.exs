@@ -2,9 +2,6 @@ defmodule Sparrow.FCM.V1Test do
   use ExUnit.Case
 
   import Mock
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.FCM.V1.Notification
@@ -73,9 +70,6 @@ defmodule Sparrow.FCM.V1Test do
   @pool_name :name
   @project_id "sparrow-test-id"
   @path_to_fake_fcm_json "sparrow_token.json"
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
 
   setup do
     {:ok, _cowboy_pid, cowboys_name} =

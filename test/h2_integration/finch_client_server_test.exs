@@ -7,13 +7,7 @@ defmodule H2Integration.FinchClientServerTest do
 
   @body "test body"
 
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
-
   setup do
-    stub_with(Sparrow.H2ClientAdapter.Mock, Sparrow.H2ClientAdapter.Finch)
-
     cowboys_name = :"finch_cowboy_#{System.unique_integer([:positive])}"
 
     {:ok, cowboy_pid, ^cowboys_name} =

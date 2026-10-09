@@ -7,13 +7,6 @@ defmodule H2Integration.ClientServerTest do
   @body "test body"
   @pool_name :name
 
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
-
   setup do
     {:ok, cowboy_pid, cowboys_name} =
       [

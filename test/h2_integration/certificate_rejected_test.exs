@@ -1,15 +1,8 @@
 defmodule H2Integration.CerificateRejectedTest do
   use ExUnit.Case
 
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
-
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
 
   setup_all do
     {:ok, _cowboy_pid, cowboys_name} =

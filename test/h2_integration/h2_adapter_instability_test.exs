@@ -2,15 +2,8 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   use ExUnit.Case
   use AssertEventually
 
-  import Mox
-  setup :set_mox_global
-  setup :verify_on_exit!
-
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2Worker.Request, as: OuterRequest
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
