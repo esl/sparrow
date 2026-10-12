@@ -196,19 +196,6 @@ defmodule Sparrow.FCM.V1 do
     })
   end
 
-  @doc false
-  @deprecated "Use Sparrow.FCM.V1.get_pool_config/5 instead"
-  def get_h2worker_config(
-        authentication,
-        uri \\ "fcm.googleapis.com",
-        port \\ 443,
-        tls_opts \\ [],
-        ping_interval \\ 5000,
-        _reconnect_attempts \\ 3
-      ) do
-    get_pool_config(authentication, uri, port, tls_opts, ping_interval)
-  end
-
   @spec make_body(Sparrow.FCM.V1.Notification.t()) :: map
   defp make_body(notification) do
     message =

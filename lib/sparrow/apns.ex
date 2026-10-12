@@ -292,32 +292,6 @@ defmodule Sparrow.APNS do
     })
   end
 
-  @doc false
-  @deprecated "Use Sparrow.APNS.get_pool_config_prod/5 instead"
-  def get_h2worker_config_prod(
-        authentication,
-        uri \\ "api.push.apple.com",
-        port \\ 443,
-        tls_opts \\ [],
-        ping_interval \\ 5000,
-        _reconnect_attempts \\ 3
-      ) do
-    get_pool_config_prod(authentication, uri, port, tls_opts, ping_interval)
-  end
-
-  @doc false
-  @deprecated "Use Sparrow.APNS.get_pool_config_dev/5 instead"
-  def get_h2worker_config_dev(
-        authentication,
-        uri \\ "api.development.push.apple.com",
-        port \\ 443,
-        tls_opts \\ [],
-        ping_interval \\ 5000,
-        _reconnect_attempts \\ 3
-      ) do
-    get_pool_config_dev(authentication, uri, port, tls_opts, ping_interval)
-  end
-
   @spec get_reason_from_body(String.t()) :: String.t() | nil
   defp get_reason_from_body(body) do
     body |> Jason.decode!() |> Map.get("reason")

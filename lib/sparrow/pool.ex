@@ -99,10 +99,6 @@ defmodule Sparrow.Pool do
     Supervisor.start_link(children, strategy: :rest_for_one)
   end
 
-  @doc false
-  @deprecated "Use Sparrow.Pool.start_link/1 instead"
-  def start_unregistered(config), do: start_link(config)
-
   @doc """
   Function to get name of a pool of certain type.
 
