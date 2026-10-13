@@ -16,6 +16,17 @@ defmodule Sparrow.Pool do
   @type connection_ref :: Sparrow.Pool.Connections.connection_ref()
   @type response :: {:ok, {headers, body}} | {:error, term}
 
+  # What is registered for a pool besides its connections. It's copied from
+  # the registry for each request, so it has only what is needed to choose
+  # the pool and to send requests with it.
+  @typep entry :: %{
+           type: Sparrow.Pool.Config.type() | nil,
+           tags: [atom],
+           connections: pos_integer,
+           info: map,
+           token_getter: (-> {String.t(), String.t()}) | nil
+         }
+
   alias Sparrow.Pool.Config
   alias Sparrow.Pool.Connections
 
@@ -127,8 +138,8 @@ defmodule Sparrow.Pool do
   @spec choose(Config.type(), [any]) :: atom | nil
   def choose(type, tags \\ []) do
     chosen =
-      for {name, _connection_ref, config = %Config{type: ^type}} <- pools(),
-          Enum.all?(tags, &(&1 in config.tags)) do
+      for {name, pool_tags, _order} <- pools_of_type(type),
+          Enum.all?(tags, &(&1 in pool_tags)) do
         name
       end
 
@@ -158,7 +169,7 @@ defmodule Sparrow.Pool do
   def stats(pool) do
     case lookup(pool) do
       nil -> nil
-      {connection_ref, config} -> stats(pool, connection_ref, config)
+      {connection_ref, entry} -> stats(pool, connection_ref, entry)
     end
   end
 
@@ -167,15 +178,15 @@ defmodule Sparrow.Pool do
   """
   @spec stats :: [stats]
   def stats do
-    for {name, connection_ref, config} <- pools() do
-      stats(name, connection_ref, config)
+    for {name, connection_ref, entry} <- pools() do
+      stats(name, connection_ref, entry)
     end
   end
 
-  defp stats(pool, connection_ref, config) do
+  defp stats(pool, connection_ref, entry) do
     %{
       pool: pool,
-      connections: config.connections,
+      connections: entry.connections,
       connected: Connections.connected(connection_ref)
     }
   end
@@ -191,7 +202,7 @@ defmodule Sparrow.Pool do
       nil ->
         # Pools are chosen in the order they were started
         order = System.unique_integer([:monotonic])
-        value = {connection_ref, config, order}
+        value = {connection_ref, entry(config), order}
 
         case Registry.register(@registry, config.name, value) do
           {:ok, _owner} ->
@@ -201,8 +212,8 @@ defmodule Sparrow.Pool do
             {:error, {:already_started, owner}}
         end
 
-      {owner, {_connection_ref, _config, order}} when owner == self() ->
-        value = {connection_ref, config, order}
+      {owner, {_connection_ref, entry, order}} when owner == self() ->
+        value = {connection_ref, entry, order}
 
         {_new, _old} =
           Registry.update_value(@registry, config.name, fn _ -> value end)
@@ -214,14 +225,44 @@ defmodule Sparrow.Pool do
     end
   end
 
+  @spec entry(config) :: entry
+  defp entry(config) do
+    token_getter =
+      case Config.get_authentication_type(config) do
+        :certificate_based -> nil
+        :token_based -> config.authentication.token_getter
+      end
+
+    %{
+      type: config.type,
+      tags: config.tags,
+      connections: config.connections,
+      info: Config.pool_info(config),
+      token_getter: token_getter
+    }
+  end
+
   # All registered pools, in the order they were started
   defp pools do
     @registry
     |> Registry.select([{{:"$1", :_, :"$2"}, [], [{{:"$1", :"$2"}}]}])
-    |> Enum.sort_by(fn {_name, {_connection_ref, _config, order}} -> order end)
-    |> Enum.map(fn {name, {connection_ref, config, _order}} ->
-      {name, connection_ref, config}
+    |> Enum.sort_by(fn {_name, {_connection_ref, _entry, order}} -> order end)
+    |> Enum.map(fn {name, {connection_ref, entry, _order}} ->
+      {name, connection_ref, entry}
     end)
+  rescue
+    # `Sparrow` application is not running
+    ArgumentError -> []
+  end
+
+  # Names, tags and order of pools of given type, in the order they were
+  # started. Only these are copied from the registry.
+  defp pools_of_type(type) do
+    pattern = {:"$1", :_, {:_, %{type: type, tags: :"$2"}, :"$3"}}
+
+    @registry
+    |> Registry.select([{pattern, [], [{{:"$1", :"$2", :"$3"}}]}])
+    |> Enum.sort_by(fn {_name, _tags, order} -> order end)
   rescue
     # `Sparrow` application is not running
     ArgumentError -> []
@@ -229,7 +270,7 @@ defmodule Sparrow.Pool do
 
   defp lookup(pool) do
     case registered(pool) do
-      {_owner, {connection_ref, config, _order}} -> {connection_ref, config}
+      {_owner, {connection_ref, entry, _order}} -> {connection_ref, entry}
       nil -> nil
     end
   end
@@ -249,24 +290,24 @@ defmodule Sparrow.Pool do
       nil ->
         {:error, :pool_not_found}
 
-      {connection_ref, config} ->
+      {connection_ref, entry} ->
         {:ok,
          fn ->
-           send_and_report(connection_ref, config, request)
+           send_and_report(connection_ref, entry, request)
          end}
     end
   end
 
   # Sends the request and waits for the response, for at most the timeout
   # of the request. A request which was not sent is sent again until then.
-  @spec send_and_report(connection_ref, config, request) :: response
-  defp send_and_report(connection_ref, config, request) do
+  @spec send_and_report(connection_ref, entry, request) :: response
+  defp send_and_report(connection_ref, entry, request) do
     started_at = System.monotonic_time(:microsecond)
     deadline = now() + request.timeout
 
     response =
       try do
-        headers = request_headers(request, config)
+        headers = request_headers(request, entry)
 
         send_with_retry(
           request,
@@ -281,7 +322,7 @@ defmodule Sparrow.Pool do
       end
 
     time = System.monotonic_time(:microsecond) - started_at
-    report(response, time, config)
+    report(response, time, entry.info)
     response
   end
 
@@ -333,20 +374,14 @@ defmodule Sparrow.Pool do
   defp next_retry_delay(:too_many_concurrent_requests, _delay), do: @retry_delay
   defp next_retry_delay(_reason, delay), do: min(2 * delay, @max_retry_delay)
 
-  @spec request_headers(request, config) :: headers
-  defp request_headers(request, config) do
-    case Config.get_authentication_type(config) do
-      :certificate_based ->
-        request.headers
+  @spec request_headers(request, entry) :: headers
+  defp request_headers(request, %{token_getter: nil}), do: request.headers
 
-      :token_based ->
-        [config.authentication.token_getter.() | request.headers]
-    end
+  defp request_headers(request, %{token_getter: token_getter}) do
+    [token_getter.() | request.headers]
   end
 
-  defp report(response, time, config) do
-    pool_info = Config.pool_info(config)
-
+  defp report(response, time, pool_info) do
     :telemetry.execute(
       [:sparrow, :h2_worker, :handle],
       %{time: time},

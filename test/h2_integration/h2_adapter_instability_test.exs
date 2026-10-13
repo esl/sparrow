@@ -81,7 +81,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   test "connection uses the same options after its process was killed many times",
        context do
     pool = start_connected_pool(context)
-    {%{finch: finch, pool: finch_pool}, _config} = pool_data(pool)
+    {%{finch: finch, pool: finch_pool}, _entry} = pool_data(pool)
 
     # More than the restart limit of the supervisor of the connection
     for _ <- 1..6 do
@@ -122,14 +122,14 @@ defmodule H2Integration.H2AdapterInstabilityTest do
   end
 
   defp pool_data(pool) do
-    [{_owner, {connection_ref, config, _order}}] =
+    [{_owner, {connection_ref, entry, _order}}] =
       Registry.lookup(Sparrow.Pool.Registry, pool)
 
-    {connection_ref, config}
+    {connection_ref, entry}
   end
 
   defp connection_pid(pool) do
-    {%{finch: finch, pool: finch_pool}, _config} = pool_data(pool)
+    {%{finch: finch, pool: finch_pool}, _entry} = pool_data(pool)
 
     case Finch.find_pool(finch, finch_pool) do
       {:ok, pid} -> pid
