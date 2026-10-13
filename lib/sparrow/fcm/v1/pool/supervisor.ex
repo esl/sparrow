@@ -31,7 +31,11 @@ defmodule Sparrow.FCM.V1.Pool.Supervisor do
       for {{_json, pool_config}, index} <- Enum.with_index(pool_configs) do
         id = String.to_atom("Sparrow.Fcm.Pool.ID.#{index}")
 
-        %{id: id, start: {Sparrow.Pool, :start_link, [pool_config]}}
+        %{
+          id: id,
+          start: {Sparrow.Pool, :start_link, [pool_config]},
+          type: :supervisor
+        }
       end
 
     Supervisor.init(children, strategy: :one_for_one)

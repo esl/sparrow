@@ -28,7 +28,11 @@ defmodule Sparrow.APNS.Pool.Supervisor do
       for {pool_config, index} <- pool_configs do
         id = String.to_atom("Sparrow.APNS.Pool.ID." <> Integer.to_string(index))
 
-        %{id: id, start: {Sparrow.Pool, :start_link, [pool_config]}}
+        %{
+          id: id,
+          start: {Sparrow.Pool, :start_link, [pool_config]},
+          type: :supervisor
+        }
       end
 
     Supervisor.init(children, strategy: :one_for_one)
