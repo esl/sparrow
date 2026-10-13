@@ -133,7 +133,8 @@ defmodule Sparrow.Pool do
       * `tags` - allows to filter pools, only pools with all of these tags are chosen
 
   Returns `nil` when there is no such pool. When there are many of them,
-  the one which was started first is chosen.
+  the one which was started first is chosen. A pool keeps its place when it
+  is started again with the same name.
   """
   @spec choose(Config.type(), [any]) :: atom | nil
   def choose(type, tags \\ []) do
@@ -200,9 +201,7 @@ defmodule Sparrow.Pool do
     # when the supervisor stops.
     case registered(config.name) do
       nil ->
-        # Pools are chosen in the order they were started
-        order = System.unique_integer([:monotonic])
-        value = {connection_ref, entry(config), order}
+        value = {connection_ref, entry(config), order(config.name)}
 
         case Registry.register(@registry, config.name, value) do
           {:ok, _owner} ->
@@ -240,6 +239,21 @@ defmodule Sparrow.Pool do
       info: Config.pool_info(config),
       token_getter: token_getter
     }
+  end
+
+  # Pools are chosen in the order they were started for the first time. It's
+  # remembered for the name of the pool, so the pool keeps its place when it
+  # is started again, for example by its supervisor after a failure.
+  defp order(pool) do
+    case Registry.meta(@registry, {:order, pool}) do
+      {:ok, order} ->
+        order
+
+      :error ->
+        order = System.unique_integer([:monotonic])
+        :ok = Registry.put_meta(@registry, {:order, pool}, order)
+        order
+    end
   end
 
   # All registered pools, in the order they were started

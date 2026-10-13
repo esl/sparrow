@@ -70,6 +70,18 @@ defmodule Sparrow.Pool.ChooseTest do
     end
   end
 
+  test "pool keeps its place when it is started again" do
+    config = pool_config()
+    {:ok, _pid} = Setup.start_pool(config, type: :fcm, tags: @tags)
+    second = start_pool(:fcm, @tags)
+
+    :ok = stop_supervised({Sparrow.Pool, config.name})
+    assert second == Sparrow.Pool.choose(:fcm, @tags)
+
+    {:ok, _pid} = Setup.start_pool(config, type: :fcm, tags: @tags)
+    assert config.name == Sparrow.Pool.choose(:fcm, @tags)
+  end
+
   test "stopped pool is not chosen" do
     config = pool_config()
     {:ok, _pid} = Setup.start_pool(config, type: :fcm, tags: @tags)
