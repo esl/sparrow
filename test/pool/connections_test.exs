@@ -13,6 +13,16 @@ defmodule Sparrow.Pool.ConnectionsTest do
   }
 
   describe "request" do
+    setup do
+      # Finch registers established connections of the pool like that
+      start_supervised!({Registry, keys: :duplicate, name: @conn.finch})
+
+      {:ok, _pid} =
+        Registry.register(@conn.finch, Finch.Pool.to_name(@conn.pool), nil)
+
+      :ok
+    end
+
     test "is sent to the connection with its timeout" do
       test_pid = self()
 
@@ -86,6 +96,35 @@ defmodule Sparrow.Pool.ConnectionsTest do
       with_mock Finch, [:passthrough],
         request: fn _, _, _ -> exit(:killed) end do
         assert {:error, :connection_lost} == request()
+      end
+    end
+
+    test "is not sent and can be retried when there are no connections" do
+      :ok = Registry.unregister(@conn.finch, Finch.Pool.to_name(@conn.pool))
+
+      with_mock Finch.Pool.Manager, [:passthrough],
+        get_pool_mod: fn _, _ -> {:name, Finch.HTTP2.Pool} end do
+        with_mock Finch, [:passthrough],
+          request: fn _, _, _ -> exit(:sent) end do
+          assert {:retry, :pool_not_available} == request()
+
+          assert called(
+                   Finch.Pool.Manager.get_pool_mod(@conn.finch, @conn.pool)
+                 )
+        end
+      end
+    end
+
+    test "is sent when connections need to be started" do
+      :ok = Registry.unregister(@conn.finch, Finch.Pool.to_name(@conn.pool))
+      response = %Finch.Response{status: 200, headers: [], body: ""}
+
+      with_mock Finch.Pool.Manager, [:passthrough],
+        get_pool_mod: fn _, _ -> :not_found end do
+        with_mock Finch, [:passthrough],
+          request: fn _, _, _ -> {:ok, response} end do
+          assert {:ok, {[{":status", "200"}], ""}} == request()
+        end
       end
     end
 

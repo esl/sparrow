@@ -99,6 +99,22 @@ defmodule Sparrow.Pool.Connections do
   @spec request(connection_ref, String.t(), headers, body, timeout) ::
           {:ok, {headers, body}} | {:retry, term} | {:error, term}
   def request(conn, path, headers, body, timeout) do
+    # Finch asked for a request without connections tries to start them again,
+    # which is a call to its supervisor. It's too much for requests waiting
+    # for a connection, so it's asked only when they need to be started.
+    if connected(conn) > 0 or not started?(conn) do
+      send_request(conn, path, headers, body, timeout)
+    else
+      {:retry, :pool_not_available}
+    end
+  end
+
+  # Connections are stopped when they fail too often
+  defp started?(%{finch: finch, pool: pool}) do
+    Finch.Pool.Manager.get_pool_mod(finch, pool) != :not_found
+  end
+
+  defp send_request(conn, path, headers, body, timeout) do
     %{finch: finch, base_url: base_url, strategy: strategy} = conn
     headers = [{"content-length", "#{byte_size(body)}"} | headers]
     opts = [receive_timeout: max(timeout, 1), pool_strategy: strategy]
