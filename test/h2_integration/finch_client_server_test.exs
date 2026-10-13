@@ -253,7 +253,8 @@ defmodule H2Integration.FinchClientServerTest do
 
     assert_eventually(
       match?(
-        {:error, reason} when reason in [:pool_not_available, :disconnected],
+        {:error, {:unable_to_connect, reason}}
+        when reason in [:pool_not_available, :disconnected],
         Sparrow.Pool.send_request(pool_name, request)
       )
     )

@@ -101,7 +101,7 @@ defmodule H2Integration.CerificateRequiredTest do
 
     assert %{connected: 0} = Sparrow.Pool.stats(pool)
 
-    assert {:error, :pool_not_available} ==
+    assert {:error, {:unable_to_connect, :pool_not_available}} ==
              Sparrow.Pool.send_request(pool, request)
   end
 

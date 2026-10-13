@@ -38,10 +38,20 @@ defmodule Sparrow.Pool do
     * `request` - HTTP2 request, see `Sparrow.Request`. It fails when
       the response is not received within its timeout
     * `is_sync` - if `is_sync` is `true`, awaits the response, otherwize returns `:ok`
+
+  ## Errors
+
+    * `{:error, {:unable_to_connect, reason}}` - the request was not sent,
+      there was no connection until its time was up
+    * `{:error, :connection_lost}` - the connection was lost after the request
+      was sent, the response is not known
+    * `{:error, :request_timeout}` - the response was not received in time
+    * `{:error, :pool_not_found}` - there is no such pool
   """
   @spec send_request(atom, request, boolean()) ::
-          {:error, :connection_lost}
-          | {:ok, {headers, body}}
+          {:ok, {headers, body}}
+          | {:error, :connection_lost}
+          | {:error, {:unable_to_connect, reason}}
           | {:error, :request_timeout}
           | {:error, :pool_not_found}
           | {:error, reason}
@@ -288,8 +298,13 @@ defmodule Sparrow.Pool do
         Process.sleep(@retry_delay)
         send_with_retry(request, headers, connection_ref, deadline)
 
+      # The server has no free streams all the time
+      {:retry, :too_many_concurrent_requests} ->
+        {:error, :too_many_concurrent_requests}
+
+      # There is no connection all the time
       {:retry, reason} ->
-        {:error, reason}
+        {:error, {:unable_to_connect, reason}}
 
       response ->
         response

@@ -70,20 +70,18 @@ defmodule Sparrow.Pool.ConnectionsTest do
       end
     end
 
-    test "fails when it might have been sent" do
-      assert {:error, :closed} == request_failing_with(:closed)
-
-      assert {:error, :connection_closed} ==
-               request_failing_with(:connection_closed)
+    test "fails with other reasons as they are" do
+      assert {:error, :reason} == request_failing_with(:reason)
     end
 
     test "fails with request_timeout when response is not received in time" do
       assert {:error, :request_timeout} == request_failing_with(:timeout)
     end
 
-    test "fails with connection_lost when connection process stops" do
-      assert {:error, :connection_lost} ==
-               request_failing_with(:connection_process_went_down)
+    test "fails with connection_lost when connection is lost after sending" do
+      for reason <- [:closed, :connection_closed, :connection_process_went_down] do
+        assert {:error, :connection_lost} == request_failing_with(reason)
+      end
 
       with_mock Finch, [:passthrough],
         request: fn _, _, _ -> exit(:killed) end do

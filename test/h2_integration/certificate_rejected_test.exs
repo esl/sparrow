@@ -39,14 +39,9 @@ defmodule H2Integration.CerificateRejectedTest do
     assert {:error, reason} = Sparrow.Pool.send_request(pool, request)
 
     case reason do
-      {:unable_to_connect, {:tls_alert, ~c"bad certificate"}} -> :ok
-      {:unable_to_connect, {:tls_alert, {:bad_certificate, _}}} -> :ok
-      :connection_lost -> :ok
       # Server closes the connection after the handshake
-      :closed -> :ok
-      :connection_closed -> :ok
-      :pool_not_available -> :ok
-      :disconnected -> :ok
+      :connection_lost -> :ok
+      {:unable_to_connect, _reason} -> :ok
       _ -> flunk("Wrong error code: #{inspect(reason)}")
     end
   end

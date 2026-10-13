@@ -125,7 +125,13 @@ defmodule Sparrow.Pool.Connections do
 
   defp request_error(:timeout), do: {:error, :request_timeout}
 
-  defp request_error(:connection_process_went_down) do
+  # The request was sent, but the connection was lost before the response
+  defp request_error(reason)
+       when reason in [
+              :connection_process_went_down,
+              :connection_closed,
+              :closed
+            ] do
     {:error, :connection_lost}
   end
 

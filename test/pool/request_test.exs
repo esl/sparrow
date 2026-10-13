@@ -106,16 +106,27 @@ defmodule Sparrow.Pool.RequestTest do
       end
     end
 
-    test "fails with the last reason when its time is up", %{config: config} do
+    test "fails with unable_to_connect when its time is up", %{config: config} do
       request = Request.new(@headers, "body", "/path", 200)
 
       with_request fn _, _, _, _, _ -> {:retry, :pool_not_available} end do
         {time, response} = :timer.tc(fn -> send_request(config, request) end)
 
-        assert {:error, :pool_not_available} == response
+        assert {:error, {:unable_to_connect, :pool_not_available}} == response
         assert time >= 150_000
         assert time < 1_000_000
       end
+    end
+  end
+
+  test "request fails with too_many_concurrent_requests when there are no free streams",
+       %{config: config} do
+    request = Request.new(@headers, "body", "/path", 100)
+    no_streams = fn _, _, _, _, _ -> {:retry, :too_many_concurrent_requests} end
+
+    with_request no_streams do
+      assert {:error, :too_many_concurrent_requests} ==
+               send_request(config, request)
     end
   end
 
