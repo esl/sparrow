@@ -119,6 +119,30 @@ defmodule Sparrow.Pool.RequestTest do
     end
   end
 
+  test "request which was not sent is sent again less and less often", %{
+    config: config
+  } do
+    request = Request.new(@headers, "body", "/path", 1_000)
+    test_pid = self()
+
+    not_sent = fn _, _, _, _, _ ->
+      send(test_pid, :attempt)
+      {:retry, :pool_not_available}
+    end
+
+    with_request not_sent do
+      assert {:error, {:unable_to_connect, :pool_not_available}} ==
+               send_request(config, request)
+
+      {:messages, attempts} = Process.info(self(), :messages)
+      attempts = Enum.count(attempts, &(&1 == :attempt))
+
+      # It would be about 40 attempts with a constant delay
+      assert attempts >= 5
+      assert attempts <= 12
+    end
+  end
+
   test "request fails with too_many_concurrent_requests when there are no free streams",
        %{config: config} do
     request = Request.new(@headers, "body", "/path", 100)

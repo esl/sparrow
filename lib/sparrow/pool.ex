@@ -23,8 +23,10 @@ defmodule Sparrow.Pool do
 
   @registry Sparrow.Pool.Registry
 
-  # Time to wait before sending again a request which was not sent
+  # Time to wait before sending again a request which was not sent. It gets
+  # longer with each attempt when there is no connection.
   @retry_delay 25
+  @max_retry_delay 200
 
   # Time given to a request to report that its time is up
   @await_margin 1_000
@@ -265,7 +267,14 @@ defmodule Sparrow.Pool do
     response =
       try do
         headers = request_headers(request, config)
-        send_with_retry(request, headers, connection_ref, deadline)
+
+        send_with_retry(
+          request,
+          headers,
+          connection_ref,
+          deadline,
+          @retry_delay
+        )
       catch
         # The caller gets a response no matter what
         kind, reason -> {:error, {kind, reason}}
@@ -276,8 +285,9 @@ defmodule Sparrow.Pool do
     response
   end
 
-  @spec send_with_retry(request, headers, connection_ref, integer) :: response
-  defp send_with_retry(request, headers, connection_ref, deadline) do
+  @spec send_with_retry(request, headers, connection_ref, integer, pos_integer) ::
+          response
+  defp send_with_retry(request, headers, connection_ref, deadline, delay) do
     time_left = deadline - now()
 
     case Connections.request(
@@ -295,8 +305,16 @@ defmodule Sparrow.Pool do
             time_left: time_left
           )
 
-        Process.sleep(@retry_delay)
-        send_with_retry(request, headers, connection_ref, deadline)
+        # The last attempt has some time for the response as well
+        Process.sleep(min(delay, time_left - @retry_delay))
+
+        send_with_retry(
+          request,
+          headers,
+          connection_ref,
+          deadline,
+          next_retry_delay(reason, delay)
+        )
 
       # The server has no free streams all the time
       {:retry, :too_many_concurrent_requests} ->
@@ -310,6 +328,10 @@ defmodule Sparrow.Pool do
         response
     end
   end
+
+  # A stream is freed as soon as any response is received
+  defp next_retry_delay(:too_many_concurrent_requests, _delay), do: @retry_delay
+  defp next_retry_delay(_reason, delay), do: min(2 * delay, @max_retry_delay)
 
   @spec request_headers(request, config) :: headers
   defp request_headers(request, config) do
