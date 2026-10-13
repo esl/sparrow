@@ -21,7 +21,7 @@ defmodule Sparrow.APNS do
           {:error, :connection_lost}
           | {:ok, {headers, body}}
           | {:error, :request_timeout}
-          | {:error, :not_ready}
+          | {:error, {:unable_to_connect, reason}}
           | {:error, :invalid_notification}
           | {:error, reason}
 
@@ -36,6 +36,7 @@ defmodule Sparrow.APNS do
       * `:ok` when the response is received.
       * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
       * `{:error, :connection_lost}` when the connection to APNS is lost before the response arrives.
+      * `{:error, {:unable_to_connect, reason}}` when the request was not sent, as there was no connection to APNS until timeout occurs.
       * `{:error, :invalid_notification}` when notification does not contain neither title nor body.
       * `{:error, :reason}` when error with other reason occures.
     * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
@@ -111,8 +112,7 @@ defmodule Sparrow.APNS do
   """
   @spec process_response(:ok | {:ok, {headers, body}} | {:error, reason}) ::
           :ok
-          | {:error,
-             reason :: String.t() | nil | :request_timeout | :not_ready | reason}
+          | {:error, reason :: String.t() | nil | :request_timeout | reason}
 
   def process_response(:ok) do
     _ =
