@@ -46,12 +46,9 @@ defmodule Sparrow.Pool.Connections do
         {Finch, name: finch, pools: %{default: pool_opts(config)}},
         id: finch
       ),
-      # Not a process, attaches the handler each time the instance is started
-      %{
-        id: {finch, :telemetry},
-        start: {__MODULE__, :attach_telemetry, [config]},
-        restart: :temporary
-      }
+      Supervisor.child_spec({__MODULE__.Telemetry, config},
+        id: {finch, :telemetry}
+      )
     ]
   end
 
@@ -161,7 +158,11 @@ defmodule Sparrow.Pool.Connections do
     Module.concat(Sparrow.Finch, name)
   end
 
-  @doc false
+  @doc """
+  Attaches the handler reporting connections of the pool with given config.
+  Returns its id, see `detach_telemetry/1`.
+  """
+  @spec attach_telemetry(Config.t()) :: term
   def attach_telemetry(config) do
     finch = finch_name(config)
     handler_id = {__MODULE__, finch}
@@ -178,7 +179,16 @@ defmodule Sparrow.Pool.Connections do
         %{finch: finch, worker_info: worker_info}
       )
 
-    :ignore
+    handler_id
+  end
+
+  @doc """
+  Detaches the handler attached with `attach_telemetry/1`.
+  """
+  @spec detach_telemetry(term) :: :ok
+  def detach_telemetry(handler_id) do
+    _ = :telemetry.detach(handler_id)
+    :ok
   end
 
   @doc false

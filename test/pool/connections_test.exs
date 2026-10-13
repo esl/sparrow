@@ -155,6 +155,30 @@ defmodule Sparrow.Pool.ConnectionsTest do
     end
   end
 
+  describe "telemetry handler" do
+    setup do
+      config =
+        Helpers.SetupHelper.create_pool_config("localhost", 1, :token_based)
+
+      {:ok,
+       config: config, handler_id: {Connections, Connections.finch_name(config)}}
+    end
+
+    test "is attached as long as the pool is running", context do
+      {:ok, _pid} = Helpers.SetupHelper.start_pool(context.config)
+      assert context.handler_id in handler_ids()
+
+      :ok = stop_supervised({Sparrow.Pool, context.config.name})
+      refute context.handler_id in handler_ids()
+    end
+
+    defp handler_ids do
+      for handler <- :telemetry.list_handlers([:finch, :connect, :stop]) do
+        handler.id
+      end
+    end
+  end
+
   describe "connection pool options" do
     setup do
       auth =
