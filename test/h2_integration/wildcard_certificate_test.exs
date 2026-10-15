@@ -8,12 +8,6 @@ defmodule H2Integration.WildcardCertificateTest do
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.Request, as: OuterRequest
 
-  import Mox
-  setup :set_mox_global
-
-  import Helpers.SetupHelper, only: [passthrough_h2: 1]
-  setup :passthrough_h2
-
   @client_cert "priv/ssl/client_cert.pem"
   @client_key "priv/ssl/client_key.pem"
 
@@ -101,7 +95,7 @@ defmodule H2Integration.WildcardCertificateTest do
     # unchanged through the H2 client.
     test "an FCM pool serves a request over it", %{port: port} do
       config =
-        Sparrow.H2Worker.Config.new(%{
+        Sparrow.Pool.Config.new(%{
           domain: Setup.server_host(),
           port: port,
           authentication:
@@ -112,8 +106,7 @@ defmodule H2Integration.WildcardCertificateTest do
         })
 
       config
-      |> Sparrow.H2Worker.Pool.Config.new(@pool_name)
-      |> Sparrow.H2Worker.Pool.start_unregistered(:fcm, [])
+      |> Setup.start_pool(name: @pool_name, type: :fcm)
 
       request =
         OuterRequest.new(
@@ -124,7 +117,7 @@ defmodule H2Integration.WildcardCertificateTest do
         )
 
       assert {:ok, {headers, _body}} =
-               Sparrow.H2Worker.Pool.send_request(@pool_name, request)
+               Sparrow.Pool.send_request(@pool_name, request)
 
       assert Enum.member?(headers, {":status", "200"})
     end
@@ -149,10 +142,10 @@ defmodule H2Integration.WildcardCertificateTest do
   # The supervisors build their pool configs in `init/1`, so the defaults are
   # read back off the child spec rather than duplicated here.
   defp tls_options_from_init({:ok, {_sup_flags, children}}) do
-    [%{start: {Sparrow.H2Worker.Pool, :start_link, [pool_config | _]}}] =
+    [%{start: {Sparrow.Pool, :start_link, [pool_config | _]}}] =
       children
 
-    pool_config.workers_config.tls_options
+    pool_config.tls_options
   end
 
   # Overrides only the trust anchor and the reference hostname; the rest is as
