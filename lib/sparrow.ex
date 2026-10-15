@@ -18,12 +18,15 @@ defmodule Sparrow do
       Application.get_env(:sparrow, Sparrow.PoolsWarden)
 
     children =
-      is_enabled
-      |> maybe_start_pools_warden()
+      [
+        {Registry, keys: :unique, name: Sparrow.Pool.Registry}
+        | maybe_start_pools_warden(is_enabled)
+      ]
       |> maybe_append({Sparrow.FCM.V1.Supervisor, raw_fcm_config})
       |> maybe_append({Sparrow.APNS.Supervisor, raw_apns_config})
 
-    opts = [strategy: :one_for_one]
+    # Pools are registered in the registry, so they are restarted with it
+    opts = [strategy: :rest_for_one]
     Supervisor.start_link(children, opts)
   end
 

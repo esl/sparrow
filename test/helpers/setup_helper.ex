@@ -34,6 +34,29 @@ defmodule Helpers.SetupHelper do
     }
   end
 
+  @doc """
+  Starts a pool with given config, updated with `fields`. The pool is stopped
+  before the next test starts, so its name can be used again.
+  """
+  def start_pool(config, fields \\ []) do
+    config = struct!(config, fields)
+
+    ExUnit.Callbacks.start_supervised(%{
+      id: {Sparrow.Pool, config.name},
+      start: {Sparrow.Pool, :start_link, [config]},
+      type: :supervisor
+    })
+  end
+
+  @doc """
+  Starts a pool with a unique name and given config, returns the name.
+  """
+  def start_pool_with_config(config, connections \\ 1) do
+    name = :"pool_#{System.unique_integer([:positive])}"
+    {:ok, _pid} = start_pool(config, name: name, connections: connections)
+    name
+  end
+
   def cowboys_name do
     :look
   end
@@ -43,30 +66,39 @@ defmodule Helpers.SetupHelper do
         port \\ 8080,
         authentication \\ :certificate_based
       ) do
-    auth =
-      case authentication do
-        :token_based ->
-          Sparrow.Authentication.TokenBased.new(fn ->
-            {"authorization", "bearer dummy_token"}
-          end)
-
-        :certificate_based ->
-          Sparrow.Authentication.CertificateBased.new(
-            @path_to_cert,
-            @path_to_key
-          )
-      end
-
     Config.new(%{
       domain: address,
       port: port,
-      authentication: auth,
+      authentication: authentication(authentication),
       backoff_base: 2,
       backoff_initial_delay: 100,
       backoff_max_delay: 400,
       reconnect_attempts: 0,
       tls_options: [verify: :verify_none]
     })
+  end
+
+  def create_pool_config(
+        address \\ server_host(),
+        port \\ 8080,
+        authentication \\ :certificate_based
+      ) do
+    Sparrow.Pool.Config.new(%{
+      domain: address,
+      port: port,
+      authentication: authentication(authentication),
+      tls_options: [verify: :verify_none]
+    })
+  end
+
+  defp authentication(:token_based) do
+    Sparrow.Authentication.TokenBased.new(fn ->
+      {"authorization", "bearer dummy_token"}
+    end)
+  end
+
+  defp authentication(:certificate_based) do
+    Sparrow.Authentication.CertificateBased.new(@path_to_cert, @path_to_key)
   end
 
   # `certfile`/`keyfile` let a test serve its own certificate; the defaults are

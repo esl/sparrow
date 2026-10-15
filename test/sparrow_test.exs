@@ -31,7 +31,7 @@ defmodule SparrowTest do
       |> Setup.start_cowboy_tls(certificate_required: :no)
 
     on_exit(fn ->
-      Application.stop(:sparrow)
+      TestHelper.restore_app_env()
       :cowboy.stop_listener(cowboys_name)
     end)
 

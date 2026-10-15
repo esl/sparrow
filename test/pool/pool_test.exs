@@ -1,0 +1,171 @@
+defmodule Sparrow.PoolTest do
+  use ExUnit.Case
+
+  alias Helpers.SetupHelper, as: Setup
+  alias Sparrow.Request, as: OuterRequest
+
+  @pool_name :pool_name
+  @body "test body"
+
+  setup do
+    {:ok, cowboy_pid, cowboys_name} =
+      [
+        {":_",
+         [
+           {"/ConnTestHandler", Helpers.CowboyHandlers.ConnectionHandler, []},
+           {"/HeaderToBodyEchoHandler",
+            Helpers.CowboyHandlers.HeaderToBodyEchoHandler, []}
+         ]}
+      ]
+      |> :cowboy_router.compile()
+      |> Setup.start_cowboy_tls(certificate_required: :no)
+
+    port = :ranch.get_port(cowboys_name)
+    config = Setup.create_pool_config(Setup.server_host(), port)
+
+    {:ok, _pid} =
+      config
+      |> Setup.start_pool(name: @pool_name, connections: 4, type: :fcm)
+
+    on_exit(fn ->
+      case Process.alive?(cowboy_pid) do
+        true -> :cowboy.stop_listener(cowboys_name)
+        _ -> :ok
+      end
+    end)
+
+    {:ok, port: port}
+  end
+
+  test "cowboy echos headers in body" do
+    headers = [
+      {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
+    ]
+
+    request =
+      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
+
+    {:ok, {answer_headers, answer_body}} =
+      Sparrow.Pool.send_request(@pool_name, request)
+
+    length_header = {"content-length", Integer.to_string(String.length(@body))}
+
+    assert_response_header(answer_headers, {":status", "200"})
+
+    assert {Enum.into([length_header | headers], %{}), []} ==
+             Code.eval_string(answer_body)
+  end
+
+  test "cowboy echos headers in body, certificate based authentication" do
+    headers = [
+      {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
+    ]
+
+    request =
+      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
+
+    {:ok, {answer_headers, answer_body}} =
+      Sparrow.Pool.send_request(@pool_name, request)
+
+    length_header = {"content-length", Integer.to_string(String.length(@body))}
+
+    assert_response_header(answer_headers, {":status", "200"})
+
+    assert {Enum.into([length_header | headers], %{}), []} ==
+             Code.eval_string(answer_body)
+  end
+
+  test "cowboy replies Hello" do
+    headers = Setup.default_headers()
+
+    request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
+
+    {:ok, {answer_headers, answer_body}} =
+      Sparrow.Pool.send_request(@pool_name, request)
+
+    assert_response_header(answer_headers, {":status", "200"})
+
+    assert_response_header(
+      answer_headers,
+      {"content-type", "text/plain; charset=utf-8"}
+    )
+
+    assert_response_header(answer_headers, {"content-length", "5"})
+    assert answer_body == "Hello"
+  end
+
+  test "cowboy replies Hello async" do
+    headers = Setup.default_headers()
+
+    request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
+
+    assert :ok == Sparrow.Pool.send_request(@pool_name, request, false)
+  end
+
+  test "pool reports its connections" do
+    assert %{pool: @pool_name, connections: 4} =
+             Sparrow.Pool.stats(@pool_name)
+
+    assert HelperMacros.wait_for(
+             fn -> Sparrow.Pool.stats(@pool_name).connected == 4 end,
+             5_000
+           )
+  end
+
+  @messages_for_pool 1_000
+  @moduletag :capture_log
+  test "cowboy replies Hello n times" do
+    headers = Setup.default_headers()
+
+    request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
+
+    sending_with_response = fn ->
+      for _ <- 1..@messages_for_pool do
+        async_send_request(@pool_name, request)
+      end
+
+      for _ <- 1..@messages_for_pool do
+        receive do
+          {:ok, {answer_headers, answer_body}} ->
+            increase_inner_counter()
+            assert_response_header(answer_headers, {":status", "200"})
+            assert answer_body == "Hello"
+        after
+          1000 -> :ok
+        end
+      end
+    end
+
+    {_time, _} = :timer.tc(sending_with_response)
+    assert get_inner_counter() == @messages_for_pool
+  end
+
+  defp assert_response_header(headers, expected_header) do
+    assert Enum.any?(headers, &(&1 == expected_header))
+  end
+
+  defp async_send_request(pool_name, request) do
+    pid = self()
+
+    spawn(fn ->
+      send(pid, Sparrow.Pool.send_request(pool_name, request))
+    end)
+  end
+
+  defp increase_inner_counter do
+    new =
+      case :erlang.get(:results_counter) do
+        :undefined ->
+          1
+
+        x ->
+          x + 1
+      end
+
+    :erlang.put(:results_counter, new)
+  end
+
+  defp get_inner_counter do
+    :erlang.get(:results_counter)
+  end
+end
