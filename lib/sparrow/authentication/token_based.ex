@@ -1,4 +1,4 @@
-defmodule Sparrow.H2Worker.Authentication.TokenBased do
+defmodule Sparrow.Authentication.TokenBased do
   @moduledoc """
   Structure for token based authentication.
   Use to create Config for H2Worker.

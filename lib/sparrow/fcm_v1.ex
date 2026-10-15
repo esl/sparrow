@@ -5,7 +5,7 @@ defmodule Sparrow.FCM.V1 do
   use Sparrow.Telemetry.Timer
   require Logger
 
-  alias Sparrow.H2Worker.Request
+  alias Sparrow.Request
   alias Sparrow.Util
 
   @type reason :: atom
@@ -154,18 +154,18 @@ defmodule Sparrow.FCM.V1 do
   def process_response({:error, reason}), do: {:error, reason}
 
   @doc """
-  Function providing `Sparrow.H2Worker.Authentication.TokenBased` for FCM pools.
+  Function providing `Sparrow.Authentication.TokenBased` for FCM pools.
   Requres `Sparrow.FCM.TokenBearer` to be started.
   """
   @spec get_token_based_authentication(String.t()) ::
-          Sparrow.H2Worker.Authentication.TokenBased.t()
+          Sparrow.Authentication.TokenBased.t()
   def get_token_based_authentication(account) do
     getter = fn ->
       {"authorization",
        "Bearer #{Sparrow.FCM.V1.TokenBearer.get_token(account)}"}
     end
 
-    Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+    Sparrow.Authentication.TokenBased.new(getter)
   end
 
   @doc """

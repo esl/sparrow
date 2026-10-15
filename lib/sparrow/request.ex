@@ -1,4 +1,4 @@
-defmodule Sparrow.H2Worker.Request do
+defmodule Sparrow.Request do
   @moduledoc """
   Struct to pass request to worker.
   """

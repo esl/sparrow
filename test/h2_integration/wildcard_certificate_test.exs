@@ -6,7 +6,7 @@ defmodule H2Integration.WildcardCertificateTest do
   use ExUnit.Case, async: false
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   import Mox
   setup :set_mox_global
@@ -105,7 +105,7 @@ defmodule H2Integration.WildcardCertificateTest do
           domain: Setup.server_host(),
           port: port,
           authentication:
-            Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+            Sparrow.Authentication.TokenBased.new(fn ->
               {"authorization", "bearer dummy_token"}
             end),
           tls_options: client_options(fcm_default_tls_options())

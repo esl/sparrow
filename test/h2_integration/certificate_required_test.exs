@@ -2,7 +2,7 @@ defmodule H2Integration.CerificateRequiredTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
   alias Sparrow.APNS.Notification
 
   @cert_path "priv/ssl/client_cert.pem"
@@ -39,7 +39,7 @@ defmodule H2Integration.CerificateRequiredTest do
   @pool_name :pool
   test "cowboy replies with sent cerificate", context do
     auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         @cert_path,
         @key_path
       )
@@ -75,7 +75,7 @@ defmodule H2Integration.CerificateRequiredTest do
 
   test "worker rejects cowboy cerificate", context do
     auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         @cert_path,
         @key_path
       )

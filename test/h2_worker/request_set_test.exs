@@ -36,8 +36,8 @@ defmodule H2Worker.RequestSetTest do
       headers2 = Enum.zip([headersA2, headersB2])
       from_pid2 = pid("0.13.12")
 
-      outer_request1 = Sparrow.H2Worker.Request.new(headers1, body1, path1)
-      outer_request2 = Sparrow.H2Worker.Request.new(headers2, body2, path2)
+      outer_request1 = Sparrow.Request.new(headers1, body1, path1)
+      outer_request2 = Sparrow.Request.new(headers2, body2, path2)
 
       request1 =
         InnerRequest.new(outer_request1, {from_pid1, from_tag1}, make_ref())

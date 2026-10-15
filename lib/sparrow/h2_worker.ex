@@ -25,7 +25,7 @@ defmodule Sparrow.H2Worker do
           | {charlist, stream_id}
           | {:timeout_request, stream_id}
           | any
-  @type request :: Sparrow.H2Worker.Request.t()
+  @type request :: Sparrow.Request.t()
   @type from :: {pid, tag :: term}
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()

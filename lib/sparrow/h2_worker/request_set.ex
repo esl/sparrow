@@ -6,7 +6,7 @@ defmodule Sparrow.H2Worker.RequestSet do
 
   @type stream_id :: non_neg_integer
   @type from :: {pid, tag :: term}
-  @type requests :: %{required(stream_id) => %Sparrow.H2Worker.Request{}}
+  @type requests :: %{required(stream_id) => %Sparrow.Request{}}
 
   @doc """
   Creates new requests collection.

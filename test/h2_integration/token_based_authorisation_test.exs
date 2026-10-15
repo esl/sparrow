@@ -6,7 +6,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
 
   alias H2Integration.Helpers.TokenHelper
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   @path "/AuthenticateHandler"
   @pool_name :wname

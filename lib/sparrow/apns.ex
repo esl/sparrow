@@ -5,7 +5,7 @@ defmodule Sparrow.APNS do
   use Sparrow.Telemetry.Timer
   require Logger
 
-  alias Sparrow.H2Worker.Request
+  alias Sparrow.Request
   alias Sparrow.Util
 
   @type reason :: atom
@@ -203,22 +203,22 @@ defmodule Sparrow.APNS do
   end
 
   @doc """
-  Function providing `Sparrow.H2Worker.Authentication.TokenBased` for APNS workers.
+  Function providing `Sparrow.Authentication.TokenBased` for APNS workers.
   Requres `Sparrow.APNS.TokenBearer` to be started.
   """
   @spec get_token_based_authentication(atom) ::
-          Sparrow.H2Worker.Authentication.TokenBased.t()
+          Sparrow.Authentication.TokenBased.t()
   def get_token_based_authentication(token_id) do
     getter = fn ->
       {"authorization",
        "bearer #{Sparrow.APNS.TokenBearer.get_token(token_id)}"}
     end
 
-    Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+    Sparrow.Authentication.TokenBased.new(getter)
   end
 
   @doc """
-  Function providing `Sparrow.H2Worker.Authentication.CertificateBased` for APNS workers.
+  Function providing `Sparrow.Authentication.CertificateBased` for APNS workers.
 
   ##Arguments
 
@@ -226,9 +226,9 @@ defmodule Sparrow.APNS do
     * `path_to_key` - path to APNS key file
   """
   @spec get_certificate_based_authentication(Path.t(), Path.t()) ::
-          Sparrow.H2Worker.Authentication.CertificateBased.t()
+          Sparrow.Authentication.CertificateBased.t()
   def get_certificate_based_authentication(path_to_cert, path_to_key) do
-    Sparrow.H2Worker.Authentication.CertificateBased.new(
+    Sparrow.Authentication.CertificateBased.new(
       path_to_cert,
       path_to_key
     )

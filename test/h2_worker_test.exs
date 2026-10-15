@@ -11,10 +11,10 @@ defmodule Sparrow.H2WorkerTest do
 
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
   alias Sparrow.H2Worker.Config
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
   alias Sparrow.H2Worker.State
 
-  alias Sparrow.H2Worker.Authentication.TokenBased, as: TokenBasedAuth
+  alias Sparrow.Authentication.TokenBased, as: TokenBasedAuth
   @repeats 2
 
   import Helpers.SetupHelper, only: [passthrough_h2: 1]
@@ -22,13 +22,13 @@ defmodule Sparrow.H2WorkerTest do
 
   setup do
     auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         "path/to/exampleName.pem",
         "path/to/exampleKey.pem"
       )
 
     real_auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         "test/priv/certs/Certificates1.pem",
         "test/priv/certs/key.pem"
       )

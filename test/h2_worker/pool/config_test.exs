@@ -3,7 +3,7 @@ defmodule Sparrow.H2Worker.Pool.ConfigTest do
 
   test "create new config with known name" do
     auth =
-      Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+      Sparrow.Authentication.TokenBased.new(fn ->
         {"authorization", "bearer dummy token"}
       end)
 
@@ -34,7 +34,7 @@ defmodule Sparrow.H2Worker.Pool.ConfigTest do
 
   test "create new config with nil name" do
     auth =
-      Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+      Sparrow.Authentication.TokenBased.new(fn ->
         {"authorization", "bearer dummy token"}
       end)
 

@@ -19,7 +19,7 @@ defmodule Sparrow.APITest do
       Sparrow.PoolsWarden.start_link()
 
       auth =
-        Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+        Sparrow.Authentication.TokenBased.new(fn ->
           {"authorization", "my_dummy_fcm_token"}
         end)
 
@@ -69,7 +69,7 @@ defmodule Sparrow.APITest do
       Sparrow.PoolsWarden.start_link()
 
       auth =
-        Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+        Sparrow.Authentication.TokenBased.new(fn ->
           {"authorization", "my_dummy_fcm_token"}
         end)
 
@@ -114,7 +114,7 @@ defmodule Sparrow.APITest do
       Sparrow.PoolsWarden.start_link()
 
       auth =
-        Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+        Sparrow.Authentication.TokenBased.new(fn ->
           {"authorization", "my_dummy_fcm_token"}
         end)
 
@@ -153,7 +153,7 @@ defmodule Sparrow.APITest do
       choose_pool: fn _, _ -> nil end,
       add_new_pool: fn _, _, _, _ -> true end do
       auth =
-        Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+        Sparrow.Authentication.TokenBased.new(fn ->
           {"authorization", "my_dummy_fcm_token"}
         end)
 
@@ -187,7 +187,7 @@ defmodule Sparrow.APITest do
       choose_pool: fn _, _ -> nil end,
       add_new_pool: fn _, _, _, _ -> true end do
       auth =
-        Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+        Sparrow.Authentication.TokenBased.new(fn ->
           {"authorization", "my_dummy_fcm_token"}
         end)
 
@@ -239,7 +239,7 @@ defmodule Sparrow.APITest do
       Sparrow.PoolsWarden.start_link()
 
       auth =
-        Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+        Sparrow.Authentication.TokenBased.new(fn ->
           {"authorization", "dummy_token"}
         end)
 

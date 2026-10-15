@@ -9,7 +9,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
   alias Sparrow.H2Worker.State
 
   import Helpers.SetupHelper, only: [passthrough_h2: 1]

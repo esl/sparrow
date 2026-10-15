@@ -6,7 +6,7 @@ defmodule Sparrow.H2Worker.PoolTest do
   setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   @pool_name :pool_name
   @body "test body"

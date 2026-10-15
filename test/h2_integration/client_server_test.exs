@@ -5,7 +5,7 @@ defmodule H2Integration.ClientServerTest do
 
   alias Helpers.SetupHelper, as: Setup
   alias Sparrow.H2ClientAdapter.Chatterbox, as: H2Adapter
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   @body "test body"
   @pool_name :name

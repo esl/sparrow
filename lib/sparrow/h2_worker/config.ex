@@ -6,8 +6,8 @@ defmodule Sparrow.H2Worker.Config do
   @type port_num :: non_neg_integer
   @type tls_options :: [any]
   @type authentication ::
-          Sparrow.H2Worker.Authentication.TokenBased.t()
-          | Sparrow.H2Worker.Authentication.CertificateBased.t()
+          Sparrow.Authentication.TokenBased.t()
+          | Sparrow.Authentication.CertificateBased.t()
 
   @type t :: %__MODULE__{
           domain: String.t(),
@@ -104,8 +104,8 @@ defmodule Sparrow.H2Worker.Config do
           :token_based | :certificate_based
   def get_authentication_type(config) do
     case config.authentication do
-      %Sparrow.H2Worker.Authentication.TokenBased{} -> :token_based
-      %Sparrow.H2Worker.Authentication.CertificateBased{} -> :certificate_based
+      %Sparrow.Authentication.TokenBased{} -> :token_based
+      %Sparrow.Authentication.CertificateBased{} -> :certificate_based
     end
   end
 end

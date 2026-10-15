@@ -2,7 +2,7 @@ defmodule Sparrow.H2Worker.Pool do
   @moduledoc """
   Module providing functions to work on (`Sparrow.H2Worker`) worker pools and not single workers.
   """
-  @type request :: Sparrow.H2Worker.Request.t()
+  @type request :: Sparrow.Request.t()
   @type strategy ::
           :best_worker
           | :random_worker
@@ -20,7 +20,7 @@ defmodule Sparrow.H2Worker.Pool do
   ## Arguments
 
     * `worker_pool` - H2Workers pool name you want to send message with
-    * `request` - HTTP2 request, see Sparrow.H2Worker.Request
+    * `request` - HTTP2 request, see Sparrow.Request
     * `is_sync` - if `is_sync` is `true`, awaits the response, otherwize returns `:ok`
     * `genserver_timeout` -  timeout of genserver call, works only if `is_sync` is `true`
     * `worker_choice_strategy` - worker selection strategy. See https://github.com/inaka/worker_pool section: "Choosing a Strategy"

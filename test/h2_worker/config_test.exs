@@ -14,7 +14,7 @@ defmodule H2Worker.ConfigTest do
           ],
           repeat_for: @repeats do
       auth =
-        Sparrow.H2Worker.Authentication.CertificateBased.new(
+        Sparrow.Authentication.CertificateBased.new(
           @path_to_cert,
           @path_to_key
         )
@@ -38,7 +38,7 @@ defmodule H2Worker.ConfigTest do
           ],
           repeat_for: @repeats do
       auth =
-        Sparrow.H2Worker.Authentication.TokenBased.new(fn -> "dummyToken" end)
+        Sparrow.Authentication.TokenBased.new(fn -> "dummyToken" end)
 
       config =
         Sparrow.H2Worker.Config.new(%{

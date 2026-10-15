@@ -8,19 +8,19 @@ defmodule Sparrow.H2Worker.ConnectionTest do
   setup :verify_on_exit!
 
   alias Sparrow.H2Worker.Config
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   @repeats 2
 
   setup do
     auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         "path/to/exampleName.pem",
         "path/to/exampleKey.pem"
       )
 
     real_auth =
-      Sparrow.H2Worker.Authentication.CertificateBased.new(
+      Sparrow.Authentication.CertificateBased.new(
         "test/priv/certs/Certificates1.pem",
         "test/priv/certs/key.pem"
       )

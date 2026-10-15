@@ -46,12 +46,12 @@ defmodule Helpers.SetupHelper do
     auth =
       case authentication do
         :token_based ->
-          Sparrow.H2Worker.Authentication.TokenBased.new(fn ->
+          Sparrow.Authentication.TokenBased.new(fn ->
             {"authorization", "bearer dummy_token"}
           end)
 
         :certificate_based ->
-          Sparrow.H2Worker.Authentication.CertificateBased.new(
+          Sparrow.Authentication.CertificateBased.new(
             @path_to_cert,
             @path_to_key
           )

@@ -6,7 +6,7 @@ defmodule H2Integration.CerificateRejectedTest do
   setup :verify_on_exit!
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.H2Worker.Request, as: OuterRequest
+  alias Sparrow.Request, as: OuterRequest
 
   import Helpers.SetupHelper, only: [passthrough_h2: 1]
   setup :passthrough_h2

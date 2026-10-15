@@ -69,7 +69,7 @@ defmodule Sparrow.APNS.Pool.Supervisor do
         :certificate_based ->
           cert = Keyword.get(raw_pool_config, :cert)
           key = Keyword.get(raw_pool_config, :key)
-          Sparrow.H2Worker.Authentication.CertificateBased.new(cert, key)
+          Sparrow.Authentication.CertificateBased.new(cert, key)
       end
 
     pool_name = Keyword.get(raw_pool_config, :pool_name)

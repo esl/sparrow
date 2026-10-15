@@ -2,7 +2,7 @@ defmodule Sparrow.H2Worker.RequestState do
   @moduledoc """
   Struct for requests internal representation.
   """
-  alias Sparrow.H2Worker.Request
+  alias Sparrow.Request
 
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
