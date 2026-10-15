@@ -247,6 +247,108 @@ defmodule Sparrow.Pool.RequestTest do
     end
   end
 
+  describe "telemetry" do
+    setup do
+      Setup.forward_telemetry([:sparrow, :pool, :request])
+      Setup.forward_telemetry([:sparrow, :pool, :retry])
+    end
+
+    test "successful request is reported with its time and status", %{
+      config: config,
+      request: request
+    } do
+      slow_response = fn _, _, _, _, _ ->
+        Process.sleep(50)
+        @response
+      end
+
+      with_request slow_response do
+        send_request(config, request)
+
+        assert_receive {[:sparrow, :pool, :request], %{time: time},
+                        %{
+                          domain: "domain",
+                          port: 443,
+                          pool_name: :pool,
+                          pool_type: :fcm,
+                          pool_tags: [:tag],
+                          result: :ok,
+                          reason: nil,
+                          status: 200
+                        }}
+
+        assert time >= 50_000
+
+        refute_receive {[:sparrow, :pool, :request], _, _}, 50
+        refute_receive {[:sparrow, :pool, :retry], _, _}, 50
+      end
+    end
+
+    test "failed request is reported with its reason", %{
+      config: config,
+      request: request
+    } do
+      with_request fn _, _, _, _, _ -> {:error, :reason} end do
+        send_request(config, request)
+
+        assert_receive {[:sparrow, :pool, :request], %{time: _time},
+                        %{
+                          pool_name: :pool,
+                          result: :error,
+                          reason: :reason,
+                          status: nil
+                        }}
+
+        refute_receive {[:sparrow, :pool, :request], _, _}, 50
+      end
+    end
+
+    test "request which had to be sent again is reported once", %{
+      config: config
+    } do
+      request = Request.new(@headers, "body", "/path", 200)
+
+      with_request fn _, _, _, _, _ -> {:retry, :pool_not_available} end do
+        send_request(config, request)
+
+        assert_receive {[:sparrow, :pool, :retry], %{},
+                        %{
+                          domain: "domain",
+                          pool_name: :pool,
+                          reason: :pool_not_available
+                        }}
+
+        # The request itself is reported when its time is up
+        assert_receive {[:sparrow, :pool, :request], %{time: _time},
+                        %{
+                          result: :error,
+                          reason: {:unable_to_connect, :pool_not_available}
+                        }}
+
+        refute_receive {[:sparrow, :pool, :request], _, _}, 50
+        refute_receive {[:sparrow, :pool, :retry], _, _}, 50
+      end
+    end
+
+    test "request which is not sent again is not reported as such", %{
+      config: config
+    } do
+      request = Request.new(@headers, "body", "/path", 100)
+
+      slow_retry = fn _, _, _, _, _ ->
+        Process.sleep(150)
+        {:retry, :pool_not_available}
+      end
+
+      with_request slow_retry do
+        send_request(config, request)
+
+        assert_receive {[:sparrow, :pool, :request], _, %{result: :error}}
+        refute_receive {[:sparrow, :pool, :retry], _, _}, 50
+      end
+    end
+  end
+
   defp send_request(config, request) do
     {:ok, _pid} =
       config

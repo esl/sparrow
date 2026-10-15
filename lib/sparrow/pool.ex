@@ -36,7 +36,7 @@ defmodule Sparrow.Pool do
 
   The response is `{:ok, {headers, body}}` whatever its HTTP status is,
   the status is in the `":status"` header. When `is_sync` is `false`,
-  `:ok` is returned and only a failure is logged.
+  `:ok` is returned and the result is only reported with telemetry.
 
   ## Errors
 
@@ -156,6 +156,12 @@ defmodule Sparrow.Pool do
         result_len: length(chosen)
       )
 
+    :telemetry.execute(
+      [:sparrow, :pool, :choose],
+      %{},
+      %{pool_name: chosen_pool, pool_type: type, pool_tags: tags}
+    )
+
     chosen_pool
   end
 
@@ -187,6 +193,58 @@ defmodule Sparrow.Pool do
       connections: config.connections,
       connected: Connections.connected(connection_ref)
     }
+  end
+
+  @doc false
+  # Reports connection attempts of all pools as `[:sparrow, :pool, :connect]`
+  @spec attach_telemetry :: :ok
+  def attach_telemetry do
+    _ = :telemetry.detach(__MODULE__)
+
+    :telemetry.attach(
+      __MODULE__,
+      [:finch, :connect, :stop],
+      &__MODULE__.handle_connect_event/4,
+      nil
+    )
+  end
+
+  @doc false
+  def handle_connect_event(_event, measurements, metadata = %{name: finch}, _) do
+    # Other Finch instances are not of any pool
+    with config = %Config{} <- config_of_finch(finch) do
+      result =
+        case metadata do
+          %{error: error} ->
+            %{result: :error, reason: Connections.error_reason(error)}
+
+          _ ->
+            %{result: :ok, reason: nil}
+        end
+
+      time =
+        System.convert_time_unit(measurements.duration, :native, :microsecond)
+
+      :telemetry.execute(
+        [:sparrow, :pool, :connect],
+        %{time: time},
+        Map.merge(Config.pool_info(config), result)
+      )
+    end
+  end
+
+  def handle_connect_event(_event, _measurements, _metadata, _), do: :ok
+
+  defp config_of_finch(finch) do
+    value = %{connection_ref: %{finch: finch}, config: :"$1"}
+
+    case Registry.select(@registry, [{{:_, :_, value}, [], [:"$1"]}]) do
+      [config] -> config
+      [] -> nil
+    end
+  rescue
+    # `Sparrow` application is not running
+    ArgumentError -> nil
   end
 
   # All registered pools, in the order they were started
@@ -239,18 +297,20 @@ defmodule Sparrow.Pool do
   # of the request. A request which was not sent is sent again until then.
   @spec send_and_report(connection_ref, config, request) :: response
   defp send_and_report(connection_ref, config, request) do
+    started_at = System.monotonic_time(:microsecond)
     deadline = now() + request.timeout
 
     response =
       try do
         headers = request_headers(request, config)
-        send_with_retry(request, headers, connection_ref, deadline)
+        send_with_retry(request, headers, connection_ref, config, deadline)
       catch
         # The caller gets a response no matter what
         kind, reason -> {:error, {kind, reason}}
       end
 
-    report(response)
+    time = System.monotonic_time(:microsecond) - started_at
+    report(response, time, config)
     response
   end
 
@@ -258,11 +318,18 @@ defmodule Sparrow.Pool do
           request,
           headers,
           connection_ref,
+          config,
           integer,
           non_neg_integer
-        ) ::
-          response
-  defp send_with_retry(request, headers, connection_ref, deadline, attempt \\ 0) do
+        ) :: response
+  defp send_with_retry(
+         request,
+         headers,
+         connection_ref,
+         config,
+         deadline,
+         attempt \\ 0
+       ) do
     case Connections.request(
            connection_ref,
            request.path,
@@ -276,6 +343,8 @@ defmodule Sparrow.Pool do
 
         # Not sent again when its time would be up before
         if time_left > delay do
+          report_retry(config, reason, attempt)
+
           _ =
             Logger.debug("H2 request not sent, retrying",
               what: :h2_request_retry,
@@ -289,6 +358,7 @@ defmodule Sparrow.Pool do
             request,
             headers,
             connection_ref,
+            config,
             deadline,
             attempt + 1
           )
@@ -300,6 +370,17 @@ defmodule Sparrow.Pool do
         response
     end
   end
+
+  # Reported once for the request, not for each attempt
+  defp report_retry(config, reason, 0) do
+    :telemetry.execute(
+      [:sparrow, :pool, :retry],
+      %{},
+      Map.put(Config.pool_info(config), :reason, reason)
+    )
+  end
+
+  defp report_retry(_config, _reason, _attempt), do: :ok
 
   # A stream is freed as soon as any response comes
   defp retry_delay(:too_many_concurrent_requests, _attempt), do: @retry_delay
@@ -326,18 +407,39 @@ defmodule Sparrow.Pool do
     end
   end
 
-  defp report({:error, reason}) do
-    _ =
-      Logger.warning("H2 request failed",
-        what: :h2_request_failed,
-        status: :error,
-        reason: inspect(reason)
-      )
+  defp report(response, time, config) do
+    result =
+      case response do
+        {:ok, {headers, _body}} ->
+          %{result: :ok, reason: nil, status: status(headers)}
 
-    :ok
+        {:error, reason} ->
+          _ =
+            Logger.warning("H2 request failed",
+              what: :h2_request_failed,
+              status: :error,
+              reason: inspect(reason)
+            )
+
+          %{result: :error, reason: reason, status: nil}
+      end
+
+    :telemetry.execute(
+      [:sparrow, :pool, :request],
+      %{time: time},
+      Map.merge(Config.pool_info(config), result)
+    )
   end
 
-  defp report(_response), do: :ok
+  # Status of the response, `nil` when it is not known
+  defp status(headers) do
+    with {":status", status} <- List.keyfind(headers, ":status", 0),
+         {status, ""} <- Integer.parse(status) do
+      status
+    else
+      _ -> nil
+    end
+  end
 
   defp now, do: System.monotonic_time(:millisecond)
 

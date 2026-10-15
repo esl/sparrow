@@ -14,6 +14,8 @@ defmodule Sparrow do
 
   @spec start({Keyword.t(), Keyword.t()}) :: Supervisor.on_start()
   def start({raw_fcm_config, raw_apns_config}) do
+    :ok = Sparrow.Pool.attach_telemetry()
+
     %{:enabled => is_enabled} =
       Application.get_env(:sparrow, Sparrow.PoolsWarden)
 

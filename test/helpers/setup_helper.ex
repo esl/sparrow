@@ -57,6 +57,27 @@ defmodule Helpers.SetupHelper do
     name
   end
 
+  @doc """
+  Sends `{event, measurements, metadata}` to the calling process each time
+  given telemetry event is executed.
+  """
+  def forward_telemetry(event) do
+    test_pid = self()
+    handler_id = {:forward_telemetry, test_pid, event}
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        event,
+        fn event, measurements, metadata, _config ->
+          send(test_pid, {event, measurements, metadata})
+        end,
+        nil
+      )
+
+    ExUnit.Callbacks.on_exit(fn -> :telemetry.detach(handler_id) end)
+  end
+
   def cowboys_name do
     :look
   end

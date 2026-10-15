@@ -270,27 +270,31 @@ If you pass `[:not_existing, :set_of_tags]`, `{:error, :configuration_error}` is
 [](https://placehold.it/15/ff0000/ff0000?text=+) *`It is not recommended to choose a pool based on pools order!`*
 
 ## Telemetry
-Sparrow supports [telemetry](https://github.com/beam-telemetry/telemetry). Emitted events are defined with following tags:
+Sparrow supports [telemetry](https://github.com/beam-telemetry/telemetry). Events of connection pools have the description of the pool in their metadata: `domain`, `port`, `pool_type`, `pool_name` and `pool_tags`.
 
-- `[:sparrow, :h2_worker, :init]`
-- `[:sparrow, :h2_worker, :terminate]`
-- `[:sparrow, :h2_worker, :conn_lost]`
-- `[:sparrow, :h2_worker, :request_error]`
-- `[:sparrow, :h2_worker, :request_success]`
-- `[:sparrow, :h2_worker, :conn_success]`
-- `[:sparrow, :h2_worker, :conn_fail]`
-- `[:sparrow, :pools_warden, :init]`
-- `[:sparrow, :pools_warden, :terminate]`
-- `[:sparrow, :pools_warden, :choose_pool]`
-- `[:sparrow, :pools_warden, :pool_down]`
-- `[:sparrow, :pools_warden, :add_pool]`
+| Event | Measurements | Additional metadata | Executed |
+|---|---|---|---|
+| `[:sparrow, :pool, :request]` | `time` - microseconds from sending the request to its response or failure, including the attempts to send it again | `result` - `:ok` or `:error`, `reason` - reason of the failure, `status` - HTTP status of the response | once for each request |
+| `[:sparrow, :pool, :retry]` | | `reason` - why the request was not sent | once for each request which could not be sent at the first attempt and is going to be sent again |
+| `[:sparrow, :pool, :connect]` | `time` - microseconds taken by the attempt to connect | `result` - `:ok` or `:error`, `reason` - reason of the failure | after each attempt to connect |
+| `[:sparrow, :pool, :choose]` | | `pool_name`, `pool_type` and `pool_tags` only | each time a pool is chosen by its type and tags |
+
+A request has `result: :ok` whenever a response was received, also when its `status` is not `200`.
 
 There are also events measuring the duration of a few chosen function calls:
 
 - `[:sparrow, :push, :api]`
 - `[:sparrow, :push, :apns]`
 - `[:sparrow, :push, :fcm]`
-- `[:sparrow, :h2_worker, :handle]`
+
+## Pool statistics
+
+`Sparrow.Pool.stats/0` returns the number of connections of each pool and how many of them are established:
+
+```elixir
+Sparrow.Pool.stats()
+# [%{pool: :pool_name, connections: 3, connected: 3}]
+```
 
 # Send your first push notification
 

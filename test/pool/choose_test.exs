@@ -92,6 +92,21 @@ defmodule Sparrow.Pool.ChooseTest do
     assert config.name == Sparrow.Pool.choose(:fcm)
   end
 
+  test "choice is reported" do
+    Setup.forward_telemetry([:sparrow, :pool, :choose])
+    pool = start_pool(:fcm, @tags)
+
+    Sparrow.Pool.choose(:fcm, [:alpha])
+
+    assert_receive {[:sparrow, :pool, :choose], %{},
+                    %{pool_name: ^pool, pool_type: :fcm, pool_tags: [:alpha]}}
+
+    Sparrow.Pool.choose(:fcm, [:delta])
+
+    assert_receive {[:sparrow, :pool, :choose], %{},
+                    %{pool_name: nil, pool_type: :fcm, pool_tags: [:delta]}}
+  end
+
   test "all pools are included in stats" do
     assert [] == Sparrow.Pool.stats()
 
