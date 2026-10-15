@@ -280,43 +280,4 @@ defmodule Sparrow.FCM.V1 do
         error["status"]
     end
   end
-
-  @doc """
-  Function providing `Sparrow.H2Worker.Config` for FCM pools.
-
-  ## Example
-
-  # Token based authentication:
-    config =
-      Sparrow.FCM.V1.get_token_based_authentication()
-      |> Sparrow.FCM.V1.get_h2worker_config()
-
-  """
-  @deprecated "Use get_pool_config/5 instead"
-  @spec get_h2worker_config(
-          authentication,
-          String.t(),
-          pos_integer,
-          tls_options,
-          time_in_miliseconds,
-          pos_integer
-        ) :: Sparrow.H2Worker.Config.t()
-  def get_h2worker_config(
-        authentication,
-        uri \\ "fcm.googleapis.com",
-        port \\ 443,
-        tls_opts \\ [],
-        ping_interval \\ 5000,
-        reconnect_attempts \\ 3
-      ) do
-    Sparrow.H2Worker.Config.new(%{
-      domain: uri,
-      port: port,
-      authentication: authentication,
-      tls_options: tls_opts,
-      ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts,
-      pool_type: :fcm
-    })
-  end
 end
