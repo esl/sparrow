@@ -1,6 +1,6 @@
-defmodule Sparrow.H2Worker.Request do
+defmodule Sparrow.Request do
   @moduledoc """
-  Struct to pass request to worker.
+  Struct to pass request to `Sparrow.Pool`.
   """
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
@@ -21,7 +21,7 @@ defmodule Sparrow.H2Worker.Request do
   ]
 
   @doc """
-  Function new creates request that can be passed to `Sparrow.H2Worker`.
+  Function new creates request that can be sent with `Sparrow.Pool.send_request/3`.
 
   ## Arguments
 

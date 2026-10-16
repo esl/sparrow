@@ -4,16 +4,14 @@ config :sparrow,
   fcm: [
     # Authentication
     path_to_json: "priv/fcm/token/sparrow_token.json",
-    # H2Worker config
+    # Pool config
     endpoint: "fcm.googleapis.com",
     port: 443,
     tls_opts: [],
     ping_interval: 5000,
-    reconnect_attempts: 3,
     # pool config
     tags: [],
-    worker_num: 3,
-    raw_opts: []
+    worker_num: 3
   ],
   apns: [
     dev: [
@@ -21,32 +19,28 @@ config :sparrow,
         # Token based authentication
         auth_type: :token_based,
         token_id: :some_atom_id,
-        # H2Worker config
+        # Pool config
         endpoint: "api.development.push.apple.com",
         port: 443,
         tls_opts: [],
         ping_interval: 5000,
-        reconnect_attempts: 3,
         # pool config
         tags: [:first_batch_clients, :beta_users],
-        worker_num: 3,
-        raw_opts: []
+        worker_num: 3
       ],
       [
         # Certificate based uthentication
         auth_type: :certificate_based,
         cert: "priv/apns/dev_cert.pem",
         key: "priv/apns/dev_key.pem",
-        # H2Worker config
+        # Pool config
         endpoint: "api.push.apple.com",
         port: 443,
         tls_opts: [],
         ping_interval: 5000,
-        reconnect_attempts: 3,
         # pool config
         tags: [:another_batch_clients],
-        worker_num: 3,
-        raw_opts: []
+        worker_num: 3
       ]
     ],
     prod: [
@@ -54,16 +48,14 @@ config :sparrow,
         # Authentication
         auth_type: :token_based,
         token_id: :some_other_id,
-        # H2Worker config
+        # Pool config
         endpoint: "api.push.apple.com",
         port: 443,
         tls_opts: [],
         ping_interval: 5000,
-        reconnect_attempts: 3,
         # pool config
         tags: [:test_prod, :alpha],
-        worker_num: 3,
-        raw_opts: []
+        worker_num: 3
       ]
     ],
     tokens: [
