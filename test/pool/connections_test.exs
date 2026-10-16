@@ -8,7 +8,7 @@ defmodule Sparrow.Pool.ConnectionsTest do
   @conn %{
     finch: Sparrow.Finch.Pool,
     pool: Finch.Pool.new("https://localhost:443"),
-    base_url: "https://localhost:443",
+    uri: URI.parse("https://localhost:443"),
     strategy: {Finch.Pool.Strategy.RoundRobin, :counter}
   }
 

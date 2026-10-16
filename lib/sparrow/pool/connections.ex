@@ -16,7 +16,7 @@ defmodule Sparrow.Pool.Connections do
   @type connection_ref :: %{
           finch: atom,
           pool: Finch.Pool.t(),
-          base_url: String.t(),
+          uri: URI.t(),
           strategy: {module, term}
         }
   @type headers :: [{String.t(), String.t()}]
@@ -67,7 +67,8 @@ defmodule Sparrow.Pool.Connections do
     %{
       finch: finch_name(config),
       pool: Finch.Pool.new(base_url),
-      base_url: base_url,
+      # Parsed once, not with each request
+      uri: URI.parse(base_url),
       strategy: {RoundRobin, RoundRobin.new()}
     }
   end
@@ -105,12 +106,12 @@ defmodule Sparrow.Pool.Connections do
   @spec request(connection_ref, String.t(), headers, body, timeout) ::
           {:ok, {headers, body}} | {:retry, term} | {:error, term}
   def request(conn, path, headers, body, timeout) do
-    %{finch: finch, base_url: base_url, strategy: strategy} = conn
+    %{finch: finch, uri: uri, strategy: strategy} = conn
     headers = [{"content-length", "#{byte_size(body)}"} | headers]
     opts = [receive_timeout: max(timeout, 1), pool_strategy: strategy]
 
     :post
-    |> Finch.build(base_url <> path, headers, body)
+    |> Finch.build(%{uri | path: path}, headers, body)
     |> finch_request(finch, opts)
   end
 
