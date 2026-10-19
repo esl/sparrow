@@ -8,7 +8,7 @@ defmodule Sparrow.FCM.V1 do
   alias Sparrow.Request
   alias Sparrow.Util
 
-  @type reason :: atom
+  @type reason :: term
   @type headers :: Request.headers()
   @type body :: String.t()
   @type push_opts :: [{:is_sync, boolean()} | {:timeout, non_neg_integer}]
@@ -19,28 +19,29 @@ defmodule Sparrow.FCM.V1 do
   @type tls_options :: Sparrow.Pool.Config.tls_options()
   @type time_in_miliseconds :: Sparrow.Pool.Config.time_in_miliseconds()
   @type http_status :: non_neg_integer
-  @type sync_push_result ::
-          {:error, :connection_lost}
-          | {:ok, {headers, body}}
-          | {:error, :request_timeout}
-          | {:error, {:unable_to_connect, reason}}
-          | {:error, :too_many_concurrent_requests}
-          | {:error, :pool_not_found}
-          | {:error, :invalid_notification}
-          | {:error, reason}
+  @type sync_push_result :: {:ok, {headers, body}} | {:error, reason}
 
   @doc """
     Sends the push notification to FCM v1.
 
   ## Options
 
-  * `:is_sync` - Determines whether to wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
-      * `:ok` when the response is received.
-      * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
-      * `{:error, :connection_lost}` when the connection to FCM is lost before the response arrives.
-      * `{:error, :invalid_notification}` when data values cannot be normalized.
-      * `{:error, :reason}` when error with other reason occures.
-    * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
+    * `:is_sync` - whether to wait for the response, `true` by default
+    * `:timeout` - time in milliseconds to send the request and get its response, 5000 by default
+
+  ## Result
+
+  `:ok` when the response has status 200, or when `:is_sync` is `false` and
+  the request is handed over to the pool. Otherwise `{:error, reason}`, where
+  `reason` comes from:
+
+    * the notification - `:invalid_notification` when its data values cannot
+      be normalized, it's checked before sending, also when `:is_sync` is `false`
+    * the pool, e.g. when there is no connection or no response in time, see
+      `Sparrow.Pool.send_request/3` for all of them
+    * FCM, when the status of the response is not 200 - the `errorCode` from
+      its body, or its `status` when there is none, as an atom, e.g.
+      `:UNREGISTERED`, see https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode
   """
   @timed event_tags: [:push, :fcm]
   @spec push(

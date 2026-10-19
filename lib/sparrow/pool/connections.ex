@@ -2,13 +2,13 @@ defmodule Sparrow.Pool.Connections do
   @moduledoc """
   Connections of a `Sparrow.Pool`, implemented with Finch.
 
-  Each pool has its own Finch instance, see `child_specs/1`. Its default pool
-  configuration is the configuration of the pool, so every Finch pool of the
-  instance uses it, also the ones Finch starts on its own.
+  Each pool starts its own Finch instance, see `child_specs/1`. The config of
+  the pool is the default of the instance, so it applies also to the Finch
+  pools which Finch starts on its own.
 
-  Connections of a pool are a single Finch pool of HTTP/2 connections. Finch
-  connects and reconnects them in the background, and keeps them alive with
-  pings. Requests are spread over the connections evenly.
+  The connections are kept in a single Finch pool of HTTP/2 connections.
+  Finch connects and reconnects them in the background, and keeps them alive
+  with pings. Requests are spread over the connections evenly.
   """
   alias Finch.Pool.Strategy.RoundRobin
   alias Sparrow.Pool.Config
@@ -22,9 +22,10 @@ defmodule Sparrow.Pool.Connections do
   @type headers :: [{String.t(), String.t()}]
   @type body :: String.t()
 
-  # Errors reported before the request is sent to the server: the connection
-  # is being (re)established, closed by the server, or has no free streams.
-  @not_sent_errors [
+  # Errors reported when the request was not delivered to the server: the
+  # connection is being (re)established, closed by the server, or has no free
+  # streams.
+  @request_not_delivered_errors [
     # Finch
     :pool_not_available,
     :disconnected,
@@ -100,7 +101,7 @@ defmodule Sparrow.Pool.Connections do
   miliseconds. Status of the response is returned as `":status"` header.
   Pseudo-headers are added by Mint, don't pass them in `headers`.
 
-  Returns `{:retry, reason}` when the request was not sent, but it may
+  Returns `{:retry, reason}` when the request was not delivered, but it may
   succeed when sent again.
   """
   @spec request(connection_ref, String.t(), headers, body, timeout) ::
@@ -132,7 +133,7 @@ defmodule Sparrow.Pool.Connections do
     :exit, _reason -> {:error, :connection_lost}
   end
 
-  defp request_error(reason) when reason in @not_sent_errors do
+  defp request_error(reason) when reason in @request_not_delivered_errors do
     {:retry, reason}
   end
 

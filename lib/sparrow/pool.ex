@@ -10,7 +10,7 @@ defmodule Sparrow.Pool do
   @type request :: Sparrow.Request.t()
   @type body :: String.t()
   @type headers :: [{String.t(), String.t()}]
-  @type reason :: atom
+  @type reason :: term
   @type stats :: %{
           pool: atom,
           connections: pos_integer,
@@ -23,7 +23,7 @@ defmodule Sparrow.Pool do
 
   @registry Sparrow.Pool.Registry
 
-  # Time to wait before sending again a request which was not sent. It's
+  # Time to wait before sending again a request which was not delivered. It's
   # doubled with each attempt, unless the server only had no free streams.
   @retry_delay 25
   @max_retry_delay 250
@@ -40,8 +40,8 @@ defmodule Sparrow.Pool do
 
   ## Errors
 
-    * `{:error, {:unable_to_connect, reason}}` - not sent, there was no connection in time
-    * `{:error, :too_many_concurrent_requests}` - not sent, the server had no free streams in time
+    * `{:error, {:unable_to_connect, reason}}` - not delivered, there was no connection in time
+    * `{:error, :too_many_concurrent_requests}` - not delivered, the server had no free streams in time
     * `{:error, :connection_lost}` - sent, but the connection was lost before the response
     * `{:error, :request_timeout}` - sent, but the response did not come in time
     * `{:error, :pool_not_found}` - there is no such pool
@@ -51,15 +51,7 @@ defmodule Sparrow.Pool do
   Other errors, e.g. of Finch, are returned as they are.
   """
   @spec send_request(atom, request, boolean()) ::
-          {:ok, {headers, body}}
-          | {:error, :connection_lost}
-          | {:error, {:unable_to_connect, reason}}
-          | {:error, :request_timeout}
-          | {:error, :pool_not_found}
-          | {:error, :too_many_concurrent_requests}
-          | {:error, {:error | :exit | :throw, term}}
-          | {:error, reason}
-          | :ok
+          {:ok, {headers, body}} | {:error, reason} | :ok
   def send_request(pool, request, is_sync \\ true)
 
   def send_request(pool, request, false) do
@@ -294,7 +286,7 @@ defmodule Sparrow.Pool do
   end
 
   # Sends the request and waits for the response, for at most the timeout
-  # of the request. A request which was not sent is sent again until then.
+  # of the request. A request which was not delivered is sent again until then.
   @spec send_and_report(connection_ref, config, request) :: response
   defp send_and_report(connection_ref, config, request) do
     started_at = System.monotonic_time(:microsecond)
@@ -346,8 +338,8 @@ defmodule Sparrow.Pool do
           report_retry(config, reason, attempt)
 
           _ =
-            Logger.debug("H2 request not sent, retrying",
-              what: :h2_request_retry,
+            Logger.debug("Retrying HTTP/2 request",
+              what: :http2_request_retry,
               reason: inspect(reason),
               time_left: time_left
             )
@@ -363,7 +355,7 @@ defmodule Sparrow.Pool do
             attempt + 1
           )
         else
-          not_sent_error(reason)
+          not_delivered_error(reason)
         end
 
       response ->
@@ -390,11 +382,11 @@ defmodule Sparrow.Pool do
   end
 
   # The server had no free streams all the time
-  defp not_sent_error(:too_many_concurrent_requests),
+  defp not_delivered_error(:too_many_concurrent_requests),
     do: {:error, :too_many_concurrent_requests}
 
   # There was no connection all the time
-  defp not_sent_error(reason), do: {:error, {:unable_to_connect, reason}}
+  defp not_delivered_error(reason), do: {:error, {:unable_to_connect, reason}}
 
   @spec request_headers(request, config) :: headers
   defp request_headers(request, config) do
@@ -415,8 +407,8 @@ defmodule Sparrow.Pool do
 
         {:error, reason} ->
           _ =
-            Logger.warning("H2 request failed",
-              what: :h2_request_failed,
+            Logger.warning("HTTP/2 request failed",
+              what: :http2_request_failed,
               status: :error,
               reason: inspect(reason)
             )

@@ -267,9 +267,9 @@ Sparrow supports [telemetry](https://github.com/beam-telemetry/telemetry). Event
 | Event | Measurements | Additional metadata | Executed |
 |---|---|---|---|
 | `[:sparrow, :pool, :request]` | `time` - microseconds from sending the request to its response or failure, including the attempts to send it again | `result` - `:ok` or `:error`, `reason` - reason of the failure, `status` - HTTP status of the response | once for each request |
-| `[:sparrow, :pool, :retry]` | | `reason` - why the request was not sent | once for each request which could not be sent at the first attempt and is going to be sent again |
+| `[:sparrow, :pool, :retry]` | | `reason` - why the request was not delivered | once for each request which was not delivered at the first attempt and is going to be sent again |
 | `[:sparrow, :pool, :connect]` | `time` - microseconds taken by the attempt to connect | `result` - `:ok` or `:error`, `reason` - reason of the failure | after each attempt to connect |
-| `[:sparrow, :pool, :choose]` | | `pool_name`, `pool_type` and `pool_tags` only | each time a pool is chosen by its type and tags |
+| `[:sparrow, :pool, :choose]` | | `pool_name`, `pool_type` and `pool_tags` only | each time a pool is chosen by its type and tags, also when no pool matches them (`pool_name` is `nil`) |
 
 A request has `result: :ok` whenever a response was received, also when its `status` is not `200`.
 

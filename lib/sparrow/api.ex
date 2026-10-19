@@ -21,7 +21,8 @@ defmodule Sparrow.API do
     Pool type must be the same as notification type (`:fcm` or `{:apns, :dev}` or `{:apns, :prod}`).
     Pool is chosen as first found from collection of pools that have ale tags included.
     * `opts` -
-        * `:timeout` - works only if `:is_sync` is `true`, after set `:timeout` miliseconds request is timeouted
+        * `:is_sync` - whether to wait for the response, `true` by default, `:ok` is returned without waiting when `false`
+        * `:timeout` - time in milliseconds to send the request and get its response, 5000 by default
   """
   @timed event_tags: [:push, :api]
   @spec push(notification, [any], Keyword.t()) ::
@@ -59,6 +60,7 @@ defmodule Sparrow.API do
         Pool type must be the same as notification type (`:fcm` or `{:apns, :dev}` or `{:apns, :prod}`).
         Pool is chosen as first found from collection of pools that have ale tags included.
       * `opts` -
+          * `:timeout` - time in milliseconds to send the request, 5000 by default
   """
   @spec push_async(notification, [any], Keyword.t()) ::
           :ok | {:error, :configuration_error}

@@ -8,7 +8,7 @@ defmodule Sparrow.APNS do
   alias Sparrow.Request
   alias Sparrow.Util
 
-  @type reason :: atom
+  @type reason :: term
   @type headers :: Request.headers()
   @type body :: String.t()
   @type push_opts :: [{:is_sync, boolean()} | {:timeout, non_neg_integer}]
@@ -17,15 +17,7 @@ defmodule Sparrow.APNS do
   @type tls_options :: Sparrow.Pool.Config.tls_options()
   @type time_in_miliseconds :: Sparrow.Pool.Config.time_in_miliseconds()
   @type port_num :: Sparrow.Pool.Config.port_num()
-  @type sync_push_result ::
-          {:error, :connection_lost}
-          | {:ok, {headers, body}}
-          | {:error, :request_timeout}
-          | {:error, {:unable_to_connect, reason}}
-          | {:error, :too_many_concurrent_requests}
-          | {:error, :pool_not_found}
-          | {:error, :invalid_notification}
-          | {:error, reason}
+  @type sync_push_result :: {:ok, {headers, body}} | {:error, reason}
 
   @path "/3/device/"
 
@@ -34,13 +26,20 @@ defmodule Sparrow.APNS do
 
   ## Options
 
-  * `:is_sync` - Determines whether to wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
-      * `:ok` when the response is received.
-      * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
-      * `{:error, :connection_lost}` when the connection to APNS is lost before the response arrives.
-      * `{:error, :invalid_notification}` when notification does not contain neither title nor body.
-      * `{:error, :reason}` when error with other reason occures.
-    * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
+    * `:is_sync` - whether to wait for the response, `true` by default
+    * `:timeout` - time in milliseconds to send the request and get its response, 5000 by default
+
+  ## Result
+
+  `:ok` when the response has status 200, or when `:is_sync` is `false` and
+  the request is handed over to the pool. Otherwise `{:error, reason}`, where
+  `reason` comes from:
+
+    * the pool, e.g. when there is no connection or no response in time, see
+      `Sparrow.Pool.send_request/3` for all of them
+    * APNS, when the status of the response is not 200 - the `reason` from
+      its body, as an atom, e.g. `:BadDeviceToken`, see
+      https://developer.apple.com/documentation/usernotifications/handling-notification-responses-from-apns
 
   ## Example
 
