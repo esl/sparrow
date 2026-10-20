@@ -5,26 +5,19 @@ defmodule Sparrow.APNS do
   use Sparrow.Telemetry.Timer
   require Logger
 
-  alias Sparrow.H2Worker.Request
+  alias Sparrow.Request
   alias Sparrow.Util
 
-  @type reason :: atom
+  @type reason :: term
   @type headers :: Request.headers()
   @type body :: String.t()
-  @type state :: Sparrow.H2Worker.State.t()
   @type push_opts :: [{:is_sync, boolean()} | {:timeout, non_neg_integer}]
   @type http_status :: non_neg_integer
-  @type authentication :: Sparrow.H2Worker.Config.authentication()
-  @type tls_options :: Sparrow.H2Worker.Config.tls_options()
-  @type time_in_miliseconds :: Sparrow.H2Worker.Config.time_in_miliseconds()
-  @type port_num :: Sparrow.H2Worker.Config.port_num()
-  @type sync_push_result ::
-          {:error, :connection_lost}
-          | {:ok, {headers, body}}
-          | {:error, :request_timeout}
-          | {:error, :not_ready}
-          | {:error, :invalid_notification}
-          | {:error, reason}
+  @type authentication :: Sparrow.Pool.Config.authentication()
+  @type tls_options :: Sparrow.Pool.Config.tls_options()
+  @type time_in_miliseconds :: Sparrow.Pool.Config.time_in_miliseconds()
+  @type port_num :: Sparrow.Pool.Config.port_num()
+  @type sync_push_result :: {:ok, {headers, body}} | {:error, reason}
 
   @path "/3/device/"
 
@@ -33,14 +26,20 @@ defmodule Sparrow.APNS do
 
   ## Options
 
-  * `:is_sync` - Determines whether the worker should wait for response after sending the request. When set to `true` (default), the result of calling this functions is one of:
-      * `:ok` when the response is received.
-      * `{:error, :request_timeout}` when the response doesn't arrive until timeout occurs (see the `:timeout` option).
-      * `{:error, :connection_lost}` when the connection to APNS is lost before the response arrives.
-      * `{:error, :not_ready}` when stream response is not yet ready, but it h2worker tries to get it.
-      * `{:error, :invalid_notification}` when notification does not contain neither title nor body.
-      * `{:error, :reason}` when error with other reason occures.
-    * `:timeout` - Request timeout in milliseconds. Defaults value is 5000.
+    * `:is_sync` - whether to wait for the response, `true` by default
+    * `:timeout` - time in milliseconds to send the request and get its response, 5000 by default
+
+  ## Result
+
+  `:ok` when the response has status 200, or when `:is_sync` is `false` and
+  the request is handed over to the pool. Otherwise `{:error, reason}`, where
+  `reason` comes from:
+
+    * the pool, e.g. when there is no connection or no response in time, see
+      `Sparrow.Pool.send_request/3` for all of them
+    * APNS, when the status of the response is not 200 - the `reason` from
+      its body, as an atom, e.g. `:BadDeviceToken`, see
+      https://developer.apple.com/documentation/usernotifications/handling-notification-responses-from-apns
 
   ## Example
 
@@ -52,11 +51,9 @@ defmodule Sparrow.APNS do
     config =
         "path/to/exampleName.pem"
         |> Sparrow.APNS.get_certificate_based_authentication("path/to/exampleKey.pem")
-        |> Sparrow.APNS.get_h2worker_config_dev()
+        |> Sparrow.APNS.get_pool_config_dev()
     {:ok, _pid} =
-        config
-        |> Sparrow.H2Worker.Pool.Config.new(:your_apns_workers_name)
-        |> Sparrow.H2Worker.Pool.start_unregistered({:apns, :dev})
+        Sparrow.Pool.start_link(%{config | name: :your_apns_pool_name})
 
     notification =
         @device_token
@@ -65,7 +62,7 @@ defmodule Sparrow.APNS do
         |> Notification.add_body("example body")
         |> Notification.add_apns_topic(@apns_topic)
 
-    Sparrow.APNS.push(:your_apns_workers_name, notification)
+    Sparrow.APNS.push(:your_apns_pool_name, notification)
   """
 
   @timed event_tags: [:push, :apns]
@@ -74,10 +71,9 @@ defmodule Sparrow.APNS do
           Sparrow.APNS.Notification.t(),
           push_opts
         ) :: sync_push_result | :ok
-  def push(h2_worker_pool, notification, opts) do
+  def push(pool, notification, opts) do
     is_sync = Keyword.get(opts, :is_sync, true)
     timeout = Keyword.get(opts, :timeout, 5_000)
-    strategy = Keyword.get(opts, :strategy, :random_worker)
     path = @path <> notification.device_token
     headers = notification.headers
     json_body = notification |> make_body() |> Jason.encode!()
@@ -89,18 +85,13 @@ defmodule Sparrow.APNS do
         request: request
       )
 
-    h2_worker_pool
-    |> Sparrow.H2Worker.Pool.send_request(
-      request,
-      is_sync,
-      timeout,
-      strategy
-    )
+    pool
+    |> Sparrow.Pool.send_request(request, is_sync)
     |> process_response()
   end
 
-  def push(h2_worker_pool, notification),
-    do: push(h2_worker_pool, notification, [])
+  def push(pool, notification),
+    do: push(pool, notification, [])
 
   @doc """
   Parses the return headers and body in `push/2` returning the status code and reason in case of errors
@@ -110,7 +101,7 @@ defmodule Sparrow.APNS do
   ## Example
 
   push_result =
-      worker
+      pool
       |> Sparrow.APNS.push(notification)
   case push_result do
       :ok ->
@@ -122,7 +113,8 @@ defmodule Sparrow.APNS do
   @spec process_response(:ok | {:ok, {headers, body}} | {:error, reason}) ::
           :ok
           | {:error,
-             reason :: String.t() | nil | :request_timeout | :not_ready | reason}
+             reason ::
+               String.t() | nil | :request_timeout | :connection_lost | reason}
 
   def process_response(:ok) do
     _ =
@@ -203,22 +195,22 @@ defmodule Sparrow.APNS do
   end
 
   @doc """
-  Function providing `Sparrow.H2Worker.Authentication.TokenBased` for APNS workers.
+  Function providing `Sparrow.Authentication.TokenBased` for APNS pools.
   Requres `Sparrow.APNS.TokenBearer` to be started.
   """
   @spec get_token_based_authentication(atom) ::
-          Sparrow.H2Worker.Authentication.TokenBased.t()
+          Sparrow.Authentication.TokenBased.t()
   def get_token_based_authentication(token_id) do
     getter = fn ->
       {"authorization",
        "bearer #{Sparrow.APNS.TokenBearer.get_token(token_id)}"}
     end
 
-    Sparrow.H2Worker.Authentication.TokenBased.new(getter)
+    Sparrow.Authentication.TokenBased.new(getter)
   end
 
   @doc """
-  Function providing `Sparrow.H2Worker.Authentication.CertificateBased` for APNS workers.
+  Function providing `Sparrow.Authentication.CertificateBased` for APNS pools.
 
   ##Arguments
 
@@ -226,85 +218,79 @@ defmodule Sparrow.APNS do
     * `path_to_key` - path to APNS key file
   """
   @spec get_certificate_based_authentication(Path.t(), Path.t()) ::
-          Sparrow.H2Worker.Authentication.CertificateBased.t()
+          Sparrow.Authentication.CertificateBased.t()
   def get_certificate_based_authentication(path_to_cert, path_to_key) do
-    Sparrow.H2Worker.Authentication.CertificateBased.new(
+    Sparrow.Authentication.CertificateBased.new(
       path_to_cert,
       path_to_key
     )
   end
 
   @doc """
-  Function providing `Sparrow.H2Worker.Config` for APNS workers.
+  Function providing `Sparrow.Pool.Config` for APNS production pools.
 
   ## Example
 
   # Token based authentication:
     config =
       Sparrow.APNS.get_token_based_authentication()
-      |> Sparrow.APNS.get_h2worker_config_dev()
+      |> Sparrow.APNS.get_pool_config_prod()
 
   # Certificate based authentication:
     config =
       "path/to/certificate"
       |> Sparrow.APNS.get_certificate_based_authentication("path/to/key")
-      |> Sparrow.APNS.get_h2worker_config_dev()
+      |> Sparrow.APNS.get_pool_config_prod()
 
   """
-  @spec get_h2worker_config_prod(
+  @spec get_pool_config_prod(
           authentication,
           String.t(),
           pos_integer,
           tls_options,
-          time_in_miliseconds,
-          pos_integer
-        ) :: Sparrow.H2Worker.Config.t()
-  def get_h2worker_config_prod(
+          time_in_miliseconds
+        ) :: Sparrow.Pool.Config.t()
+  def get_pool_config_prod(
         authentication,
         uri \\ "api.push.apple.com",
         port \\ 443,
         tls_opts \\ [],
-        ping_interval \\ 5000,
-        reconnect_attempts \\ 3
+        ping_interval \\ 5000
       ) do
-    Sparrow.H2Worker.Config.new(%{
+    Sparrow.Pool.Config.new(%{
+      type: {:apns, :prod},
       domain: uri,
       port: port,
       authentication: authentication,
       tls_options: tls_opts,
-      ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts,
-      pool_type: {:apns, :prod}
+      ping_interval: ping_interval
     })
   end
 
   @doc """
-  Function providing `Sparrow.H2Worker.Config` for APNS workers.
+  Function providing `Sparrow.Pool.Config` for APNS development pools.
   """
-  @spec get_h2worker_config_dev(
+  @spec get_pool_config_dev(
           authentication,
           String.t(),
           pos_integer,
           tls_options,
-          time_in_miliseconds,
-          pos_integer
-        ) :: Sparrow.H2Worker.Config.t()
-  def get_h2worker_config_dev(
+          time_in_miliseconds
+        ) :: Sparrow.Pool.Config.t()
+  def get_pool_config_dev(
         authentication,
         uri \\ "api.development.push.apple.com",
         port \\ 443,
         tls_opts \\ [],
-        ping_interval \\ 5000,
-        reconnect_attempts \\ 3
+        ping_interval \\ 5000
       ) do
-    Sparrow.H2Worker.Config.new(%{
+    Sparrow.Pool.Config.new(%{
+      type: {:apns, :dev},
       domain: uri,
       port: port,
       authentication: authentication,
       tls_options: tls_opts,
-      ping_interval: ping_interval,
-      reconnect_attempts: reconnect_attempts,
-      pool_type: {:apns, :dev}
+      ping_interval: ping_interval
     })
   end
 

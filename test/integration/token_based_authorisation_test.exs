@@ -1,0 +1,116 @@
+defmodule Integration.TokenBasedAuthorisationTest do
+  use ExUnit.Case
+
+  alias Helpers.TokenHelper
+  alias Helpers.SetupHelper, as: Setup
+  alias Sparrow.Request
+
+  @path "/AuthenticateHandler"
+  @pool_name :wname
+
+  setup do
+    {:ok, cowboy_pid, cowboys_name} =
+      [
+        {":_",
+         [
+           {@path, Helpers.CowboyHandlers.AuthenticateHandler, []}
+         ]}
+      ]
+      |> :cowboy_router.compile()
+      |> Setup.start_cowboy_tls(certificate_required: :no)
+
+    on_exit(fn ->
+      case Process.alive?(cowboy_pid) do
+        true -> :cowboy.stop_listener(cowboys_name)
+        _ -> :ok
+      end
+    end)
+
+    {:ok, port: :ranch.get_port(cowboys_name)}
+  end
+
+  test "token based authorisation with correct token succeed", context do
+    config = Setup.create_pool_config(Setup.server_host(), context[:port])
+    headers = Setup.default_headers()
+    body = "message, test body"
+
+    Setup.start_pool(config,
+      name: @pool_name,
+      connections: 4,
+      type: :fcm
+    )
+
+    success_request =
+      Request.new(
+        [{"authorization", TokenHelper.get_correct_token()} | headers],
+        body,
+        @path,
+        3_000
+      )
+
+    {:ok, {success_answer_headers, success_answer_body}} =
+      Sparrow.Pool.send_request(
+        @pool_name,
+        success_request,
+        true
+      )
+
+    assert_response_header(success_answer_headers, {":status", "200"})
+
+    assert_response_header(
+      success_answer_headers,
+      {"content-type", "text/plain; charset=utf-8"}
+    )
+
+    assert_response_header(
+      success_answer_headers,
+      {"content-length",
+       "#{inspect(String.length(TokenHelper.get_correct_token_response_body()))}"}
+    )
+
+    assert success_answer_body == TokenHelper.get_correct_token_response_body()
+  end
+
+  test "token based authorisation with incorrect token fails", context do
+    config = Setup.create_pool_config(Setup.server_host(), context[:port])
+
+    headers = Setup.default_headers()
+    body = "message, test body"
+
+    Setup.start_pool(config,
+      name: @pool_name,
+      connections: 4,
+      type: :fcm
+    )
+
+    fail_request =
+      Request.new(
+        [{"authorization", TokenHelper.get_incorrect_token()} | headers],
+        body,
+        @path,
+        3_000
+      )
+
+    {:ok, {fail_answer_headers, fail_answer_body}} =
+      Sparrow.Pool.send_request(@pool_name, fail_request)
+
+    assert_response_header(fail_answer_headers, {":status", "401"})
+
+    assert_response_header(
+      fail_answer_headers,
+      {"content-type", "text/plain; charset=utf-8"}
+    )
+
+    assert_response_header(
+      fail_answer_headers,
+      {"content-length",
+       "#{inspect(String.length(TokenHelper.get_incorrect_token_response_body()))}"}
+    )
+
+    assert fail_answer_body == TokenHelper.get_incorrect_token_response_body()
+  end
+
+  defp assert_response_header(headers, expected_header) do
+    assert Enum.any?(headers, &(&1 == expected_header))
+  end
+end

@@ -1,6 +1,6 @@
 defmodule Helpers.CowboyHandlers.AuthenticateHandler do
   @moduledoc false
-  alias H2Integration.Helpers.TokenHelper
+  alias Helpers.TokenHelper
 
   def init(req, opts) do
     {code, answer} =
