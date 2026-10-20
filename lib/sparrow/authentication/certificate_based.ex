@@ -1,6 +1,6 @@
 defmodule Sparrow.Authentication.CertificateBased do
   @moduledoc """
-  Structure for cerificate based authentication.
+  Structure for certificate based authentication.
   Use to create `Sparrow.Pool.Config`.
   """
   @type t :: %__MODULE__{

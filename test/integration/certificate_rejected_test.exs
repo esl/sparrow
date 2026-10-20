@@ -15,7 +15,7 @@ defmodule Integration.CertificateRejectedTest do
       ]
       |> :cowboy_router.compile()
       |> Setup.start_cowboy_tls(
-        certificate_required: :negative_cerificate_verification
+        certificate_required: :negative_certificate_verification
       )
 
     on_exit(fn ->

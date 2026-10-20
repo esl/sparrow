@@ -93,7 +93,7 @@ defmodule Helpers.SetupHelper do
     ]
   end
 
-  defp settings_list(:positive_cerificate_verification, port, opts) do
+  defp settings_list(:positive_certificate_verification, port, opts) do
     [
       {:port, port},
       {:verify, :verify_peer},
@@ -102,12 +102,12 @@ defmodule Helpers.SetupHelper do
     ]
   end
 
-  defp settings_list(:negative_cerificate_verification, port, opts) do
+  defp settings_list(:negative_certificate_verification, port, opts) do
     [
       {:port, port},
       {:verify, :verify_peer},
       {:verify_fun,
-       {fn _, _, _ -> {:fail, :negative_cerificate_verification} end, :ok}}
+       {fn _, _, _ -> {:fail, :negative_certificate_verification} end, :ok}}
       | certificate_settings_list(opts)
     ]
   end

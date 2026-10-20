@@ -12,13 +12,13 @@ defmodule Integration.CertificateRequiredTest do
       [
         {":_",
          [
-           {"/EchoClientCerificateHandler",
-            Helpers.CowboyHandlers.EchoClientCerificateHandler, []}
+           {"/EchoClientCertificateHandler",
+            Helpers.CowboyHandlers.EchoClientCertificateHandler, []}
          ]}
       ]
       |> :cowboy_router.compile()
       |> Setup.start_cowboy_tls(
-        certificate_required: :positive_cerificate_verification
+        certificate_required: :positive_certificate_verification
       )
 
     on_exit(fn ->
@@ -29,7 +29,7 @@ defmodule Integration.CertificateRequiredTest do
   end
 
   @pool_name :pool
-  test "cowboy replies with sent cerificate", context do
+  test "cowboy replies with sent certificate", context do
     auth =
       Sparrow.Authentication.CertificateBased.new(
         @cert_path,
@@ -48,7 +48,7 @@ defmodule Integration.CertificateRequiredTest do
     body = "body"
 
     request =
-      Request.new(headers, body, "/EchoClientCerificateHandler", 2_000)
+      Request.new(headers, body, "/EchoClientCertificateHandler", 2_000)
 
     Setup.start_pool(config, name: @pool_name, type: :fcm)
 
@@ -58,13 +58,13 @@ defmodule Integration.CertificateRequiredTest do
     {:ok, pem_bin} = File.read(@cert_path)
 
     expected_subject =
-      Helpers.CerificateHelper.get_subject_name_form_not_encoded_cert(pem_bin)
+      Helpers.CertificateHelper.get_subject_name_from_not_encoded_cert(pem_bin)
 
     assert_response_header(answer_headers, {":status", "200"})
     assert expected_subject == answer_body
   end
 
-  test "worker rejects cowboy cerificate", context do
+  test "worker rejects cowboy certificate", context do
     auth =
       Sparrow.Authentication.CertificateBased.new(
         @cert_path,
