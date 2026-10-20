@@ -1,8 +1,8 @@
-defmodule H2Integration.CerificateRequiredTest do
+defmodule Integration.CertificateRequiredTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.Request, as: OuterRequest
+  alias Sparrow.Request
 
   @cert_path "priv/ssl/client_cert.pem"
   @key_path "priv/ssl/client_key.pem"
@@ -48,7 +48,7 @@ defmodule H2Integration.CerificateRequiredTest do
     body = "body"
 
     request =
-      OuterRequest.new(headers, body, "/EchoClientCerificateHandler", 2_000)
+      Request.new(headers, body, "/EchoClientCerificateHandler", 2_000)
 
     Setup.start_pool(config, name: @pool_name, type: :fcm)
 
@@ -83,7 +83,7 @@ defmodule H2Integration.CerificateRequiredTest do
       })
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         "body",
         "/OkResponseHandler",

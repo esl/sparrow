@@ -1,4 +1,4 @@
-defmodule H2Integration.FinchClientServerTest do
+defmodule Integration.FinchClientServerTest do
   use ExUnit.Case
   use AssertEventually
 

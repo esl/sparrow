@@ -1,9 +1,9 @@
-defmodule H2Integration.H2AdapterInstabilityTest do
+defmodule Integration.ConnectionInstabilityTest do
   use ExUnit.Case
   use AssertEventually
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.Request, as: OuterRequest
+  alias Sparrow.Request
 
   setup do
     {:ok, cowboy_pid, cowboys_name} =
@@ -33,7 +33,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
     pool = start_connected_pool(context)
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         "body",
         "/NoResponseHandler",
@@ -65,7 +65,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
     )
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         "body",
         "/ConnTestHandler",
@@ -95,7 +95,7 @@ defmodule H2Integration.H2AdapterInstabilityTest do
              Finch.Pool.Manager.get_pool_supervisor(finch, finch_pool)
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         "body",
         "/ConnTestHandler",

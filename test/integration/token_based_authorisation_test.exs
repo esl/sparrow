@@ -1,9 +1,9 @@
-defmodule H2Integration.TokenBasedAuthorisationTest do
+defmodule Integration.TokenBasedAuthorisationTest do
   use ExUnit.Case
 
-  alias H2Integration.Helpers.TokenHelper
+  alias Helpers.TokenHelper
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.Request, as: OuterRequest
+  alias Sparrow.Request
 
   @path "/AuthenticateHandler"
   @pool_name :wname
@@ -41,7 +41,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
     )
 
     success_request =
-      OuterRequest.new(
+      Request.new(
         [{"authorization", TokenHelper.get_correct_token()} | headers],
         body,
         @path,
@@ -84,7 +84,7 @@ defmodule H2Integration.TokenBasedAuthorisationTest do
     )
 
     fail_request =
-      OuterRequest.new(
+      Request.new(
         [{"authorization", TokenHelper.get_incorrect_token()} | headers],
         body,
         @path,

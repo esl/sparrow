@@ -1,4 +1,4 @@
-defmodule H2Integration.Helpers.TokenHelper do
+defmodule Helpers.TokenHelper do
   @moduledoc false
   def get_correct_token do
     "Authentication_passed_token"

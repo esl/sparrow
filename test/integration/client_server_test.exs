@@ -1,8 +1,8 @@
-defmodule H2Integration.ClientServerTest do
+defmodule Integration.ClientServerTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.Request, as: OuterRequest
+  alias Sparrow.Request
 
   @body "test body"
   @pool_name :name
@@ -40,7 +40,7 @@ defmodule H2Integration.ClientServerTest do
     Setup.start_pool(config, name: @pool_name, type: :fcm)
 
     request =
-      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
+      Request.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
       Sparrow.Pool.send_request(@pool_name, request)
@@ -64,7 +64,7 @@ defmodule H2Integration.ClientServerTest do
     Setup.start_pool(config, name: @pool_name, type: :fcm)
 
     request =
-      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
+      Request.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
       Sparrow.Pool.send_request(@pool_name, request)
@@ -92,7 +92,7 @@ defmodule H2Integration.ClientServerTest do
     Setup.start_pool(config, name: @pool_name, type: :fcm)
 
     request =
-      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
+      Request.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
       Sparrow.Pool.send_request(@pool_name, request)
@@ -112,7 +112,7 @@ defmodule H2Integration.ClientServerTest do
 
     Setup.start_pool(config, name: @pool_name, type: :fcm)
 
-    request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
+    request = Request.new(headers, @body, "/ConnTestHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
       Sparrow.Pool.send_request(@pool_name, request)

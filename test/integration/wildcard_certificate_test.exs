@@ -1,4 +1,4 @@
-defmodule H2Integration.WildcardCertificateTest do
+defmodule Integration.WildcardCertificateTest do
   @moduledoc """
   Regression tests for wildcard certificate support in the pool supervisors'
   default TLS options.
@@ -6,7 +6,7 @@ defmodule H2Integration.WildcardCertificateTest do
   use ExUnit.Case, async: false
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.Request, as: OuterRequest
+  alias Sparrow.Request
 
   @client_cert "priv/ssl/client_cert.pem"
   @client_key "priv/ssl/client_key.pem"
@@ -109,7 +109,7 @@ defmodule H2Integration.WildcardCertificateTest do
       |> Setup.start_pool(name: @pool_name, type: :fcm)
 
       request =
-        OuterRequest.new(
+        Request.new(
           Setup.default_headers(),
           "",
           "/OkResponseHandler",

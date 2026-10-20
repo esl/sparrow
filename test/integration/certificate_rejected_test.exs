@@ -1,8 +1,8 @@
-defmodule H2Integration.CerificateRejectedTest do
+defmodule Integration.CertificateRejectedTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.Request, as: OuterRequest
+  alias Sparrow.Request
 
   setup_all do
     {:ok, _cowboy_pid, cowboys_name} =
@@ -32,7 +32,7 @@ defmodule H2Integration.CerificateRejectedTest do
     body = "sound of silence, test body"
 
     request =
-      OuterRequest.new(headers, body, "/RejectCertificateHandler", 3_000)
+      Request.new(headers, body, "/RejectCertificateHandler", 3_000)
 
     pool = Setup.start_pool_with_config(config)
 
