@@ -34,7 +34,6 @@ defmodule Sparrow.MixProject do
 
       # Test only
       {:excoveralls, "~> 0.18", runtime: false, only: :test},
-      {:quixir, "~> 0.9", only: :test},
       {:mock, "~> 0.3", only: :test},
       {:meck, "~> 1.2", only: :test, override: true},
       {:cowboy, "~> 2.11", only: :test},

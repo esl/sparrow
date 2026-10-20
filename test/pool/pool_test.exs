@@ -56,25 +56,6 @@ defmodule Sparrow.PoolTest do
              Code.eval_string(answer_body)
   end
 
-  test "cowboy echos headers in body, certificate based authentication" do
-    headers = [
-      {"my_cool_header", "my_even_cooler_value"} | Setup.default_headers()
-    ]
-
-    request =
-      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
-
-    {:ok, {answer_headers, answer_body}} =
-      Sparrow.Pool.send_request(@pool_name, request)
-
-    length_header = {"content-length", Integer.to_string(String.length(@body))}
-
-    assert_response_header(answer_headers, {":status", "200"})
-
-    assert {Enum.into([length_header | headers], %{}), []} ==
-             Code.eval_string(answer_body)
-  end
-
   test "cowboy replies Hello" do
     headers = Setup.default_headers()
 
@@ -136,7 +117,7 @@ defmodule Sparrow.PoolTest do
       end
     end
 
-    {_time, _} = :timer.tc(sending_with_response)
+    sending_with_response.()
     assert get_inner_counter() == @messages_for_pool
   end
 

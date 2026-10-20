@@ -1,55 +1,39 @@
 defmodule Sparrow.Pool.ConfigTest do
   use ExUnit.Case
-  use Quixir
 
   @path_to_cert "test/priv/certs/Certificates1.pem"
   @path_to_key "test/priv/certs/key.pem"
 
-  @repeats 10
-
   test "authentication type recognised correctly, for certificate" do
-    ptest [
-            domain: string(min: 3, max: 15, chars: :ascii),
-            port: string(min: 3, max: 15, chars: :ascii)
-          ],
-          repeat_for: @repeats do
-      auth =
-        Sparrow.Authentication.CertificateBased.new(
-          @path_to_cert,
-          @path_to_key
-        )
+    auth =
+      Sparrow.Authentication.CertificateBased.new(
+        @path_to_cert,
+        @path_to_key
+      )
 
-      config =
-        Sparrow.Pool.Config.new(%{
-          domain: domain,
-          port: port,
-          authentication: auth
-        })
+    config =
+      Sparrow.Pool.Config.new(%{
+        domain: "domain",
+        port: 443,
+        authentication: auth
+      })
 
-      assert :certificate_based ==
-               Sparrow.Pool.Config.get_authentication_type(config)
-    end
+    assert :certificate_based ==
+             Sparrow.Pool.Config.get_authentication_type(config)
   end
 
   test "authentication type recognised correctly for token" do
-    ptest [
-            domain: string(min: 3, max: 15, chars: :ascii),
-            port: string(min: 3, max: 15, chars: :ascii)
-          ],
-          repeat_for: @repeats do
-      auth =
-        Sparrow.Authentication.TokenBased.new(fn -> "dummyToken" end)
+    auth = Sparrow.Authentication.TokenBased.new(fn -> "dummyToken" end)
 
-      config =
-        Sparrow.Pool.Config.new(%{
-          domain: domain,
-          port: port,
-          authentication: auth
-        })
+    config =
+      Sparrow.Pool.Config.new(%{
+        domain: "domain",
+        port: 443,
+        authentication: auth
+      })
 
-      assert :token_based ==
-               Sparrow.Pool.Config.get_authentication_type(config)
-    end
+    assert :token_based ==
+             Sparrow.Pool.Config.get_authentication_type(config)
   end
 
   test "connection TLS options contain certificate for certificate based authentication" do

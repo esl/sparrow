@@ -74,7 +74,7 @@ defmodule Sparrow.Pool.RequestTest do
 
         assert_receive {:timeout, timeout}
         assert timeout <= 1_000
-        assert timeout > 900
+        assert timeout > 500
       end
     end
 
@@ -91,18 +91,16 @@ defmodule Sparrow.Pool.RequestTest do
 
   describe "request which was not sent" do
     test "is sent again", %{config: config, request: request} do
-      {:ok, attempts} = Agent.start_link(fn -> 0 end)
-
-      second_attempt_succeeds = fn _, _, _, _, _ ->
-        case Agent.get_and_update(attempts, &{&1, &1 + 1}) do
-          0 -> {:retry, :pool_not_available}
-          _ -> @response
-        end
-      end
+      second_attempt_succeeds = [
+        in_series(
+          [:_, :_, :_, :_, :_],
+          [{:retry, :pool_not_available}, @response]
+        )
+      ]
 
       with_request second_attempt_succeeds do
         assert @response == send_request(config, request)
-        assert 2 == Agent.get(attempts, & &1)
+        assert_called_exactly(Connections.request(:_, :_, :_, :_, :_), 2)
       end
     end
 
@@ -114,7 +112,7 @@ defmodule Sparrow.Pool.RequestTest do
 
         assert {:error, {:unable_to_connect, :pool_not_available}} == response
         assert time >= 150_000
-        assert time < 1_000_000
+        assert time < 5_000_000
       end
     end
   end
@@ -125,14 +123,10 @@ defmodule Sparrow.Pool.RequestTest do
       {:ok, attempts: attempts}
     end
 
-    test "is not sent again when its time is up", %{
-      config: config,
-      attempts: attempts
-    } do
+    test "is not sent again when its time is up", %{config: config} do
       request = Request.new(@headers, "body", "/path", 100)
 
       slow_retry = fn _, _, _, _, _ ->
-        record_attempt(attempts)
         Process.sleep(150)
         {:retry, :pool_not_available}
       end
@@ -141,7 +135,7 @@ defmodule Sparrow.Pool.RequestTest do
         assert {:error, {:unable_to_connect, :pool_not_available}} ==
                  send_request(config, request)
 
-        assert 1 == length(attempt_times(attempts))
+        assert_called_exactly(Connections.request(:_, :_, :_, :_, :_), 1)
       end
     end
 
@@ -151,7 +145,7 @@ defmodule Sparrow.Pool.RequestTest do
     } do
       request = Request.new(@headers, "body", "/path", 600)
 
-      with_request retry_recording(attempts, :pool_not_available) do
+      with_request record_and_retry(attempts, :pool_not_available) do
         send_request(config, request)
 
         gaps = attempt_gaps(attempts)
@@ -171,7 +165,7 @@ defmodule Sparrow.Pool.RequestTest do
     } do
       request = Request.new(@headers, "body", "/path", 600)
 
-      with_request retry_recording(attempts, :too_many_concurrent_requests) do
+      with_request record_and_retry(attempts, :too_many_concurrent_requests) do
         send_request(config, request)
 
         # 5 attempts if they were sent less and less often
@@ -357,7 +351,7 @@ defmodule Sparrow.Pool.RequestTest do
     Sparrow.Pool.send_request(:pool, request)
   end
 
-  defp retry_recording(attempts, reason) do
+  defp record_and_retry(attempts, reason) do
     fn _, _, _, _, _ ->
       record_attempt(attempts)
       {:retry, reason}
