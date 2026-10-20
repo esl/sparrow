@@ -3,7 +3,7 @@ defmodule H2Integration.FinchClientServerTest do
   use AssertEventually
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.Request, as: OuterRequest
+  alias Sparrow.Request
 
   @body "test body"
 
@@ -51,7 +51,7 @@ defmodule H2Integration.FinchClientServerTest do
     ]
 
     request =
-      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
+      Request.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     assert {:ok, {answer_headers, answer_body}} =
              Sparrow.Pool.send_request(pool_name, request)
@@ -72,7 +72,7 @@ defmodule H2Integration.FinchClientServerTest do
     pool_name = start_pool(context, :token_based)
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         @body,
         "/HeaderToBodyEchoHandler",
@@ -90,7 +90,7 @@ defmodule H2Integration.FinchClientServerTest do
     pool_name = start_pool(context)
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         @body,
         "/EchoBodyHandler",
@@ -108,7 +108,7 @@ defmodule H2Integration.FinchClientServerTest do
     pool_name = start_pool(context)
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         @body,
         "/OkResponseHandler",
@@ -125,7 +125,7 @@ defmodule H2Integration.FinchClientServerTest do
     pool_name = start_pool(context)
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         @body,
         "/ErrorResponseHandler",
@@ -139,11 +139,11 @@ defmodule H2Integration.FinchClientServerTest do
     assert %{"reason" => "My error reason"} == Jason.decode!(answer_body)
   end
 
-  test "request timeouts and later ones still work", context do
+  test "request times out and later ones still work", context do
     pool_name = start_pool(context)
 
     slow =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         @body,
         "/NoResponseHandler",
@@ -157,7 +157,7 @@ defmodule H2Integration.FinchClientServerTest do
     ref = Process.monitor(handler)
 
     fast =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         @body,
         "/ConnTestHandler",
@@ -185,7 +185,7 @@ defmodule H2Integration.FinchClientServerTest do
           body = "body #{i}"
 
           request =
-            OuterRequest.new(
+            Request.new(
               Setup.default_headers(),
               body,
               "/EchoBodyHandler",
@@ -233,7 +233,7 @@ defmodule H2Integration.FinchClientServerTest do
           body = "body #{i}"
 
           request =
-            OuterRequest.new(
+            Request.new(
               Setup.default_headers(),
               body,
               "/EchoBodyHandler",
@@ -255,7 +255,7 @@ defmodule H2Integration.FinchClientServerTest do
     pool_name = start_pool(context)
 
     request =
-      OuterRequest.new(Setup.default_headers(), @body, "/ConnTestHandler", 300)
+      Request.new(Setup.default_headers(), @body, "/ConnTestHandler", 300)
 
     assert {:ok, _} = Sparrow.Pool.send_request(pool_name, request)
     :ok = :cowboy.stop_listener(context[:cowboys_name])
@@ -274,7 +274,7 @@ defmodule H2Integration.FinchClientServerTest do
     pool_name = start_pool(context)
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         @body,
         "/ConnTestHandler",
@@ -364,7 +364,7 @@ defmodule H2Integration.FinchClientServerTest do
 
   test "request to not existing pool fails" do
     request =
-      OuterRequest.new(Setup.default_headers(), @body, "/ConnTestHandler", 300)
+      Request.new(Setup.default_headers(), @body, "/ConnTestHandler", 300)
 
     assert {:error, :pool_not_found} ==
              Sparrow.Pool.send_request(:no_such_pool, request)
@@ -381,7 +381,7 @@ defmodule H2Integration.FinchClientServerTest do
     assert_eventually(match?(%{connected: 3}, Sparrow.Pool.stats(pool_name)))
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         @body,
         "/ConnTestHandler",
@@ -403,7 +403,7 @@ defmodule H2Integration.FinchClientServerTest do
     assert_eventually(match?(%{connected: 1}, Sparrow.Pool.stats(pool_name)))
 
     request =
-      OuterRequest.new(
+      Request.new(
         Setup.default_headers(),
         @body,
         "/ConnTestHandler",

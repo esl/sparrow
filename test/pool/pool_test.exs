@@ -2,7 +2,7 @@ defmodule Sparrow.PoolTest do
   use ExUnit.Case
 
   alias Helpers.SetupHelper, as: Setup
-  alias Sparrow.Request, as: OuterRequest
+  alias Sparrow.Request
 
   @pool_name :pool_name
   @body "test body"
@@ -43,7 +43,7 @@ defmodule Sparrow.PoolTest do
     ]
 
     request =
-      OuterRequest.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
+      Request.new(headers, @body, "/HeaderToBodyEchoHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
       Sparrow.Pool.send_request(@pool_name, request)
@@ -59,7 +59,7 @@ defmodule Sparrow.PoolTest do
   test "cowboy replies Hello" do
     headers = Setup.default_headers()
 
-    request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
+    request = Request.new(headers, @body, "/ConnTestHandler", 2_000)
 
     {:ok, {answer_headers, answer_body}} =
       Sparrow.Pool.send_request(@pool_name, request)
@@ -78,7 +78,7 @@ defmodule Sparrow.PoolTest do
   test "cowboy replies Hello async" do
     headers = Setup.default_headers()
 
-    request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
+    request = Request.new(headers, @body, "/ConnTestHandler", 2_000)
 
     assert :ok == Sparrow.Pool.send_request(@pool_name, request, false)
   end
@@ -98,27 +98,31 @@ defmodule Sparrow.PoolTest do
   test "cowboy replies Hello n times" do
     headers = Setup.default_headers()
 
-    request = OuterRequest.new(headers, @body, "/ConnTestHandler", 2_000)
+    request = Request.new(headers, @body, "/ConnTestHandler", 2_000)
 
-    sending_with_response = fn ->
-      for _ <- 1..@messages_for_pool do
-        async_send_request(@pool_name, request)
-      end
-
-      for _ <- 1..@messages_for_pool do
-        receive do
-          {:ok, {answer_headers, answer_body}} ->
-            increase_inner_counter()
-            assert_response_header(answer_headers, {":status", "200"})
-            assert answer_body == "Hello"
-        after
-          1000 -> :ok
-        end
-      end
+    for _ <- 1..@messages_for_pool do
+      async_send_request(@pool_name, request)
     end
 
-    sending_with_response.()
-    assert get_inner_counter() == @messages_for_pool
+    receive_responses(0)
+  end
+
+  # Fails on the first response which does not come in time
+  defp receive_responses(@messages_for_pool), do: :ok
+
+  defp receive_responses(received) do
+    receive do
+      {:ok, {answer_headers, answer_body}} ->
+        assert_response_header(answer_headers, {":status", "200"})
+        assert answer_body == "Hello"
+        receive_responses(received + 1)
+
+      {:error, reason} ->
+        flunk("Request failed with #{inspect(reason)}")
+    after
+      1_000 ->
+        flunk("Received #{received} of #{@messages_for_pool} responses")
+    end
   end
 
   defp assert_response_header(headers, expected_header) do
@@ -131,22 +135,5 @@ defmodule Sparrow.PoolTest do
     spawn(fn ->
       send(pid, Sparrow.Pool.send_request(pool_name, request))
     end)
-  end
-
-  defp increase_inner_counter do
-    new =
-      case :erlang.get(:results_counter) do
-        :undefined ->
-          1
-
-        x ->
-          x + 1
-      end
-
-    :erlang.put(:results_counter, new)
-  end
-
-  defp get_inner_counter do
-    :erlang.get(:results_counter)
   end
 end
