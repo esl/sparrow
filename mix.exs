@@ -4,7 +4,7 @@ defmodule Sparrow.MixProject do
   def project do
     [
       app: :sparrow,
-      version: "1.0.2",
+      version: "2.0.0",
       elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
       elixirc_options: elixirc_options(),
